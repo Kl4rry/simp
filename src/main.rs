@@ -58,7 +58,7 @@ impl ImageView {
         let texture = Texture {
             texture: Rc::new(gl_texture),
             sampler: SamplerBehavior {
-                magnify_filter: MagnifySamplerFilter::Linear,
+                magnify_filter: MagnifySamplerFilter::Nearest,
                 minify_filter: MinifySamplerFilter::Linear,
                 ..Default::default()
             },
@@ -213,6 +213,7 @@ impl App {
                 Window::new(im_str!("controls"))
                     .size([self.size.x(), 50.0], Condition::Always)
                     .position([0.0, 0.0], Condition::Always)
+                    .bg_alpha(1.0)
                     .no_decoration()
                     .scrollable(false)
                     .movable(false)
