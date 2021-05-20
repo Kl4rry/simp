@@ -105,7 +105,7 @@ impl App {
                     );
                     let view = self.image_view.as_mut().unwrap();
 
-                    let scaling = min!(self.size.x() / view.size.x(), self.size.y() / view.size.y());
+                    let scaling = min!(self.size.x() / view.size.x(), (self.size.y() - 50.0) / view.size.y());
                     view.scale = scaling;
                     view.position = self.size / 2.0;
                 }
@@ -183,20 +183,20 @@ impl App {
             }
 
             if image_size.y() < window_size.y() {
-                if image.position.y() - image_size.y() / 2.0 < 0.0 {
-                    image.position.set_y(image_size.y() / 2.0);
+                if image.position.y() - image_size.y() / 2.0 < 50.0 {
+                    image.position.set_y((image_size.y() / 2.0) + 50.0);
                 }
 
-                if image.position.y() + image_size.y() / 2.0 > window_size.y() {
-                    image.position.set_y(window_size.y() - image_size.y() / 2.0);
+                if image.position.y() + image_size.y() / 2.0 - 50.0 > window_size.y() {
+                    image.position.set_y((window_size.y() - image_size.y() / 2.0) + 50.0);
                 }
             } else {
-                if image.position.y() - image_size.y() / 2.0 > 0.0 {
-                    image.position.set_y(image_size.y() / 2.0);
+                if image.position.y() - image_size.y() / 2.0 > 50.0 {
+                    image.position.set_y(image_size.y() / 2.0 + 50.0);
                 }
 
-                if image.position.y() + image_size.y() / 2.0 < window_size.y() {
-                    image.position.set_y(window_size.y() - image_size.y() / 2.0);
+                if image.position.y() + image_size.y() / 2.0 < window_size.y() + 50.0 {
+                    image.position.set_y((window_size.y() - image_size.y() / 2.0) + 50.0);
                 }
             }
         }
