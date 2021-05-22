@@ -17,6 +17,8 @@ mod window;
 use window::{System, UserEvent};
 mod vec2;
 use vec2::Vec2;
+mod background;
+use background::render_background;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -88,7 +90,7 @@ struct App {
 impl App {
     fn update(
         &mut self,
-        ui: &imgui::Ui,
+        ui: &Ui,
         display: &glium::Display,
         renderer: &mut Renderer,
         window_event: Option<&WindowEvent>,
@@ -210,6 +212,9 @@ impl App {
             .scrollable(false)
             .movable(false)
             .build(ui, || {
+
+                render_background(ui, &self.size);
+
                 Window::new(im_str!("controls"))
                     .size([self.size.x(), 50.0], Condition::Always)
                     .position([0.0, 0.0], Condition::Always)
@@ -254,7 +259,7 @@ impl App {
         styles.pop(&ui);
     }
 
-    fn new(system: &System, size: [f32; 2]) -> Self {
+    fn new(system: &mut System, size: [f32; 2]) -> Self {
         App {
             image_view: None,
             mouse_down: false,
