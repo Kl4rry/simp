@@ -1,312 +1,206 @@
 use glium::{
-    backend::Facade,
+    glutin,
     glutin::{
-        event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
-        event_loop::EventLoopProxy,
+        event::{Event, WindowEvent},
+        event_loop::{ControlFlow, EventLoop, EventLoopProxy},
+        window::WindowBuilder,
     },
-    texture::{ClientFormat, RawImage2d},
-    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
-    Texture2d, Surface,
+    {Display, Surface},
 };
+use image::{ImageBuffer, Rgba};
+use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
+use imgui_glium_renderer::Renderer;
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use std::{env, time::Instant};
 
-use image::{io::Reader as ImageReader, ImageBuffer, Rgba};
-use imgui::*;
-use imgui_glium_renderer::{Renderer, Texture};
-use std::{borrow::Cow, env, error::Error, fs, io::Cursor, path::Path, rc::Rc, thread};
-
-mod window;
-use window::{System, UserEvent};
+mod app;
+mod clipboard;
+use app::App;
+mod background;
+use background::Background;
 mod vec2;
 use vec2::Vec2;
-mod background;
-use background::render_background;
 
-macro_rules! min {
-    ($x: expr) => ($x);
-    ($x: expr, $($z: expr),+) => {{
-        let y = min!($($z),*);
-        if $x < y {
-            $x
+pub enum UserEvent {
+    ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>),
+}
+
+pub struct System {
+    pub event_loop: EventLoop<UserEvent>,
+    pub proxy: EventLoopProxy<UserEvent>,
+    pub display: glium::Display,
+    pub imgui: Context,
+    pub platform: WinitPlatform,
+    pub renderer: Renderer,
+    pub font_size: f32,
+    pub app: App,
+    pub background: Background,
+}
+
+impl System {
+    pub fn new() -> Self {
+        let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
+        let proxy = event_loop.create_proxy();
+        let context = glutin::ContextBuilder::new().with_vsync(true);
+        let builder = WindowBuilder::new()
+            .with_title(String::from("simp"))
+            .with_visible(false)
+            .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
+            .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64));
+        let display =
+            Display::new(builder, context, &event_loop).expect("Failed to initialize display");
+
+        let app = App::new(proxy.clone(), [1100f32, 720f32]);
+
+        let mut imgui = Context::create();
+        imgui.set_ini_filename(None);
+
+        if let Some(backend) = clipboard::init() {
+            imgui.set_clipboard_backend(Box::new(backend));
         } else {
-            y
+            eprintln!("Failed to initialize clipboard");
         }
-    }}
-}
 
-struct ImageView {
-    texture_id: TextureId,
-    size: Vec2<f32>,
-    position: Vec2<f32>,
-    scale: f32,
-}
+        let mut platform = WinitPlatform::init(&mut imgui);
+        {
+            let gl_window = display.gl_window();
+            let window = gl_window.window();
+            platform.attach_window(imgui.io_mut(), window, HiDpiMode::Rounded);
+        }
 
-impl ImageView {
-    fn new<F>(
-        gl_ctx: &F,
-        textures: &mut Textures<Texture>,
-        image_buffer: ImageBuffer<Rgba<u16>, Vec<u16>>,
-    ) -> Result<Self, Box<dyn Error>>
-    where
-        F: Facade,
-    {
-        let (width, height) = image_buffer.dimensions();
-        let raw = RawImage2d {
-            data: Cow::Owned(image_buffer.into_raw()),
-            width: width as u32,
-            height: height as u32,
-            format: ClientFormat::U16U16U16U16,
-        };
-
-        let gl_texture = Texture2d::new(gl_ctx, raw)?;
-        let texture = Texture {
-            texture: Rc::new(gl_texture),
-            sampler: SamplerBehavior {
-                magnify_filter: MagnifySamplerFilter::Nearest,
-                minify_filter: MinifySamplerFilter::Linear,
-                ..Default::default()
+        let hidpi_factor = platform.hidpi_factor();
+        let font_size = (13.0 * hidpi_factor) as f32;
+        imgui.fonts().add_font(&[
+            FontSource::DefaultFontData {
+                config: Some(FontConfig {
+                    size_pixels: font_size,
+                    ..FontConfig::default()
+                }),
             },
-        };
-        let texture_id = textures.insert(texture);
-        Ok(ImageView {
-            texture_id,
-            size: Vec2::new(width as f32, height as f32),
-            scale: 1.0,
-            position: Vec2::default(),
-        })
-    }
+            FontSource::TtfData {
+                data: include_bytes!("../fonts/mplus-1p-regular.ttf"),
+                size_pixels: font_size,
+                config: Some(FontConfig {
+                    rasterizer_multiply: 1.75,
+                    glyph_ranges: FontGlyphRanges::default(),
+                    ..FontConfig::default()
+                }),
+            },
+        ]);
 
-    fn scaled(&self) -> Vec2<f32> {
-        self.size * self.scale
-    }
-}
+        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
-struct App {
-    image_view: Option<ImageView>,
-    mouse_down: bool,
-    last_mouse_position: Vec2<f32>,
-    size: Vec2<f32>,
-    proxy: EventLoopProxy<UserEvent>,
-}
+        let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+        display.gl_window().window().set_visible(true);
 
-impl App {
-    fn draw_background(target: &mut glium::Frame) {
-        target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
-    }
+        let background = Background::new(&display);
 
-    fn update(
-        &mut self,
-        ui: &Ui,
-        display: &glium::Display,
-        renderer: &mut Renderer,
-        window_event: Option<&WindowEvent>,
-        user_event: Option<&UserEvent>,
-    ) {
-        let styles = ui.push_style_var(StyleVar::WindowPadding([0.0, 0.0]));
-
-        if let Some(event) = user_event {
-            match event {
-                UserEvent::ImageLoaded(image) => {
-                    self.image_view = Some(
-                        ImageView::new(display.get_context(), renderer.textures(), image.clone())
-                            .unwrap(),
-                    );
-                    let view = self.image_view.as_mut().unwrap();
-
-                    let scaling = min!(self.size.x() / view.size.x(), (self.size.y() - 50.0) / view.size.y());
-                    view.scale = scaling;
-                    view.position = self.size / 2.0;
-                }
-            };
+        Self {
+            event_loop,
+            proxy,
+            display,
+            imgui,
+            platform,
+            renderer,
+            font_size,
+            app,
+            background,
         }
+    }
+}
 
-        if let Some(event) = window_event {
+//https://stackoverflow.com/questions/56701736/how-to-correctly-translate-mouse-coords-to-opengl-coords
+fn _cord_to_gl(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
+    let x = 2.0 * (x / width) - 1.0;
+    let y = 2.0 * ((y - height + 1.0) / height) - 1.0;
+    (x, y)
+}
+
+
+//nice color #E795AA
+
+impl System {
+    pub fn main_loop(self) {
+        let System {
+            event_loop,
+            display,
+            mut imgui,
+            mut platform,
+            mut renderer,
+            mut app,
+            background,
+            ..
+        } = self;
+        let mut last_frame = Instant::now();
+
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Wait;
+
             match event {
-                WindowEvent::Resized(size) => {
-                    self.size = Vec2::new(size.width as f32, size.height as f32)
+                Event::NewEvents(_) => {
+                    let now = Instant::now();
+                    imgui.io_mut().update_delta_time(now - last_frame);
+                    last_frame = now;
                 }
-                WindowEvent::MouseWheel { delta, .. } => {
-                    if let Some(ref mut image) = self.image_view {
-                        let old_scale = match delta {
-                            MouseScrollDelta::LineDelta(_, y) => {
-                                let old_scale = image.scale;
-                                image.scale += image.scale * y / 10.0;
-                                old_scale
+                Event::MainEventsCleared => (),
+                Event::RedrawRequested(_) => {
+                    let mut ui = imgui.frame();
+
+                    app.update(&mut ui, &display, &mut renderer, None, None);
+
+                    let gl_window = display.gl_window();
+                    let mut target = display.draw();
+                    target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
+
+                    let dimensions = display.get_framebuffer_dimensions();
+                    let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
+                    background.render(&mut target, size);
+
+                    platform.prepare_render(&ui, gl_window.window());
+                    let draw_data = ui.render();
+                    renderer
+                        .render(&mut target, draw_data)
+                        .expect("Rendering failed");
+                    target.finish().expect("Failed to swap buffers");
+                }
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => *control_flow = ControlFlow::Exit,
+                event => {
+                    {
+                        let mut ui = imgui.frame();
+
+                        match &event {
+                            Event::WindowEvent { event, .. } => {
+                                app.update(&mut ui, &display, &mut renderer, Some(event), None)
                             }
-                            MouseScrollDelta::PixelDelta(pos) => {
-                                let old_scale = image.scale;
-                                image.scale += image.scale * pos.y as f32 / 10.0;
-                                old_scale
+                            Event::UserEvent(event) => {
+                                app.update(&mut ui, &display, &mut renderer, None, Some(event))
                             }
+                            _ => app.update(&mut ui, &display, &mut renderer, None, None),
                         };
-                        let new_size = image.scaled();
-                        if new_size.x() < 100.0 || new_size.y() < 100.0 {
-                            image.scale = old_scale;
-                        }
                     }
-                }
-                WindowEvent::MouseInput { button, state, .. } => {
-                    if matches!(button, MouseButton::Left) {
-                        match state {
-                            ElementState::Released => self.mouse_down = false,
-                            ElementState::Pressed => self.mouse_down = true,
-                        }
-                    }
-                }
-                WindowEvent::CursorMoved { position, .. } => {
-                    if let Some(ref mut image) = self.image_view {
-                        let pos = Vec2::new(position.x as f32, position.y as f32);
-                        if self.mouse_down {
-                            let differance = self.last_mouse_position - pos;
-                            image.position -= differance;
-                        }
-                        self.last_mouse_position = pos;
-                    }
-                }
-                _ => (),
-            };
-        }
 
-        if let Some(ref mut image) = self.image_view {
-            let image_size = image.scaled();
-            let mut window_size = self.size;
-            window_size.set_y(window_size.y() - 50.0);
-
-            if image_size.x() < window_size.x() {
-                if image.position.x() - image_size.x() / 2.0 < 0.0 {
-                    image.position.set_x(image_size.x() / 2.0);
-                }
-
-                if image.position.x() + image_size.x() / 2.0 > window_size.x() {
-                    image.position.set_x(window_size.x() - image_size.x() / 2.0);
-                }
-            } else {
-                if image.position.x() - image_size.x() / 2.0 > 0.0 {
-                    image.position.set_x(image_size.x() / 2.0);
-                }
-
-                if image.position.x() + image_size.x() / 2.0 < window_size.x() {
-                    image.position.set_x(window_size.x() - image_size.x() / 2.0);
+                    let gl_window = display.gl_window();
+                    platform.handle_event(imgui.io_mut(), gl_window.window(), &event);
+                    platform
+                        .prepare_frame(imgui.io_mut(), gl_window.window())
+                        .expect("Failed to prepare frame");
+                    gl_window.window().request_redraw();
                 }
             }
-
-            if image_size.y() < window_size.y() {
-                if image.position.y() - image_size.y() / 2.0 < 50.0 {
-                    image.position.set_y((image_size.y() / 2.0) + 50.0);
-                }
-
-                if image.position.y() + image_size.y() / 2.0 - 50.0 > window_size.y() {
-                    image.position.set_y((window_size.y() - image_size.y() / 2.0) + 50.0);
-                }
-            } else {
-                if image.position.y() - image_size.y() / 2.0 > 50.0 {
-                    image.position.set_y(image_size.y() / 2.0 + 50.0);
-                }
-
-                if image.position.y() + image_size.y() / 2.0 < window_size.y() + 50.0 {
-                    image.position.set_y((window_size.y() - image_size.y() / 2.0) + 50.0);
-                }
-            }
-        }
-
-        Window::new(im_str!("window"))
-            .size(*self.size, Condition::Always)
-            .position([0.0, 0.0], Condition::Always)
-            .bg_alpha(0.0)
-            .no_decoration()
-            .draw_background(false)
-            .scrollable(false)
-            .movable(false)
-            .build(ui, || {
-
-                render_background(ui, &self.size);
-
-                Window::new(im_str!("controls"))
-                    .size([self.size.x(), 50.0], Condition::Always)
-                    .position([0.0, 0.0], Condition::Always)
-                    .bg_alpha(1.0)
-                    .no_decoration()
-                    .scrollable(false)
-                    .movable(false)
-                    .bring_to_front_on_focus(true)
-                    .focused(true)
-                    .no_nav()
-                    .build(ui, || {
-                        if ui.button(im_str!("Browse"), [70.0, 50.0]) {
-                            let proxy = self.proxy.clone();
-                            thread::spawn(move || {
-                                if let Some(file) = tinyfiledialogs::open_file_dialog("Open image", "", None) {
-                                    load_image(proxy, file);
-                                } 
-                            });
-                        }
-                    });
-
-                
-
-                if let Some(ref mut image) = self.image_view {
-                    Window::new(im_str!("image"))
-                        .size(*image.scaled(), Condition::Always)
-                        .position_pivot([0.5, 0.5])
-                        .position(*image.position, Condition::Always)
-                        .bg_alpha(0.0)
-                        .no_decoration()
-                        .scrollable(false)
-                        .draw_background(false)
-                        .mouse_inputs(false)
-                        .focus_on_appearing(false)
-                        .no_nav()
-                        .build(ui, || {
-                            Image::new(image.texture_id, *image.scaled()).build(ui)
-                        });
-                }
-            });
-
-        styles.pop(&ui);
-    }
-
-    fn new(system: &mut System, size: [f32; 2]) -> Self {
-        App {
-            image_view: None,
-            mouse_down: false,
-            last_mouse_position: Vec2::default(),
-            size: Vec2::new(size[0], size[1]),
-            proxy: system.proxy.clone(),
-        }
+        });
     }
 }
 
 fn main() {
-    let mut system = window::init();
-    let dimensions = system.display.get_framebuffer_dimensions();
-    let size = [dimensions.0 as f32, dimensions.1 as f32];
-    let mut app = App::new(&mut system, size);
+    let system = System::new();
 
     let mut args: Vec<String> = env::args().collect();
     if let Some(arg) = args.pop() {
-        load_image(system.proxy.clone(), arg);
+        app::load_image(system.proxy.clone(), arg);
     }
 
-    system.main_loop(move |_, ui, display, renderer, window_event, user_event| {
-        app.update(ui, display, renderer, window_event, user_event)
-    });
-}
-
-fn decode_image(
-    path: impl AsRef<Path>,
-) -> Result<ImageBuffer<Rgba<u16>, Vec<u16>>, Box<dyn Error>> {
-    let bytes = fs::read(path)?;
-    Ok(
-        ImageReader::with_format(Cursor::new(&bytes), image::guess_format(&bytes)?)
-            .decode()?
-            .into_rgba16(),
-    )
-}
-
-fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
-    let path_buf = path.as_ref().to_path_buf();
-    thread::spawn(move || {
-        if let Ok(image) = decode_image(path_buf) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(image));
-        }
-    });
+    system.main_loop();
 }

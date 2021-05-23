@@ -1,27 +1,41 @@
-use super::vec2::*;
-use imgui::*;
-use timing::Timer;
+use glium::{
+    backend::glutin::Display,
+    VertexBuffer,
+    IndexBuffer,
+    index::PrimitiveType,
+    program::Program,
+    Surface, uniform, implement_vertex,
+};
 
-static SIZE: f32 = 20.0;
+use super::vec2::Vec2;
 
-pub fn render_background(ui: &Ui, size: &Vec2<f32>) {
-    let t = Timer::start();
-    let columns = (size.x() / SIZE).ceil() as i32;
-    let rows = (size.y() / SIZE).ceil() as i32;
+#[derive(Copy, Clone)]
+struct Vertex {
+    position: [f32; 2],
+}
 
-    for x in 0..columns {
-        for y in 0..rows {
-            if (x % 2 + y % 2) % 2 == 0 {
-                let color = color::ImColor32::from_rgb(51, 56, 66);
-                draw_rect(ui, Vec2::new((x * SIZE as i32) as f32, (y * SIZE as i32) as f32 + 50.0), color);
-            }
-            //draw_rect(ui, Vec2::new((x * SIZE as i32) as f32, (y * SIZE as i32) as f32 + 50.0), color);
+implement_vertex!(Vertex, position);
+
+pub struct Background {
+    shader: Program,
+    vertices: VertexBuffer<Vertex>,
+    indices: IndexBuffer<u8>,
+}
+
+impl Background {
+    pub fn new(display: &Display) -> Self {
+        let shape = vec![Vertex { position: [-1.0, 1.0] }, Vertex { position: [ -1.0,  -1.0] }, Vertex { position: [ 1.0, 1.0] }, Vertex { position: [ 1.0, -1.0] }];
+        let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
+
+        Self {
+            shader: Program::from_source(display, include_str!("shader/background.vert"), include_str!("shader/background.frag"), None).unwrap(),
+            vertices: VertexBuffer::new(display, &shape).unwrap(),
+            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &index_buffer).unwrap(),
         }
     }
-    println!("{:?}", t.stop());
+
+    pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
+        target.draw(&self.vertices, &self.indices, &self.shader, &uniform! { size: *size }, &Default::default()).unwrap();
+    }
 }
 
-fn draw_rect(ui: &Ui, pos: Vec2<f32>, color: color::ImColor32) {
-    let draw_list = ui.get_background_draw_list();
-    draw_list.add_rect_filled_multicolor(*pos, *(pos + Vec2::new(SIZE, SIZE)), color, color, color, color);
-}
