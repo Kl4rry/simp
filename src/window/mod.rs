@@ -93,6 +93,13 @@ pub fn init() -> System {
     }
 }
 
+//https://stackoverflow.com/questions/56701736/how-to-correctly-translate-mouse-coords-to-opengl-coords
+fn _cord_to_gl(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
+    let x = 2.0 * (x / width) - 1.0;
+    let y = 2.0 * ((y - height + 1.0) / height) - 1.0;
+    (x, y)
+}
+
 impl System {
     pub fn main_loop<
         F: FnMut(
@@ -138,7 +145,9 @@ impl System {
 
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
-                    target.clear_color_srgb(0.3, 0.5, 0.5, 1.0);
+                    target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
+                    
+
                     platform.prepare_render(&ui, gl_window.window());
                     let draw_data = ui.render();
                     renderer

@@ -1282,6 +1282,7 @@ dependencies = [
  "imgui",
  "imgui-glium-renderer",
  "imgui-winit-support",
+ "timing",
  "tinyfiledialogs",
 ]
 
@@ -1369,6 +1370,12 @@ dependencies = [
  "miniz_oxide 0.4.4",
  "weezl",
 ]
+
+[[package]]
+name = "timing"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d9e38db95716e38f864ad9e23a5888a376b2efe8bae6b2b77b3e70fd5566f39"
 
 [[package]]
 name = "tinyfiledialogs"

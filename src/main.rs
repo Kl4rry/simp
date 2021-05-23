@@ -6,8 +6,9 @@ use glium::{
     },
     texture::{ClientFormat, RawImage2d},
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
-    Texture2d,
+    Texture2d, Surface,
 };
+
 use image::{io::Reader as ImageReader, ImageBuffer, Rgba};
 use imgui::*;
 use imgui_glium_renderer::{Renderer, Texture};
@@ -88,6 +89,10 @@ struct App {
 }
 
 impl App {
+    fn draw_background(target: &mut glium::Frame) {
+        target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
+    }
+
     fn update(
         &mut self,
         ui: &Ui,
