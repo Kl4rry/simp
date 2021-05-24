@@ -11,7 +11,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 ✅ = Tested and working 🆗 = Untested but should work with minimal changes
 
 ## Supported Codecs
-| Format | Decoding |
+| Format | Support |
 | ------ | -------- |
 | PNG    | Yes |
 | JPEG   | Baseline and progressive |
@@ -25,6 +25,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 | DDS    | DXT1, DXT3, DXT5 |
 | TGA    | Yes |
 | farbfeld | Yes |
+| gif | No animation |
 
 ## Installation
 ### Cargo
