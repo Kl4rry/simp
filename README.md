@@ -15,7 +15,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 | ------ | -------- |
 | PNG    | Yes |
 | JPEG   | Baseline and progressive |
-| GIF    | Yes |
+| GIF    | No animation |
 | BMP    | Yes |
 | ICO    | Yes |
 | TIFF   | Baseline(no fax support) + LZW + PackBits |
@@ -25,7 +25,6 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 | DDS    | DXT1, DXT3, DXT5 |
 | TGA    | Yes |
 | farbfeld | Yes |
-| gif | No animation |
 
 ## Installation
 ### Cargo
