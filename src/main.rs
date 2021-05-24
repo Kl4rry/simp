@@ -22,6 +22,7 @@ mod background;
 use background::Background;
 mod vec2;
 use vec2::Vec2;
+mod icon;
 
 pub enum UserEvent {
     ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>),
@@ -48,7 +49,8 @@ impl System {
             .with_title(String::from("simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
-            .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64));
+            .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64))
+            .with_window_icon(Some(icon::get_icon()));
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
 
@@ -117,9 +119,6 @@ fn _cord_to_gl(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
     let y = 2.0 * ((y - height + 1.0) / height) - 1.0;
     (x, y)
 }
-
-
-//nice color #E795AA
 
 impl System {
     pub fn main_loop(self) {

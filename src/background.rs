@@ -11,7 +11,7 @@ use super::vec2::Vec2;
 
 #[derive(Copy, Clone)]
 struct Vertex {
-    position: [f32; 2],
+    position: [f32; 2]
 }
 
 implement_vertex!(Vertex, position);
@@ -24,7 +24,7 @@ pub struct Background {
 
 impl Background {
     pub fn new(display: &Display) -> Self {
-        let shape = vec![Vertex { position: [-1.0, 1.0] }, Vertex { position: [ -1.0,  -1.0] }, Vertex { position: [ 1.0, 1.0] }, Vertex { position: [ 1.0, -1.0] }];
+        let shape = vec![Vertex { position: [ -1.0, 1.0 ] }, Vertex { position: [ -1.0, -1.0 ] }, Vertex { position: [ 1.0, 1.0 ] }, Vertex { position: [ 1.0, -1.0 ] }];
         let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
 
         Self {

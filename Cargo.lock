@@ -1284,6 +1284,8 @@ dependencies = [
  "imgui-winit-support",
  "timing",
  "tinyfiledialogs",
+ "winapi 0.3.9",
+ "winres",
 ]
 
 [[package]]
@@ -1586,6 +1588,15 @@ dependencies = [
  "wayland-client",
  "winapi 0.3.9",
  "x11-dl",
+]
+
+[[package]]
+name = "winres"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff4fb510bbfe5b8992ff15f77a2e6fe6cf062878f0eda00c0f44963a807ca5dc"
+dependencies = [
+ "toml",
 ]
 
 [[package]]
