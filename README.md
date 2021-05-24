@@ -13,7 +13,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 ## Supported Codecs
 | Format | Decoding |
 | ------ | -------- |
-| PNG    | All supported color types |
+| PNG    | Yes |
 | JPEG   | Baseline and progressive |
 | GIF    | Yes |
 | BMP    | Yes |
