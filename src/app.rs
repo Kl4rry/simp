@@ -99,8 +99,6 @@ impl App {
             self.size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32)
         }
 
-        let styles = ui.push_style_var(StyleVar::WindowPadding([0.0, 0.0]));
-
         if let Some(event) = user_event {
             match event {
                 UserEvent::ImageLoaded(image) => {
@@ -143,6 +141,29 @@ impl App {
                         let new_size = image.scaled();
                         if new_size.x() < 100.0 || new_size.y() < 100.0 {
                             image.scale = old_scale;
+                        } else {
+                            let center = self.size / 2.0;
+                            let mut delta = image.scaled() - image.size * old_scale;
+
+                            if image.position.x() < center.x() {
+                                println!("unga");
+                                delta.set_x(-delta.x())
+                            }
+
+                            if image.position.y() < center.y() {
+                                delta.set_y(-delta.y())
+                            }
+
+                            println!("delta: {:?}", delta);
+
+                            if self.size.x() < image.scaled().x() {
+                                *image.position.mut_x() += delta.x() / 4.0;
+                            }
+
+                            if self.size.y() < image.scaled().y() {
+                                *image.position.mut_y() += delta.y() / 4.0;
+                            }
+                            //image.position;
                         }
                     }
                 }
@@ -215,6 +236,7 @@ impl App {
             }
         }
 
+        let styles = ui.push_style_var(StyleVar::WindowPadding([0.0, 0.0]));
         let local_styles = ui.push_style_vars(&[StyleVar::WindowPadding([10.0, 10.0]), StyleVar::FramePadding([0.0, 4.0])]);
 
         ui.main_menu_bar(|| {

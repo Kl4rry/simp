@@ -22,6 +22,14 @@ impl<T: Copy> Vec2<T> {
         self.inner[1]
     }
 
+    pub fn mut_x(&mut self) -> &mut T {
+        &mut self.inner[0]
+    }
+
+    pub fn mut_y(&mut self) -> &mut T {
+        &mut self.inner[1]
+    }
+
     pub fn set_x(&mut self, x: T) {
         self.inner[0] = x;
     }
