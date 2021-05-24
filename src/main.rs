@@ -10,7 +10,7 @@ use glium::{
     {Display, Surface},
 };
 use image::{ImageBuffer, Rgba};
-use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
+use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::{env, time::Instant};
@@ -26,6 +26,7 @@ mod icon;
 
 pub enum UserEvent {
     ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>),
+    ImageError(String),
 }
 
 pub struct System {
@@ -81,17 +82,7 @@ impl System {
                     ..FontConfig::default()
                 }),
             },
-            FontSource::TtfData {
-                data: include_bytes!("../fonts/mplus-1p-regular.ttf"),
-                size_pixels: font_size,
-                config: Some(FontConfig {
-                    rasterizer_multiply: 1.75,
-                    glyph_ranges: FontGlyphRanges::default(),
-                    ..FontConfig::default()
-                }),
-            },
         ]);
-
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
         let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
@@ -147,7 +138,10 @@ impl System {
                 Event::RedrawRequested(_) => {
                     let mut ui = imgui.frame();
 
-                    app.update(&mut ui, &display, &mut renderer, None, None);
+                    let exit = app.update(&mut ui, &display, &mut renderer, None, None);
+                    if exit {
+                        *control_flow = ControlFlow::Exit;
+                    }
 
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
@@ -172,7 +166,7 @@ impl System {
                     {
                         let mut ui = imgui.frame();
 
-                        match &event {
+                        let exit = match &event {
                             Event::WindowEvent { event, .. } => {
                                 app.update(&mut ui, &display, &mut renderer, Some(event), None)
                             }
@@ -181,6 +175,10 @@ impl System {
                             }
                             _ => app.update(&mut ui, &display, &mut renderer, None, None),
                         };
+
+                        if exit {
+                            *control_flow = ControlFlow::Exit;
+                        }
                     }
 
                     let gl_window = display.gl_window();
@@ -199,8 +197,10 @@ fn main() {
     let system = System::new();
 
     let mut args: Vec<String> = env::args().collect();
-    if let Some(arg) = args.pop() {
-        app::load_image(system.proxy.clone(), arg);
+    if args.len() > 1 {
+        if let Some(arg) = args.pop() {
+            app::load_image(system.proxy.clone(), arg);
+        }
     }
 
     system.main_loop();
