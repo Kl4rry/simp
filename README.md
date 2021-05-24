@@ -23,3 +23,9 @@ PNM
 DDS  
 TGA  
 farbfeld  
+
+## Installation
+### Cargo
+```shell
+cargo install simp
+```
