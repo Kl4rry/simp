@@ -46,7 +46,7 @@ impl System {
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new().with_vsync(true);
         let builder = WindowBuilder::new()
-            .with_title(String::from("simp"))
+            .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
             .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64))
