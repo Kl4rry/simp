@@ -12,7 +12,7 @@ use glium::{
 use image::{io::Reader as ImageReader, ImageBuffer, Rgba};
 use imgui::*;
 use imgui_glium_renderer::{Renderer, Texture};
-use std::{borrow::Cow, error::Error, fs, io::Cursor, path::Path, rc::Rc, thread};
+use std::{borrow::Cow, error::Error, fs, io::Cursor, path::Path, rc::Rc, thread, process::Command};
 
 use super::{UserEvent, vec2::Vec2};
 
@@ -82,6 +82,7 @@ pub struct App {
     error_visible: bool,
     error_message: String,
     modifiers: ModifiersState,
+    mouse_position: Vec2<f32>,
 }
 
 impl App {
@@ -124,54 +125,36 @@ impl App {
 
         if let Some(event) = window_event {
             match event {
+                WindowEvent::CursorMoved { position, ..} => {
+                    self.mouse_position.set_x(position.x as f32);
+                    self.mouse_position.set_y(position.y as f32);
+                },
                 WindowEvent::MouseWheel { delta, .. } => {
                     if let Some(ref mut image) = self.image_view {
-                        let old_scale = match delta {
-                            MouseScrollDelta::LineDelta(_, y) => {
-                                let old_scale = image.scale;
-                                image.scale += image.scale * y / 10.0;
-                                old_scale
-                            }
-                            MouseScrollDelta::PixelDelta(pos) => {
-                                let old_scale = image.scale;
-                                image.scale += image.scale * pos.y as f32 / 10.0;
-                                old_scale
-                            }
+                        let scroll = match delta {
+                            MouseScrollDelta::LineDelta(_, y) => *y,
+                            MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                         };
+
+                        let old_scale = image.scale;
+                        image.scale += image.scale * scroll as f32 / 10.0;
+
                         let new_size = image.scaled();
                         if new_size.x() < 100.0 || new_size.y() < 100.0 {
                             image.scale = old_scale;
                         } else {
-                            let center = self.size / 2.0;
-                            let mut delta = image.scaled() - image.size * old_scale;
-
-                            if image.position.x() < center.x() {
-                                println!("unga");
-                                delta.set_x(-delta.x())
-                            }
-
-                            if image.position.y() < center.y() {
-                                delta.set_y(-delta.y())
-                            }
-
-                            println!("delta: {:?}", delta);
-
-                            if self.size.x() < image.scaled().x() {
-                                *image.position.mut_x() += delta.x() / 4.0;
-                            }
-
-                            if self.size.y() < image.scaled().y() {
-                                *image.position.mut_y() += delta.y() / 4.0;
-                            }
-                            //image.position;
+                            let mouse_to_center = image.position - self.mouse_position;
+                            image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
                         }
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
                 WindowEvent::ReceivedCharacter(character) => {
-                    match character.to_ascii_lowercase() as u32 {
+                    let keycode = character.to_ascii_lowercase() as u32;
+                    match keycode {
                         15 if self.modifiers.ctrl() => open_load_image(self.proxy.clone()),
                         23 if self.modifiers.ctrl() => exit = true,
+                        14 if self.modifiers.ctrl() => new_window(),
                         _ => (),
                     }
                 },
@@ -241,6 +224,10 @@ impl App {
 
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
+                if MenuItem::new(im_str!("New Window")).shortcut(im_str!("Ctrl + N")).build(&ui) {
+                    new_window();
+                }
+
                 if MenuItem::new(im_str!("Open")).shortcut(im_str!("Ctrl + O")).build(&ui) {
                     open_load_image(self.proxy.clone());
                 }
@@ -315,8 +302,15 @@ impl App {
             error_visible: false,
             error_message: String::new(),
             modifiers: ModifiersState::empty(),
+            mouse_position: Vec2::default(),
         }
     }
+}
+
+fn new_window() {
+    Command::new(std::env::current_exe().unwrap())
+        .spawn()
+        .unwrap();
 }
 
 fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
