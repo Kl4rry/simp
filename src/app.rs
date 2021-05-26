@@ -103,6 +103,10 @@ impl App {
         if let Some(event) = user_event {
             match event {
                 UserEvent::ImageLoaded(image) => {
+                    if let Some(old) = self.image_view.take() {
+                        renderer.textures().remove(old.texture_id);
+                    }
+
                     self.image_view = Some(
                         ImageView::new(display.get_context(), renderer.textures(), image.clone())
                             .unwrap(),
