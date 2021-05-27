@@ -102,6 +102,12 @@ impl System {
     }
 }
 
+impl Default for System {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 //https://stackoverflow.com/questions/56701736/how-to-correctly-translate-mouse-coords-to-opengl-coords
 fn _cord_to_gl(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
     let x = 2.0 * (x / width) - 1.0;

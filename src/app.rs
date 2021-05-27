@@ -90,7 +90,7 @@ pub struct App {
 impl App {
     pub fn update(
         &mut self,
-        ui: &Ui,
+        ui: &mut Ui,
         display: &glium::Display,
         renderer: &mut Renderer,
         window_event: Option<&WindowEvent>,
@@ -313,14 +313,14 @@ impl App {
             });
 
         styles.pop(&ui);
-        return exit;
+        exit
     }
 
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
         App {
             image_view: None,
             size: Vec2::new(size[0], size[1]),
-            proxy: proxy,
+            proxy,
             error_visible: false,
             error_message: String::new(),
             modifiers: ModifiersState::empty(),
