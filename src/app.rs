@@ -1,7 +1,7 @@
 use glium::{
     backend::Facade,
     glutin::{
-        event::{MouseScrollDelta, WindowEvent, ModifiersState},
+        event::{ModifiersState, MouseScrollDelta, WindowEvent},
         event_loop::EventLoopProxy,
     },
     texture::{ClientFormat, RawImage2d},
@@ -12,9 +12,11 @@ use glium::{
 use image::{io::Reader as ImageReader, ImageBuffer, Rgba};
 use imgui::*;
 use imgui_glium_renderer::{Renderer, Texture};
-use std::{borrow::Cow, error::Error, fs, io::Cursor, path::Path, rc::Rc, thread, process::Command};
+use std::{
+    borrow::Cow, error::Error, fs, io::Cursor, path::Path, process::Command, rc::Rc, thread,
+};
 
-use super::{UserEvent, vec2::Vec2};
+use super::{vec2::Vec2, UserEvent};
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -123,16 +125,16 @@ impl App {
                 UserEvent::ImageError(error) => {
                     self.error_visible = true;
                     self.error_message = error.clone();
-                },
+                }
             };
         }
 
         if let Some(event) = window_event {
             match event {
-                WindowEvent::CursorMoved { position, ..} => {
+                WindowEvent::CursorMoved { position, .. } => {
                     self.mouse_position.set_x(position.x as f32);
                     self.mouse_position.set_y(position.y as f32);
-                },
+                }
                 WindowEvent::MouseWheel { delta, .. } => {
                     if let Some(ref mut image) = self.image_view {
                         let scroll = match delta {
@@ -148,7 +150,8 @@ impl App {
                             image.scale = old_scale;
                         } else {
                             let mouse_to_center = image.position - self.mouse_position;
-                            image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+                            image.position -=
+                                mouse_to_center * (old_scale - image.scale) / old_scale;
                         }
                     }
                 }
@@ -161,7 +164,7 @@ impl App {
                         14 if self.modifiers.ctrl() => new_window(),
                         _ => (),
                     }
-                },
+                }
                 _ => (),
             };
         }
@@ -224,19 +227,31 @@ impl App {
         }
 
         let styles = ui.push_style_var(StyleVar::WindowPadding([0.0, 0.0]));
-        let local_styles = ui.push_style_vars(&[StyleVar::WindowPadding([10.0, 10.0]), StyleVar::FramePadding([0.0, 4.0])]);
+        let local_styles = ui.push_style_vars(&[
+            StyleVar::WindowPadding([10.0, 10.0]),
+            StyleVar::FramePadding([0.0, 4.0]),
+        ]);
 
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
-                if MenuItem::new(im_str!("New Window")).shortcut(im_str!("Ctrl + N")).build(&ui) {
+                if MenuItem::new(im_str!("New Window"))
+                    .shortcut(im_str!("Ctrl + N"))
+                    .build(&ui)
+                {
                     new_window();
                 }
 
-                if MenuItem::new(im_str!("Open")).shortcut(im_str!("Ctrl + O")).build(&ui) {
+                if MenuItem::new(im_str!("Open"))
+                    .shortcut(im_str!("Ctrl + O"))
+                    .build(&ui)
+                {
                     open_load_image(self.proxy.clone());
                 }
 
-                if MenuItem::new(im_str!("Exit")).shortcut(im_str!("Ctrl + W")).build(&ui) {
+                if MenuItem::new(im_str!("Exit"))
+                    .shortcut(im_str!("Ctrl + W"))
+                    .build(&ui)
+                {
                     exit = true;
                 }
             });
@@ -248,7 +263,10 @@ impl App {
             Window::new(im_str!("Error"))
                 .size([250.0, 100.0], Condition::Always)
                 .position_pivot([0.5, 0.5])
-                .position([self.size.x() / 2.0, self.size.y() / 2.0], Condition::Appearing)
+                .position(
+                    [self.size.x() / 2.0, self.size.y() / 2.0],
+                    Condition::Appearing,
+                )
                 .resizable(false)
                 .focus_on_appearing(false)
                 .always_use_window_padding(true)
@@ -319,9 +337,7 @@ fn new_window() {
 
 fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
     thread::spawn(move || {
-        if let Some(file) =
-            tinyfiledialogs::open_file_dialog("Open", "", None)
-        {
+        if let Some(file) = tinyfiledialogs::open_file_dialog("Open", "", None) {
             load_image(proxy, file);
         }
     });
@@ -334,9 +350,10 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
         let bytes = match file {
             Ok(bytes) => bytes,
             Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(String::from("Unable to read file")));
+                let _ =
+                    proxy.send_event(UserEvent::ImageError(String::from("Unable to read file")));
                 return;
-            },
+            }
         };
 
         let format = match image::guess_format(&bytes) {
@@ -344,17 +361,19 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             Err(_) => {
                 let _ = proxy.send_event(UserEvent::ImageError(String::from("Unknown format")));
                 return;
-            },
+            }
         };
-        
+
         let image = match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
             Ok(image) => image.into_rgba16(),
             Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(String::from("Unable to decode image")));
+                let _ = proxy.send_event(UserEvent::ImageError(String::from(
+                    "Unable to decode image",
+                )));
                 return;
-            },
+            }
         };
-        
+
         let _ = proxy.send_event(UserEvent::ImageLoaded(image));
     });
 }
