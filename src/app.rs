@@ -271,6 +271,7 @@ impl App {
                 .resizable(false)
                 .focus_on_appearing(false)
                 .always_use_window_padding(true)
+                .focused(true)
                 .opened(&mut self.error_visible)
                 .build(ui, || {
                     ui.text(message);
