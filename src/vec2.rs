@@ -58,7 +58,6 @@ impl<T: Add + Add<Output = T> + Copy> Add for Vec2<T> {
 
     fn add(self, other: Self) -> Self {
         Self {
-            //inner: other.inner,
             inner: [
                 self.inner[0] + other.inner[0],
                 self.inner[1] + other.inner[1],

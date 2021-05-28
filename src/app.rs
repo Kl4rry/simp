@@ -156,6 +156,7 @@ impl App {
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
+                WindowEvent::DroppedFile(path) => load_image(self.proxy.clone(), path),
                 WindowEvent::ReceivedCharacter(character) => {
                     let keycode = character.to_ascii_lowercase() as u32;
                     match keycode {
