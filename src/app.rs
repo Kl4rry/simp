@@ -1,22 +1,17 @@
 use glium::{
-    backend::Facade,
     glutin::{
         event::{ModifiersState, MouseScrollDelta, WindowEvent},
         event_loop::EventLoopProxy,
-    },
-    texture::{ClientFormat, RawImage2d},
-    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior},
-    Texture2d,
+    }
 };
-
-use image::{io::Reader as ImageReader, ImageBuffer, Rgba};
+use image::{io::Reader as ImageReader};
 use imgui::*;
-use imgui_glium_renderer::{Renderer, Texture};
+use imgui_glium_renderer::{Renderer};
 use std::{
-    borrow::Cow, error::Error, fs, io::Cursor, path::Path, process::Command, rc::Rc, thread,
+    fs, io::Cursor, path::Path, process::Command, thread,
 };
 
-use super::{vec2::Vec2, UserEvent};
+use super::{image_view::ImageView, vec2::Vec2, UserEvent};
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -30,55 +25,10 @@ macro_rules! min {
     }}
 }
 
-struct ImageView {
-    texture_id: TextureId,
-    size: Vec2<f32>,
-    position: Vec2<f32>,
-    scale: f32,
-}
-
-impl ImageView {
-    fn new<F>(
-        gl_ctx: &F,
-        textures: &mut Textures<Texture>,
-        image_buffer: ImageBuffer<Rgba<u16>, Vec<u16>>,
-    ) -> Result<Self, Box<dyn Error>>
-    where
-        F: Facade,
-    {
-        let (width, height) = image_buffer.dimensions();
-        let raw = RawImage2d {
-            data: Cow::Owned(image_buffer.into_raw()),
-            width: width as u32,
-            height: height as u32,
-            format: ClientFormat::U16U16U16U16,
-        };
-
-        let gl_texture = Texture2d::new(gl_ctx, raw)?;
-        let texture = Texture {
-            texture: Rc::new(gl_texture),
-            sampler: SamplerBehavior {
-                magnify_filter: MagnifySamplerFilter::Nearest,
-                minify_filter: MinifySamplerFilter::Linear,
-                ..Default::default()
-            },
-        };
-        let texture_id = textures.insert(texture);
-        Ok(ImageView {
-            texture_id,
-            size: Vec2::new(width as f32, height as f32),
-            scale: 1.0,
-            position: Vec2::default(),
-        })
-    }
-
-    fn scaled(&self) -> Vec2<f32> {
-        self.size * self.scale
-    }
-}
+const TOP_BAR_SIZE: f32 = 19.0;
 
 pub struct App {
-    image_view: Option<ImageView>,
+    pub image_view: Option<ImageView>,
     size: Vec2<f32>,
     proxy: EventLoopProxy<UserEvent>,
     error_visible: bool,
@@ -92,7 +42,7 @@ impl App {
         &mut self,
         ui: &mut Ui,
         display: &glium::Display,
-        renderer: &mut Renderer,
+        _renderer: &mut Renderer,
         window_event: Option<&WindowEvent>,
         user_event: Option<&UserEvent>,
     ) -> bool {
@@ -105,21 +55,14 @@ impl App {
         if let Some(event) = user_event {
             match event {
                 UserEvent::ImageLoaded(image) => {
-                    if let Some(old) = self.image_view.take() {
-                        renderer.textures().remove(old.texture_id);
-                    }
-
-                    self.image_view = Some(
-                        ImageView::new(display.get_context(), renderer.textures(), image.clone())
-                            .unwrap(),
-                    );
+                    self.image_view = Some(ImageView::new(display, image.clone()));
                     let view = self.image_view.as_mut().unwrap();
 
                     let scaling = min!(
                         self.size.x() / view.size.x(),
-                        (self.size.y() - 50.0) / view.size.y()
+                        (self.size.y() - TOP_BAR_SIZE) / view.size.y()
                     );
-                    view.scale = scaling;
+                    view.scale = min!(scaling, 1.0);
                     view.position = self.size / 2.0;
                 }
                 UserEvent::ImageError(error) => {
@@ -178,8 +121,6 @@ impl App {
                 ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
             }
         }
-
-        const TOP_BAR_SIZE: f32 = 19.0;
 
         if let Some(ref mut image) = self.image_view {
             let image_size = image.scaled();
@@ -286,33 +227,6 @@ impl App {
         }
 
         local_styles.pop(&ui);
-
-        Window::new(im_str!("window"))
-            .size([self.size.x(), self.size.y() - 19.0], Condition::Always)
-            .position([0.0, 19.0], Condition::Always)
-            .bg_alpha(0.0)
-            .no_decoration()
-            .draw_background(false)
-            .scrollable(false)
-            .movable(false)
-            .build(ui, || {
-                if let Some(ref mut image) = self.image_view {
-                    Window::new(im_str!("image"))
-                        .size(*image.scaled(), Condition::Always)
-                        .position_pivot([0.5, 0.5])
-                        .position(*image.position, Condition::Always)
-                        .bg_alpha(0.0)
-                        .no_decoration()
-                        .scrollable(false)
-                        .draw_background(false)
-                        .mouse_inputs(false)
-                        .focus_on_appearing(false)
-                        .no_nav()
-                        .build(ui, || {
-                            Image::new(image.texture_id, *image.scaled()).build(ui)
-                        });
-                }
-            });
 
         styles.pop(&ui);
         exit

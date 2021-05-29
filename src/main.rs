@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![feature(const_fn)]
 
 use glium::{
     glutin,
@@ -23,6 +24,7 @@ use background::Background;
 mod vec2;
 use vec2::Vec2;
 mod icon;
+mod image_view;
 
 pub enum UserEvent {
     ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>),
@@ -155,13 +157,17 @@ impl System {
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
                     background.render(&mut target, size);
 
+                    if let Some(image) = app.image_view.as_mut() {
+                        image.render(&mut target, size);
+                    }
+
                     platform.prepare_render(&ui, gl_window.window());
                     let draw_data = ui.render();
                     renderer
                         .render(&mut target, draw_data)
                         .expect("Rendering failed");
                     target.finish().expect("Failed to swap buffers");
-                },
+                }
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..

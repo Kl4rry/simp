@@ -6,8 +6,14 @@ use glium::{
 use super::vec2::Vec2;
 
 #[derive(Copy, Clone)]
-struct Vertex {
-    position: [f32; 2],
+pub struct Vertex {
+    pub position: [f32; 2],
+}
+
+impl Vertex {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { position: [x, y] }
+    }
 }
 
 implement_vertex!(Vertex, position);
@@ -21,18 +27,10 @@ pub struct Background {
 impl Background {
     pub fn new(display: &Display) -> Self {
         let shape = vec![
-            Vertex {
-                position: [-1.0, 1.0],
-            },
-            Vertex {
-                position: [-1.0, -1.0],
-            },
-            Vertex {
-                position: [1.0, 1.0],
-            },
-            Vertex {
-                position: [1.0, -1.0],
-            },
+            Vertex::new(-1.0, 1.0),
+            Vertex::new(-1.0, -1.0),
+            Vertex::new(1.0, 1.0),
+            Vertex::new(1.0, -1.0),
         ];
         let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
 
