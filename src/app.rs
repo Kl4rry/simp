@@ -168,10 +168,10 @@ impl App {
             }
         }
 
-        let styles = ui.push_style_var(StyleVar::WindowPadding([0.0, 0.0]));
-        let local_styles = ui.push_style_vars(&[
+        let styles = ui.push_style_vars(&[
             StyleVar::WindowPadding([10.0, 10.0]),
             StyleVar::FramePadding([0.0, 4.0]),
+            StyleVar::ItemSpacing([5.0, 10.0]),
         ]);
 
         ui.main_menu_bar(|| {
@@ -225,8 +225,6 @@ impl App {
                 self.error_visible = false;
             }
         }
-
-        local_styles.pop(&ui);
 
         styles.pop(&ui);
         exit

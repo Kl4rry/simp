@@ -98,7 +98,30 @@ impl ImageView {
         let position = self.position - self.scaled() / 2.0;
         let scale = Matrix4::from_scale(self.scale);
         let translation = Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
-        let matrix = ortho * translation * scale;
+
+        //let rot: f32 = std::f32::consts::PI / 0.0;
+        let rot: f32 = 0.0;
+
+        let x = self.position.x() + self.size.x() / 2.0;
+        let y = self.position.y() + self.size.y() / 2.0;
+
+        /*#[rustfmt::skip]
+        let rotation = cgmath::Matrix4::new(
+            rot.cos(), -(rot.sin()), -x * rot.cos() + y * rot.sin() + x, 0.0,
+            rot.sin(), rot.cos(), -x * rot.sin() - y * rot.cos() + y, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        );*/
+
+        #[rustfmt::skip]
+        let rotation = Matrix4::new(
+            rot.cos(), -(rot.sin()), 0.0, 0.0,
+            rot.sin(), rot.cos(), 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        );
+
+        let matrix =  (ortho * translation) * scale * rotation;
 
         let raw: [[f32; 4]; 4] = matrix.into();
 
