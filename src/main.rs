@@ -110,13 +110,6 @@ impl Default for System {
     }
 }
 
-//https://stackoverflow.com/questions/56701736/how-to-correctly-translate-mouse-coords-to-opengl-coords
-fn _cord_to_gl(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
-    let x = 2.0 * (x / width) - 1.0;
-    let y = 2.0 * ((y - height + 1.0) / height) - 1.0;
-    (x, y)
-}
-
 impl System {
     pub fn main_loop(self) {
         let System {

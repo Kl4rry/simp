@@ -1,15 +1,11 @@
-use glium::{
-    glutin::{
-        event::{ModifiersState, MouseScrollDelta, WindowEvent},
-        event_loop::EventLoopProxy,
-    }
+use glium::glutin::{
+    event::{ModifiersState, MouseScrollDelta, WindowEvent},
+    event_loop::EventLoopProxy,
 };
-use image::{io::Reader as ImageReader};
+use image::io::Reader as ImageReader;
 use imgui::*;
-use imgui_glium_renderer::{Renderer};
-use std::{
-    fs, io::Cursor, path::Path, process::Command, thread,
-};
+use imgui_glium_renderer::Renderer;
+use std::{fs, io::Cursor, path::Path, process::Command, thread};
 
 use super::{image_view::ImageView, vec2::Vec2, UserEvent};
 
@@ -123,7 +119,7 @@ impl App {
         }
 
         if let Some(ref mut image) = self.image_view {
-            let image_size = image.scaled();
+            let image_size = image.real_size();
             let mut window_size = self.size;
             window_size.set_y(window_size.y() - TOP_BAR_SIZE);
 
@@ -166,6 +162,7 @@ impl App {
                         .set_y((window_size.y() - image_size.y() / 2.0) + TOP_BAR_SIZE);
                 }
             }
+            image.real_size();
         }
 
         let styles = ui.push_style_vars(&[
@@ -175,6 +172,12 @@ impl App {
         ]);
 
         ui.main_menu_bar(|| {
+            /*if let Some(image) = self.image_view.as_mut() {
+                AngleSlider::new(im_str!("Rotation"))
+                    .range_degrees(Range(0.0, 360.0))
+                    .build(&ui, &mut image.rotation);
+            }*/
+
             ui.menu(im_str!("File"), true, || {
                 if MenuItem::new(im_str!("New Window"))
                     .shortcut(im_str!("Ctrl + N"))
@@ -195,6 +198,18 @@ impl App {
                     .build(&ui)
                 {
                     exit = true;
+                }
+            });
+
+            ui.menu(im_str!("Edit"), self.image_view.is_some(), || {
+                if let Some(image) = self.image_view.as_mut() {
+                    if MenuItem::new(im_str!("Rotate left")).build(&ui) {
+                        image.rotation += 90.0;
+                    }
+
+                    if MenuItem::new(im_str!("Rotate right")).build(&ui) {
+                        image.rotation -= 90.0;
+                    }
                 }
             });
         });
@@ -290,4 +305,16 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         let _ = proxy.send_event(UserEvent::ImageLoaded(image));
     });
+}
+
+struct Range(f32, f32);
+
+impl internal::InclusiveRangeBounds<f32> for Range {
+    fn start_bound(&self) -> Option<&f32> {
+        Some(&self.0)
+    }
+
+    fn end_bound(&self) -> Option<&f32> {
+        Some(&self.1)
+    }
 }

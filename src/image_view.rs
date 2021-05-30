@@ -1,16 +1,31 @@
-use cgmath::{Matrix4, Ortho, Vector3};
+use cgmath::{Matrix4, Ortho, Vector3, Vector4};
 use glium::{
     backend::glutin::Display,
+    draw_parameters::DrawParameters,
+    implement_vertex,
     index::PrimitiveType,
     program::Program,
     texture::{ClientFormat, RawImage2d, SrgbTexture2d},
-    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, SamplerBehavior, Sampler},
-    uniform, IndexBuffer, Surface, VertexBuffer, draw_parameters::DrawParameters, implement_vertex, Blend,
+    uniform,
+    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
+    Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{ImageBuffer, Rgba};
 use std::borrow::Cow;
 
 use super::vec2::Vec2;
+
+macro_rules! max {
+    ($x: expr) => ($x);
+    ($x: expr, $($z: expr),+) => {{
+        let y = max!($($z),*);
+        if $x > y {
+            $x
+        } else {
+            y
+        }
+    }}
+}
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -33,6 +48,7 @@ pub struct ImageView {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
     pub scale: f32,
+    pub rotation: f32,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -69,6 +85,7 @@ impl ImageView {
             size: Vec2::new(width as f32, height as f32),
             position: Vec2::default(),
             scale: 1.0,
+            rotation: 0.0,
             shader: Program::from_source(
                 display,
                 include_str!("shader/image.vert"),
@@ -97,9 +114,10 @@ impl ImageView {
 
         let position = self.position - self.scaled() / 2.0;
         let scale = Matrix4::from_scale(self.scale);
-        let translation = Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
+        let translation =
+            Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
 
-        let rot: f32 = std::f32::consts::PI / 1.0;
+        let rot = degrees_to_radians(self.rotation);
 
         #[rustfmt::skip]
         let rotation = Matrix4::new(
@@ -109,11 +127,16 @@ impl ImageView {
             0.0, 0.0, 0.0, 1.0,
         );
 
-        let pre_rotation =  Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
-        let post_rotation =  Matrix4::from_translation(Vector3::new(-self.size.x() / 2.0, -self.size.y() / 2.0, 0.0));
+        let pre_rotation =
+            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
+        let post_rotation = Matrix4::from_translation(Vector3::new(
+            -self.size.x() / 2.0,
+            -self.size.y() / 2.0,
+            0.0,
+        ));
         let final_rotation = (pre_rotation * rotation) * post_rotation;
 
-        let matrix =  ortho * translation * scale * final_rotation;
+        let matrix = ortho * translation * scale * final_rotation;
 
         let raw: [[f32; 4]; 4] = matrix.into();
 
@@ -134,4 +157,46 @@ impl ImageView {
     pub fn scaled(&self) -> Vec2<f32> {
         self.size * self.scale
     }
+
+    pub fn real_size(&self) -> Vec2<f32> {
+        let mut vectors = vec![
+            Vector4::new(0.0, 0.0, 0.0, 1.0),
+            Vector4::new(0.0, self.size.y(), 0.0, 1.0),
+            Vector4::new(self.size.x(), 0.0, 0.0, 1.0),
+            Vector4::new(self.size.x(), self.size.y(), 0.0, 1.0),
+        ];
+
+        let rot = degrees_to_radians(self.rotation);
+
+        #[rustfmt::skip]
+        let rotation = Matrix4::new(
+            rot.cos(), -(rot.sin()), 0.0, 0.0,
+            rot.sin(), rot.cos(), 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            0.0, 0.0, 0.0, 1.0,
+        );
+
+        let scale = Matrix4::from_scale(self.scale);
+
+        let matrix = scale * rotation;
+
+        for vector in &mut vectors {
+            (*vector) = matrix * (*vector);
+        }
+
+        let mut size = Vec2::new(0.0, 0.0);
+
+        for outer in &vectors {
+            for inner in &vectors {
+                size.set_x(max!((inner.x - outer.x).abs(), size.x()));
+                size.set_y(max!((inner.y - outer.y).abs(), size.y()));
+            }
+        }
+
+        size
+    }
+}
+
+fn degrees_to_radians(deg: f32) -> f32 {
+    (std::f32::consts::PI / 180.0) * deg
 }
