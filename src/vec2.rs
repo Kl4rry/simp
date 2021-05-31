@@ -10,7 +10,7 @@ pub struct Vec2<T> {
 }
 
 impl<T: Copy> Vec2<T> {
-    pub const fn new(x: T, y: T) -> Self {
+    pub fn new(x: T, y: T) -> Self {
         Self { inner: [x, y] }
     }
 
