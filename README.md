@@ -5,7 +5,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer.
 | OS            | Support|
 | ------------- |:------:|
 | Windows       | ✅ |
-| Linux         | 🆗 |
+| Linux         | ✅ |
 | MacOS         | 🆗 |
 
 ✅ = Tested and working 🆗 = Untested but should work with minimal changes
