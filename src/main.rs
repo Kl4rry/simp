@@ -13,7 +13,7 @@ use image::{ImageBuffer, Rgba};
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::{env, time::Instant};
+use std::{env, path::PathBuf, time::Instant};
 
 mod app;
 mod clipboard;
@@ -26,7 +26,7 @@ mod icon;
 mod image_view;
 
 pub enum UserEvent {
-    ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>),
+    ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>, PathBuf),
     ImageError(String),
 }
 
@@ -92,7 +92,7 @@ impl System {
                     size_pixels: font_size,
                     ..FontConfig::default()
                 }),
-            }
+            },
         ]);
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 

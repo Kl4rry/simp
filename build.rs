@@ -1,3 +1,4 @@
+use std::process::Command;
 #[cfg(target_os = "windows")]
 use winres::WindowsResource;
 
@@ -15,4 +16,11 @@ fn compile_icon() {
 fn main() {
     #[cfg(target_os = "windows")]
     compile_icon();
+
+    let output = Command::new("git")
+        .args(&["rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let git_hash = String::from_utf8(output.stdout).unwrap();
+    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
 }

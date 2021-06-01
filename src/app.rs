@@ -1,7 +1,7 @@
 use glium::glutin::{
-    event::{ModifiersState, MouseScrollDelta, WindowEvent, VirtualKeyCode, ElementState},
-    window::Fullscreen,
+    event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::EventLoopProxy,
+    window::Fullscreen,
 };
 use image::io::Reader as ImageReader;
 use imgui::*;
@@ -22,7 +22,8 @@ macro_rules! min {
     }}
 }
 
-const TOP_BAR_SIZE: f32 = 19.0;
+const TOP_BAR_SIZE: f32 = 25.0;
+const BOTTOM_BAR_SIZE: f32 = 22.0;
 
 pub struct App {
     pub image_view: Option<ImageView>,
@@ -32,6 +33,8 @@ pub struct App {
     error_message: String,
     modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
+    current_filename: String,
+    about_visible: bool,
 }
 
 impl App {
@@ -51,9 +54,10 @@ impl App {
 
         if let Some(event) = user_event {
             match event {
-                UserEvent::ImageLoaded(image) => {
+                UserEvent::ImageLoaded(image, path) => {
                     self.image_view = Some(ImageView::new(display, image.clone()));
                     let view = self.image_view.as_mut().unwrap();
+                    self.current_filename = path.file_name().unwrap().to_str().unwrap().to_string();
 
                     let scaling = min!(
                         self.size.x() / view.size.x(),
@@ -97,48 +101,56 @@ impl App {
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
                 WindowEvent::DroppedFile(path) => load_image(self.proxy.clone(), path),
-                WindowEvent::KeyboardInput { input, ..} => {
+                WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
-                            ElementState::Pressed => {
-                                match key {
-                                    VirtualKeyCode::O if self.modifiers.ctrl() => open_load_image(self.proxy.clone()),
-                                    VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
-                                    VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
-        
-                                    VirtualKeyCode::A => move_image(&mut self.image_view, Vec2::new(-20.0, 0.0)),
-                                    VirtualKeyCode::D => move_image(&mut self.image_view, Vec2::new(20.0, 0.0)),
-                                    VirtualKeyCode::W => move_image(&mut self.image_view, Vec2::new(0.0, -20.0)),
-                                    VirtualKeyCode::S => move_image(&mut self.image_view, Vec2::new(0.0, 20.0)),
-        
-                                    VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
-                                    VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
-                                    
-                                    VirtualKeyCode::F11 => {
-                                        let window_context = display.gl_window();
-                                        let window = window_context.window();
-                                        let fullscreen = window.fullscreen();
-                                        if let Some(_) = fullscreen {
-                                            window.set_fullscreen(None);
-                                        } else {
-                                            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
-                                        }
-                                    },
-                                    VirtualKeyCode::Escape => {
-                                        let window_context = display.gl_window();
-                                        let window = window_context.window();
-                                        let fullscreen = window.fullscreen();
-                                        if let Some(_) = fullscreen {
-                                            window.set_fullscreen(None);
-                                        }
-                                    },
-                                    _ => (),
+                            ElementState::Pressed => match key {
+                                VirtualKeyCode::O if self.modifiers.ctrl() => {
+                                    open_load_image(self.proxy.clone())
                                 }
+                                VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
+                                VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
+
+                                VirtualKeyCode::A => {
+                                    move_image(&mut self.image_view, Vec2::new(-20.0, 0.0))
+                                }
+                                VirtualKeyCode::D => {
+                                    move_image(&mut self.image_view, Vec2::new(20.0, 0.0))
+                                }
+                                VirtualKeyCode::W => {
+                                    move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
+                                }
+                                VirtualKeyCode::S => {
+                                    move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
+                                }
+
+                                VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
+                                VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
+
+                                VirtualKeyCode::F11 => {
+                                    let window_context = display.gl_window();
+                                    let window = window_context.window();
+                                    let fullscreen = window.fullscreen();
+                                    if let Some(_) = fullscreen {
+                                        window.set_fullscreen(None);
+                                    } else {
+                                        window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+                                    }
+                                }
+                                VirtualKeyCode::Escape => {
+                                    let window_context = display.gl_window();
+                                    let window = window_context.window();
+                                    let fullscreen = window.fullscreen();
+                                    if let Some(_) = fullscreen {
+                                        window.set_fullscreen(None);
+                                    }
+                                }
+                                _ => (),
                             },
                             ElementState::Released => (),
                         }
                     }
-                },
+                }
                 _ => (),
             };
         }
@@ -155,7 +167,7 @@ impl App {
         if let Some(ref mut image) = self.image_view {
             let image_size = image.real_size();
             let mut window_size = self.size;
-            window_size.set_y(window_size.y() - TOP_BAR_SIZE);
+            window_size.set_y(window_size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE);
 
             if image_size.x() < window_size.x() {
                 if image.position.x() - image_size.x() / 2.0 < 0.0 {
@@ -201,7 +213,7 @@ impl App {
 
         let styles = ui.push_style_vars(&[
             StyleVar::WindowPadding([10.0, 10.0]),
-            StyleVar::FramePadding([0.0, 4.0]),
+            StyleVar::FramePadding([0.0, 6.0]),
             StyleVar::ItemSpacing([5.0, 10.0]),
         ]);
 
@@ -220,6 +232,8 @@ impl App {
                     new_window();
                 }
 
+                ui.separator();
+
                 if MenuItem::new(im_str!("Open"))
                     .shortcut(im_str!("Ctrl + O"))
                     .build(&ui)
@@ -235,18 +249,110 @@ impl App {
                 }
             });
 
-            ui.menu(im_str!("Edit"), self.image_view.is_some(), || {
+            ui.menu(im_str!("Image"), self.image_view.is_some(), || {
                 if let Some(image) = self.image_view.as_mut() {
-                    if MenuItem::new(im_str!("Rotate left")).build(&ui) {
+                    if MenuItem::new(im_str!("Rotate Left"))
+                        .shortcut(im_str!("Q"))
+                        .build(&ui)
+                    {
                         image.rotation += 90.0;
                     }
 
-                    if MenuItem::new(im_str!("Rotate right")).build(&ui) {
+                    if MenuItem::new(im_str!("Rotate Right"))
+                        .shortcut(im_str!("E"))
+                        .build(&ui)
+                    {
                         image.rotation -= 90.0;
+                    }
+
+                    ui.separator();
+
+                    if MenuItem::new(im_str!("Flip Horizontal")).build(&ui) {
+                        image.flip_horizontal(display);
+                    }
+
+                    if MenuItem::new(im_str!("Flip Vertical")).build(&ui) {
+                        image.flip_vertical(display);
                     }
                 }
             });
+
+            ui.menu(im_str!("Help"), true, || {
+                if MenuItem::new(im_str!("Repository")).build(&ui) {
+                    webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
+                }
+
+                if MenuItem::new(im_str!("Report Bug")).build(&ui) {
+                    webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
+                }
+
+                ui.separator();
+
+                if MenuItem::new(im_str!("About")).build(&ui) {
+                    self.about_visible = true;
+                }
+            });
         });
+
+        let s = ui.push_style_vars(&[
+            StyleVar::WindowPadding([10.0, 4.0]),
+            StyleVar::FramePadding([0.0, 0.0]),
+            StyleVar::ItemSpacing([0.0, 0.0]),
+        ]);
+
+        let c = ui.push_style_colors(&[(StyleColor::WindowBg, [0.141, 0.141, 0.141, 1.0])]);
+
+        Window::new(im_str!("Bottom"))
+            .position([0.0, self.size.y() - BOTTOM_BAR_SIZE], Condition::Always)
+            .size([self.size.x(), BOTTOM_BAR_SIZE], Condition::Always)
+            .resizable(false)
+            .bg_alpha(1.0)
+            .movable(false)
+            .no_decoration()
+            .focus_on_appearing(false)
+            .always_use_window_padding(true)
+            .build(ui, || {
+                if let Some(image) = self.image_view.as_ref() {
+                    ui.same_line_with_spacing(0.0, 10.0);
+                    ui.text(&self.current_filename);
+                    ui.same_line_with_spacing(0.0, 20.0);
+                    ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
+                    ui.same_line_with_spacing(0.0, 20.0);
+                    ui.text(&format!("Zoom: {}%", (image.scale * 100.0).round()));
+                }
+            });
+
+        c.pop(&ui);
+        s.pop(&ui);
+
+        /*Window::new(im_str!("Tools"))
+        .position([self.size.x() - 120.0, TOP_BAR_SIZE], Condition::Always)
+        .size([120.0, 250.0], Condition::Always)
+        .resizable(false)
+        .movable(false)
+        .focus_on_appearing(false)
+        .always_use_window_padding(true)
+        .build(ui, || {
+            if ui.button(im_str!("Rotate Right"), [100.0, 40.0]) {
+                rotate_image(&mut self.image_view, 90.0);
+            }
+
+            if ui.button(im_str!("Rotate Left"), [100.0, 40.0]) {
+                rotate_image(&mut self.image_view, -90.0);
+            }
+
+            if ui.button(im_str!("Flip Horizontal"), [100.0, 40.0]) {
+                if let Some(image) = self.image_view.as_mut() {
+                    image.flip_horizontal(display);
+                }
+            }
+
+            if ui.button(im_str!("Flip Vertical"), [100.0, 40.0]) {
+                if let Some(image) = self.image_view.as_mut() {
+                    image.flip_vertical(display);
+                }
+            }
+        });*/
 
         if self.error_visible {
             let mut exit = false;
@@ -275,6 +381,37 @@ impl App {
             }
         }
 
+        if self.about_visible {
+            let mut exit = false;
+            Window::new(im_str!("About"))
+                .size([380.0, 170.0], Condition::Always)
+                .position_pivot([0.5, 0.5])
+                .position(
+                    [self.size.x() / 2.0, self.size.y() / 2.0],
+                    Condition::Appearing,
+                )
+                .resizable(false)
+                .focus_on_appearing(false)
+                .always_use_window_padding(true)
+                .focused(true)
+                .opened(&mut self.about_visible)
+                .build(ui, || {
+                    ui.text(env!("CARGO_PKG_NAME"));
+                    ui.text(env!("CARGO_PKG_DESCRIPTION"));
+                    ui.text(env!("CARGO_PKG_VERSION"));
+                    if let Some(string) = option_env!("GIT_HASH") {
+                        ui.text(&format!("Commit: {}", string));
+                    }
+                    if ui.button(im_str!("Ok"), [50.0, 30.0]) {
+                        exit = true;
+                    }
+                });
+
+            if exit {
+                self.about_visible = false;
+            }
+        }
+
         styles.pop(&ui);
         exit
     }
@@ -288,6 +425,8 @@ impl App {
             error_message: String::new(),
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
+            current_filename: String::new(),
+            about_visible: false,
         }
     }
 }
@@ -295,6 +434,11 @@ impl App {
 fn rotate_image(image_view: &mut Option<ImageView>, deg: f32) {
     if let Some(image) = image_view.as_mut() {
         image.rotation += deg;
+        if image.rotation > 360.0 {
+            image.rotation -= 360.0;
+        } else if image.rotation < 0.0 {
+            image.rotation += 360.0;
+        }
     }
 }
 
@@ -321,7 +465,7 @@ fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
     thread::spawn(move || {
-        let file = fs::read(path_buf);
+        let file = fs::read(&path_buf);
         let bytes = match file {
             Ok(bytes) => bytes,
             Err(_) => {
@@ -349,7 +493,7 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             }
         };
 
-        let _ = proxy.send_event(UserEvent::ImageLoaded(image));
+        let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf));
     });
 }
 

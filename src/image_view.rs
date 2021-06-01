@@ -11,7 +11,7 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{ImageBuffer, Rgba};
-use std::borrow::Cow;
+use std::{borrow::Cow, mem::swap};
 
 use super::vec2::Vec2;
 
@@ -53,16 +53,38 @@ pub struct ImageView {
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
     texture: SrgbTexture2d,
+    texture_cords: (Vec2<f32>, Vec2<f32>, Vec2<f32>, Vec2<f32>),
     sampler: SamplerBehavior,
 }
 
 impl ImageView {
     pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>) -> Self {
+        let texture_cords = (
+            Vec2::new(0.0, 0.0),
+            Vec2::new(0.0, 1.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(1.0, 1.0),
+        );
         let shape = vec![
-            Vertex::new(0.0, 0.0, 0.0, 0.0),
-            Vertex::new(0.0, image.height() as f32, 0.0, 1.0),
-            Vertex::new(image.width() as f32, 0.0, 1.0, 0.0),
-            Vertex::new(image.width() as f32, image.height() as f32, 1.0, 1.0),
+            Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
+            Vertex::new(
+                0.0,
+                image.height() as f32,
+                texture_cords.1.x(),
+                texture_cords.1.y(),
+            ),
+            Vertex::new(
+                image.width() as f32,
+                0.0,
+                texture_cords.2.x(),
+                texture_cords.2.y(),
+            ),
+            Vertex::new(
+                image.width() as f32,
+                image.height() as f32,
+                texture_cords.3.x(),
+                texture_cords.3.y(),
+            ),
         ];
         let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
 
@@ -97,6 +119,7 @@ impl ImageView {
             indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &index_buffer)
                 .unwrap(),
             texture,
+            texture_cords,
             sampler,
         }
     }
@@ -194,6 +217,64 @@ impl ImageView {
         }
 
         size
+    }
+
+    pub fn flip_horizontal(&mut self, display: &Display) {
+        swap(&mut self.texture_cords.0, &mut self.texture_cords.2);
+        swap(&mut self.texture_cords.1, &mut self.texture_cords.3);
+
+        let shape = vec![
+            Vertex::new(0.0, 0.0, self.texture_cords.0.x(), self.texture_cords.0.y()),
+            Vertex::new(
+                0.0,
+                self.size.y(),
+                self.texture_cords.1.x(),
+                self.texture_cords.1.y(),
+            ),
+            Vertex::new(
+                self.size.x(),
+                0.0,
+                self.texture_cords.2.x(),
+                self.texture_cords.2.y(),
+            ),
+            Vertex::new(
+                self.size.x(),
+                self.size.y(),
+                self.texture_cords.3.x(),
+                self.texture_cords.3.y(),
+            ),
+        ];
+
+        self.vertices = VertexBuffer::new(display, &shape).unwrap();
+    }
+
+    pub fn flip_vertical(&mut self, display: &Display) {
+        swap(&mut self.texture_cords.0, &mut self.texture_cords.1);
+        swap(&mut self.texture_cords.2, &mut self.texture_cords.3);
+
+        let shape = vec![
+            Vertex::new(0.0, 0.0, self.texture_cords.0.x(), self.texture_cords.0.y()),
+            Vertex::new(
+                0.0,
+                self.size.y(),
+                self.texture_cords.1.x(),
+                self.texture_cords.1.y(),
+            ),
+            Vertex::new(
+                self.size.x(),
+                0.0,
+                self.texture_cords.2.x(),
+                self.texture_cords.2.y(),
+            ),
+            Vertex::new(
+                self.size.x(),
+                self.size.y(),
+                self.texture_cords.3.x(),
+                self.texture_cords.3.y(),
+            ),
+        ];
+
+        self.vertices = VertexBuffer::new(display, &shape).unwrap();
     }
 }
 
