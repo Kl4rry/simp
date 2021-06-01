@@ -76,12 +76,24 @@ impl System {
 
         let hidpi_factor = platform.hidpi_factor();
         let font_size = (13.0 * hidpi_factor) as f32;
-        imgui.fonts().add_font(&[FontSource::DefaultFontData {
-            config: Some(FontConfig {
+        //let font_size = (18.0 * hidpi_factor) as f32;
+        imgui.fonts().add_font(&[
+            /*FontSource::TtfData {
+                data: include_bytes!("../fonts/segoeui.ttf"),
                 size_pixels: font_size,
-                ..FontConfig::default()
-            }),
-        }]);
+                config: Some(FontConfig {
+                    rasterizer_multiply: 1.0,
+                    glyph_ranges: imgui::FontGlyphRanges::default(),
+                    ..FontConfig::default()
+                }),
+            },*/
+            FontSource::DefaultFontData {
+                config: Some(FontConfig {
+                    size_pixels: font_size,
+                    ..FontConfig::default()
+                }),
+            }
+        ]);
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
         let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");

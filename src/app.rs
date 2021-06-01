@@ -1,5 +1,6 @@
 use glium::glutin::{
-    event::{ModifiersState, MouseScrollDelta, WindowEvent},
+    event::{ModifiersState, MouseScrollDelta, WindowEvent, VirtualKeyCode, ElementState},
+    window::Fullscreen,
     event_loop::EventLoopProxy,
 };
 use image::io::Reader as ImageReader;
@@ -96,15 +97,48 @@ impl App {
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
                 WindowEvent::DroppedFile(path) => load_image(self.proxy.clone(), path),
-                WindowEvent::ReceivedCharacter(character) => {
-                    let keycode = character.to_ascii_lowercase() as u32;
-                    match keycode {
-                        15 if self.modifiers.ctrl() => open_load_image(self.proxy.clone()),
-                        23 if self.modifiers.ctrl() => exit = true,
-                        14 if self.modifiers.ctrl() => new_window(),
-                        _ => (),
+                WindowEvent::KeyboardInput { input, ..} => {
+                    if let Some(key) = input.virtual_keycode {
+                        match input.state {
+                            ElementState::Pressed => {
+                                match key {
+                                    VirtualKeyCode::O if self.modifiers.ctrl() => open_load_image(self.proxy.clone()),
+                                    VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
+                                    VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
+        
+                                    VirtualKeyCode::A => move_image(&mut self.image_view, Vec2::new(-20.0, 0.0)),
+                                    VirtualKeyCode::D => move_image(&mut self.image_view, Vec2::new(20.0, 0.0)),
+                                    VirtualKeyCode::W => move_image(&mut self.image_view, Vec2::new(0.0, -20.0)),
+                                    VirtualKeyCode::S => move_image(&mut self.image_view, Vec2::new(0.0, 20.0)),
+        
+                                    VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
+                                    VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
+                                    
+                                    VirtualKeyCode::F11 => {
+                                        let window_context = display.gl_window();
+                                        let window = window_context.window();
+                                        let fullscreen = window.fullscreen();
+                                        if let Some(_) = fullscreen {
+                                            window.set_fullscreen(None);
+                                        } else {
+                                            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+                                        }
+                                    },
+                                    VirtualKeyCode::Escape => {
+                                        let window_context = display.gl_window();
+                                        let window = window_context.window();
+                                        let fullscreen = window.fullscreen();
+                                        if let Some(_) = fullscreen {
+                                            window.set_fullscreen(None);
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            ElementState::Released => (),
+                        }
                     }
-                }
+                },
                 _ => (),
             };
         }
@@ -255,6 +289,18 @@ impl App {
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
         }
+    }
+}
+
+fn rotate_image(image_view: &mut Option<ImageView>, deg: f32) {
+    if let Some(image) = image_view.as_mut() {
+        image.rotation += deg;
+    }
+}
+
+fn move_image(image_view: &mut Option<ImageView>, delta: Vec2<f32>) {
+    if let Some(image) = image_view.as_mut() {
+        image.position += delta;
     }
 }
 
