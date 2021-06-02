@@ -298,9 +298,13 @@ impl App {
             StyleVar::WindowPadding([10.0, 4.0]),
             StyleVar::FramePadding([0.0, 0.0]),
             StyleVar::ItemSpacing([0.0, 0.0]),
+            StyleVar::ButtonTextAlign([0.0, 0.5]),
         ]);
 
-        let c = ui.push_style_colors(&[(StyleColor::WindowBg, [0.141, 0.141, 0.141, 1.0])]);
+        let c = ui.push_style_colors(&[
+            (StyleColor::WindowBg, [0.141, 0.141, 0.141, 1.0]),
+            (StyleColor::Button, [0.141, 0.141, 0.141, 1.0]),
+        ]);
 
         Window::new(im_str!("Bottom"))
             .position([0.0, self.size.y() - BOTTOM_BAR_SIZE], Condition::Always)
@@ -312,13 +316,19 @@ impl App {
             .focus_on_appearing(false)
             .always_use_window_padding(true)
             .build(ui, || {
-                if let Some(image) = self.image_view.as_ref() {
+                if let Some(image) = self.image_view.as_mut() {
                     ui.same_line_with_spacing(0.0, 10.0);
                     ui.text(&self.current_filename);
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("Zoom: {}%", (image.scale * 100.0).round()));
+                    if ui.is_item_clicked(MouseButton::Left) {
+                        image.scale = 1.0;
+                    }
+                } else {
+                    ui.same_line_with_spacing(0.0, 10.0);
+                    ui.text("No File");
                 }
             });
 

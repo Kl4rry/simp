@@ -60,6 +60,9 @@ impl System {
 
         let mut imgui = Context::create();
         imgui.set_ini_filename(None);
+        /*imgui.style_mut().anti_aliased_fill = false;
+        imgui.style_mut().anti_aliased_lines_use_tex = false;
+        imgui.style_mut().anti_aliased_lines = false;*/
 
         if let Some(backend) = clipboard::init() {
             imgui.set_clipboard_backend(Box::new(backend));
