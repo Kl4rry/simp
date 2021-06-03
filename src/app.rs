@@ -55,7 +55,7 @@ impl App {
         if let Some(event) = user_event {
             match event {
                 UserEvent::ImageLoaded(image, path) => {
-                    self.image_view = Some(ImageView::new(display, image.clone()));
+                    self.image_view = Some(ImageView::new(display, image.clone(), path.clone()));
                     let view = self.image_view.as_mut().unwrap();
                     self.current_filename = path.file_name().unwrap().to_str().unwrap().to_string();
 
@@ -123,9 +123,15 @@ impl App {
                                 VirtualKeyCode::S => {
                                     move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
                                 }
-
+                                
                                 VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
                                 VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
+                                
+                                VirtualKeyCode::R => {
+                                    if let Some(image) = self.image_view.as_ref() {
+                                        load_image(self.proxy.clone(), &image.path);
+                                    }
+                                },
 
                                 VirtualKeyCode::F11 => {
                                     let window_context = display.gl_window();
@@ -251,6 +257,15 @@ impl App {
 
             ui.menu(im_str!("Image"), self.image_view.is_some(), || {
                 if let Some(image) = self.image_view.as_mut() {
+                    if MenuItem::new(im_str!("Refresh"))
+                        .shortcut(im_str!("R"))
+                        .build(&ui)
+                    {
+                        load_image(self.proxy.clone(), &image.path);
+                    }
+
+                    ui.separator();
+
                     if MenuItem::new(im_str!("Rotate Left"))
                         .shortcut(im_str!("Q"))
                         .build(&ui)

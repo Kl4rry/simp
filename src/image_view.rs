@@ -11,7 +11,7 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{ImageBuffer, Rgba};
-use std::{borrow::Cow, mem::swap};
+use std::{borrow::Cow, mem::swap, path::PathBuf};
 
 use super::vec2::Vec2;
 
@@ -49,6 +49,7 @@ pub struct ImageView {
     pub position: Vec2<f32>,
     pub scale: f32,
     pub rotation: f32,
+    pub path: PathBuf,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -58,7 +59,7 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>) -> Self {
+    pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>, path: PathBuf) -> Self {
         let texture_cords = (
             Vec2::new(0.0, 0.0),
             Vec2::new(0.0, 1.0),
@@ -121,6 +122,7 @@ impl ImageView {
             texture,
             texture_cords,
             sampler,
+            path,
         }
     }
 
