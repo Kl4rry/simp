@@ -86,17 +86,7 @@ impl App {
                             MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                         };
 
-                        let old_scale = image.scale;
-                        image.scale += image.scale * scroll as f32 / 10.0;
-
-                        let new_size = image.scaled();
-                        if new_size.x() < 100.0 || new_size.y() < 100.0 {
-                            image.scale = old_scale;
-                        } else {
-                            let mouse_to_center = image.position - self.mouse_position;
-                            image.position -=
-                                mouse_to_center * (old_scale - image.scale) / old_scale;
-                        }
+                        zoom(image, scroll, self.mouse_position);
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -123,15 +113,15 @@ impl App {
                                 VirtualKeyCode::S => {
                                     move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
                                 }
-                                
+
                                 VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
                                 VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
-                                
+
                                 VirtualKeyCode::R => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         load_image(self.proxy.clone(), &image.path);
                                     }
-                                },
+                                }
 
                                 VirtualKeyCode::F11 => {
                                     let window_context = display.gl_window();
@@ -155,6 +145,21 @@ impl App {
                             },
                             ElementState::Released => (),
                         }
+                    }
+                },
+                WindowEvent::ReceivedCharacter(c) => {
+                    match c {
+                        '+' => {
+                            if let Some(image) = self.image_view.as_mut() {
+                                zoom(image, 1.0, self.size / 2.0)
+                            }
+                        }
+                        '-' => {
+                            if let Some(image) = self.image_view.as_mut() {
+                                zoom(image, -1.0, self.size / 2.0)
+                            }
+                        }
+                        _ => (),
                     }
                 }
                 _ => (),
@@ -282,6 +287,22 @@ impl App {
 
                     ui.separator();
 
+                    if MenuItem::new(im_str!("Zoom in"))
+                        .shortcut(im_str!("+"))
+                        .build(&ui)
+                    {
+                        zoom(image, 1.0, self.size / 2.0);
+                    }
+
+                    if MenuItem::new(im_str!("Zoom out"))
+                        .shortcut(im_str!("-"))
+                        .build(&ui)
+                    {
+                        zoom(image, -1.0, image.size / 2.0);
+                    }
+
+                    ui.separator();
+
                     if MenuItem::new(im_str!("Flip Horizontal")).build(&ui) {
                         image.flip_horizontal(display);
                     }
@@ -333,7 +354,13 @@ impl App {
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
                     ui.same_line_with_spacing(0.0, 10.0);
+
+                    ui.arrow_button(im_str!("Left"), Direction::Left);
+                    ui.same_line_with_spacing(0.0, 5.0);
                     ui.text(&self.current_filename);
+                    ui.same_line_with_spacing(0.0, 5.0);
+                    ui.arrow_button(im_str!("Right"), Direction::Right);
+
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
                     ui.same_line_with_spacing(0.0, 20.0);
@@ -424,9 +451,7 @@ impl App {
                     ui.text(env!("CARGO_PKG_NAME"));
                     ui.text(env!("CARGO_PKG_DESCRIPTION"));
                     ui.text(env!("CARGO_PKG_VERSION"));
-                    if let Some(string) = option_env!("GIT_HASH") {
-                        ui.text(&format!("Commit: {}", string));
-                    }
+                    ui.text(&format!("Commit: {}", env!("GIT_HASH")));
                     if ui.button(im_str!("Ok"), [50.0, 30.0]) {
                         exit = true;
                     }
@@ -485,6 +510,19 @@ fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
             load_image(proxy, file);
         }
     });
+}
+
+fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
+    let old_scale = image.scale;
+    image.scale += image.scale * zoom as f32 / 10.0;
+
+    let new_size = image.scaled();
+    if new_size.x() < 100.0 || new_size.y() < 100.0 {
+        image.scale = old_scale;
+    } else {
+        let mouse_to_center = image.position - mouse_position;
+        image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+    }
 }
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
