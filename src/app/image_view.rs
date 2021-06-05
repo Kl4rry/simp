@@ -11,9 +11,9 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{ImageBuffer, Rgba};
-use std::{borrow::Cow, mem::swap, path::PathBuf};
+use std::{borrow::Cow, mem::swap, path::PathBuf, time::Instant};
 
-use super::vec2::Vec2;
+use super::super::vec2::Vec2;
 
 macro_rules! max {
     ($x: expr) => ($x);
@@ -50,6 +50,7 @@ pub struct ImageView {
     pub scale: f32,
     pub rotation: f32,
     pub path: PathBuf,
+    pub start: Instant,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -59,7 +60,7 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>, path: PathBuf) -> Self {
+    pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>, path: PathBuf, start: Instant) -> Self {
         let texture_cords = (
             Vec2::new(0.0, 0.0),
             Vec2::new(0.0, 1.0),
@@ -109,10 +110,11 @@ impl ImageView {
             position: Vec2::default(),
             scale: 1.0,
             rotation: 0.0,
+            start,
             shader: Program::from_source(
                 display,
-                include_str!("shader/image.vert"),
-                include_str!("shader/image.frag"),
+                include_str!("../shader/image.vert"),
+                include_str!("../shader/image.frag"),
                 None,
             )
             .unwrap(),

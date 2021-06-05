@@ -6,9 +6,14 @@ use glium::glutin::{
 use image::io::Reader as ImageReader;
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use std::{fs, io::Cursor, path::Path, process::Command, thread};
+use std::{fs, io::Cursor, path::Path, process::Command, thread, time::{Instant, Duration}};
 
-use super::{image_view::ImageView, vec2::Vec2, UserEvent};
+use super::{vec2::Vec2, UserEvent};
+
+mod image_view;
+use image_view::ImageView;
+mod image_list;
+use image_list::ImageList;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -35,6 +40,7 @@ pub struct App {
     mouse_position: Vec2<f32>,
     current_filename: String,
     about_visible: bool,
+    image_list: ImageList,
 }
 
 impl App {
@@ -54,17 +60,30 @@ impl App {
 
         if let Some(event) = user_event {
             match event {
-                UserEvent::ImageLoaded(image, path) => {
-                    self.image_view = Some(ImageView::new(display, image.clone(), path.clone()));
-                    let view = self.image_view.as_mut().unwrap();
-                    self.current_filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                UserEvent::ImageLoaded(image, path, instant) => {
+                    let replace = if let Some(ref old) = self.image_view {
+                        if old.start.saturating_duration_since(*instant) == Duration::from_secs(0) {
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        true
+                    };
 
-                    let scaling = min!(
-                        self.size.x() / view.size.x(),
-                        (self.size.y() - TOP_BAR_SIZE) / view.size.y()
-                    );
-                    view.scale = min!(scaling, 1.0);
-                    view.position = self.size / 2.0;
+                    if replace {
+                        self.image_view = Some(ImageView::new(display, image.clone(), path.clone(), *instant));
+                        let view = self.image_view.as_mut().unwrap();
+                        self.current_filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                        self.image_list.change_dir(path);
+
+                        let scaling = min!(
+                            self.size.x() / view.size.x(),
+                            (self.size.y() - TOP_BAR_SIZE) / view.size.y()
+                        );
+                        view.scale = min!(scaling, 1.0);
+                        view.position = self.size / 2.0;
+                    }
                 }
                 UserEvent::ImageError(error) => {
                     self.error_visible = true;
@@ -123,6 +142,18 @@ impl App {
                                     }
                                 }
 
+                                VirtualKeyCode::Left => {
+                                    if let Some(path) = self.image_list.previous() {
+                                        load_image(self.proxy.clone(), path);
+                                    }
+                                }
+
+                                VirtualKeyCode::Right => {
+                                    if let Some(path) = self.image_list.next() {
+                                        load_image(self.proxy.clone(), path);
+                                    }
+                                }
+
                                 VirtualKeyCode::F11 => {
                                     let window_context = display.gl_window();
                                     let window = window_context.window();
@@ -146,22 +177,20 @@ impl App {
                             ElementState::Released => (),
                         }
                     }
-                },
-                WindowEvent::ReceivedCharacter(c) => {
-                    match c {
-                        '+' => {
-                            if let Some(image) = self.image_view.as_mut() {
-                                zoom(image, 1.0, self.size / 2.0)
-                            }
-                        }
-                        '-' => {
-                            if let Some(image) = self.image_view.as_mut() {
-                                zoom(image, -1.0, self.size / 2.0)
-                            }
-                        }
-                        _ => (),
-                    }
                 }
+                WindowEvent::ReceivedCharacter(c) => match c {
+                    '+' => {
+                        if let Some(image) = self.image_view.as_mut() {
+                            zoom(image, 1.0, self.size / 2.0)
+                        }
+                    }
+                    '-' => {
+                        if let Some(image) = self.image_view.as_mut() {
+                            zoom(image, -1.0, self.size / 2.0)
+                        }
+                    }
+                    _ => (),
+                },
                 _ => (),
             };
         }
@@ -353,13 +382,24 @@ impl App {
             .always_use_window_padding(true)
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
+                    ui.same_line_with_spacing(0.0, 5.0);
+
+                    if ui.arrow_button(im_str!("Left"), Direction::Left) {
+                        if let Some(path) = self.image_list.previous() {
+                            load_image(self.proxy.clone(), path);
+                        }
+                    }
+
                     ui.same_line_with_spacing(0.0, 10.0);
 
-                    ui.arrow_button(im_str!("Left"), Direction::Left);
-                    ui.same_line_with_spacing(0.0, 5.0);
+                    if ui.arrow_button(im_str!("Right"), Direction::Right) {
+                        if let Some(path) = self.image_list.next() {
+                            load_image(self.proxy.clone(), path);
+                        }
+                    }
+
+                    ui.same_line_with_spacing(0.0, 10.0);
                     ui.text(&self.current_filename);
-                    ui.same_line_with_spacing(0.0, 5.0);
-                    ui.arrow_button(im_str!("Right"), Direction::Right);
 
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
@@ -410,13 +450,13 @@ impl App {
             let mut exit = false;
             let message = self.error_message.clone();
             Window::new(im_str!("Error"))
-                .size([250.0, 100.0], Condition::Always)
+                .size([350.0, 100.0], Condition::Always)
                 .position_pivot([0.5, 0.5])
                 .position(
                     [self.size.x() / 2.0, self.size.y() / 2.0],
                     Condition::Appearing,
                 )
-                .resizable(false)
+                .resizable(true)
                 .focus_on_appearing(false)
                 .always_use_window_padding(true)
                 .focused(true)
@@ -477,6 +517,7 @@ impl App {
             mouse_position: Vec2::default(),
             current_filename: String::new(),
             about_visible: false,
+            image_list: ImageList::new(),
         }
     }
 }
@@ -528,12 +569,13 @@ fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
     thread::spawn(move || {
+        let start = Instant::now();
         let file = fs::read(&path_buf);
         let bytes = match file {
             Ok(bytes) => bytes,
             Err(_) => {
                 let _ =
-                    proxy.send_event(UserEvent::ImageError(String::from("Unable to read file")));
+                    proxy.send_event(UserEvent::ImageError(format!("Error could not read: {}", path_buf.to_str().unwrap())));
                 return;
             }
         };
@@ -541,7 +583,7 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
         let format = match image::guess_format(&bytes) {
             Ok(format) => format,
             Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(String::from("Unknown format")));
+                let _ = proxy.send_event(UserEvent::ImageError(format!("Error unknown format: {}", path_buf.to_str().unwrap())));
                 return;
             }
         };
@@ -549,14 +591,12 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
         let image = match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
             Ok(image) => image.into_rgba16(),
             Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(String::from(
-                    "Unable to decode image",
-                )));
+                let _ = proxy.send_event(UserEvent::ImageError(format!("Error decode image: {}", path_buf.to_str().unwrap())));
                 return;
             }
         };
 
-        let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf));
+        let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
     });
 }
 
