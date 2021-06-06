@@ -13,7 +13,7 @@ use image::{ImageBuffer, Rgba};
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::{env, path::PathBuf, time::Instant};
+use std::{env, path::PathBuf, time::Instant, panic};
 
 mod app;
 mod clipboard;
@@ -210,6 +210,15 @@ impl System {
 }
 
 fn main() {
+    panic::set_hook(Box::new(|panic_info| {
+        println!("{:?}", panic_info);
+        let _ = msgbox::create(
+            "Error",
+            &format!("panic occurred: {:?}", panic_info),
+            msgbox::IconType::Error,
+        );
+    }));
+
     let system = System::new();
 
     let mut args: Vec<String> = env::args().collect();

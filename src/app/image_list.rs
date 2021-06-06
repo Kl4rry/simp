@@ -95,7 +95,7 @@ impl ImageList {
         let lock = self.list.lock().unwrap();
         if let Some(ref list) = *lock {
             if self.index.load(Ordering::SeqCst) == 0 {
-                self.index.store(list.len(), Ordering::SeqCst);
+                self.index.store(list.len() - 1, Ordering::SeqCst);
             } else {
                 self.index.fetch_sub(1, Ordering::SeqCst);
             }
