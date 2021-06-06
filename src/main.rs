@@ -211,7 +211,6 @@ impl System {
 
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
-        println!("{:?}", panic_info);
         let _ = msgbox::create(
             "Error",
             &format!("panic occurred: {:?}", panic_info),
