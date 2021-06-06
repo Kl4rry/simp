@@ -24,20 +24,20 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 # Supported Codecs
 | Format | Support |
 | ------ | -------- |
-| PNG    | Yes |
+| PNG    | ✅ |
 | JPEG   | Baseline and progressive |
 | GIF    | No animation |
-| BMP    | Yes |
-| ICO    | Yes |
+| BMP    | ✅ |
+| ICO    | ✅ |
 | TIFF   | Baseline(no fax support) + LZW + PackBits |
-| WebP   | Yes |
-| AVIF   | Yes |
+| WebP   | ✅ |
+| AVIF   | ✅ |
 | PNM    | PBM, PGM, PPM, standard PAM |
 | DDS    | DXT1, DXT3, DXT5 |
-| TGA    | Yes |
-| farbfeld | Yes |
+| TGA    | ✅ |
+| farbfeld | ✅ |
 | SVG    | Rastarized at 96 dpi |
-| PSD    | Yes |
+| PSD    | ✅ |
 
 # Installation
 ## Cargo
