@@ -62,7 +62,7 @@ pub struct ImageView {
 impl ImageView {
     pub fn new(
         display: &Display,
-        image: ImageBuffer<Rgba<u16>, Vec<u16>>,
+        image: ImageBuffer<Rgba<u8>, Vec<u8>>,
         path: PathBuf,
         start: Instant,
     ) -> Self {
@@ -100,7 +100,7 @@ impl ImageView {
             data: Cow::Owned(image.into_raw()),
             width,
             height,
-            format: ClientFormat::U16U16U16U16,
+            format: ClientFormat::U8U8U8U8,
         };
         let texture = SrgbTexture2d::new(display, raw).unwrap();
 

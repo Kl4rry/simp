@@ -25,7 +25,7 @@ use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {
-    ImageLoaded(ImageBuffer<Rgba<u16>, Vec<u16>>, PathBuf, Instant),
+    ImageLoaded(ImageBuffer<Rgba<u8>, Vec<u8>>, PathBuf, Instant),
     ImageError(String),
 }
 

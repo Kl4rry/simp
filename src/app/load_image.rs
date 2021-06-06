@@ -2,7 +2,8 @@ use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
 use image::{ImageBuffer, Rgba};
 use lazy_static::*;
-use usvg::fontdb::Database;
+use usvg::{FitTo, Tree, Options, fontdb::Database};
+use psd::Psd;
 use std::{collections::HashSet, fs, io::Cursor, path::Path, thread, time::Instant};
 
 use super::super::UserEvent;
@@ -32,7 +33,12 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             return;
         }
 
-        if let Some(image) = load_vector(&bytes) {
+        if let Some(image) = load_svg(&bytes) {
+            let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
+            return;
+        }
+
+        if let Some(image) = load_psd(&bytes) {
             let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
             return;
         }
@@ -44,27 +50,27 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     });
 }
 
-fn load_raster(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u16>, Vec<u16>>> {
+fn load_raster(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     let format = match image::guess_format(&bytes) {
         Ok(format) => format,
         Err(_) => return None,
     };
 
     match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-        Ok(image) => Some(image.into_rgba16()),
+        Ok(image) => Some(image.into_rgba8()),
         Err(_) => None,
     }
 }
 
-fn load_vector(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u16>, Vec<u16>>> {
+fn load_svg(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     let mut fontdb = Database::new();
     fontdb.load_system_fonts();
-    let options = usvg::Options {
+    let options = Options {
         fontdb,
-        ..usvg::Options::default()
+        ..Options::default()
     };
 
-    let tree = match usvg::Tree::from_data(&bytes, &options) {
+    let tree = match Tree::from_data(&bytes, &options) {
         Ok(tree) => tree,
         Err(_) => return None,
     };
@@ -72,15 +78,20 @@ fn load_vector(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u16>, Vec<u16>>> {
     let svg = tree.svg_node();
     let mut pix_map = tiny_skia::Pixmap::new((*svg).size.width() as u32, (*svg).size.height() as u32).unwrap();
 
-    resvg::render(&tree, usvg::FitTo::Original, pix_map.as_mut())?;
+    resvg::render(&tree, FitTo::Original, pix_map.as_mut())?;
 
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(
-        image::DynamicImage::ImageRgba8(
-            ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap(),
-        )
-        .to_rgba16(),
-    )
+    Some(ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap())
+}
+
+fn load_psd(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+    let psd = match Psd::from_bytes(bytes) {
+        Ok(psd) => psd,
+        Err(_) => return None,
+    };
+
+    let raw = psd.flatten_layers_rgba(&|(_, _)| {return true}).unwrap();
+    Some(ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap())
 }

@@ -1,6 +1,6 @@
 [package]
 name = "simp"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2018"
 license = "Apache-2.0"
 description = "The (s)imple (im)age (p)rogram"
@@ -23,6 +23,7 @@ msgbox = "0.6.0"
 usvg = "0.14.1"
 resvg = "0.14.1"
 tiny-skia = "0.5.1"
+psd = "0.1.9"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
