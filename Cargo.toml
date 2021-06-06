@@ -24,7 +24,7 @@ usvg = "0.14.1"
 resvg = "0.14.1"
 tiny-skia = "0.5.1"
 psd = "0.1.9"
-libwebp = "*"
+libwebp = "0.1.2"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
