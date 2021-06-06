@@ -36,6 +36,8 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 | DDS    | DXT1, DXT3, DXT5 |
 | TGA    | Yes |
 | farbfeld | Yes |
+| svg    | Rastarized at 96 dpi |
+| psd    | Yes |
 
 # Installation
 ## Cargo
