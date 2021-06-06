@@ -3,7 +3,16 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 
 ![Screenshot](images/screenshot.png)
 
-## Supported Platforms
+# Goals
+* Support of as many image formats as possible
+* 60 Hz on all modern hardware
+* Flicker free redrawing
+* Basic image manipulation (Not reached)
+
+## Non Goals
+* Powerful image manipulation (I am not making the next photoshop)
+
+# Supported Platforms
 | OS            | Support|
 | ------------- |:------:|
 | Windows       | ✅ |
@@ -12,7 +21,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 
 ✅ = Tested and working 🆗 = Untested but should work with minimal changes
 
-## Supported Codecs
+# Supported Codecs
 | Format | Support |
 | ------ | -------- |
 | PNG    | Yes |
@@ -28,8 +37,10 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 | TGA    | Yes |
 | farbfeld | Yes |
 
-## Installation
-### Cargo
+# Installation
+## Cargo
 ```shell
 cargo install simp
 ```
+## Manual
+Just download the exe from the releases tab. No actual installation is required.
