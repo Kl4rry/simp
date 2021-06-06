@@ -3,10 +3,9 @@ use glium::glutin::{
     event_loop::EventLoopProxy,
     window::Fullscreen,
 };
-use image::io::Reader as ImageReader;
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use std::{fs, io::Cursor, path::Path, process::Command, thread, time::{Instant, Duration}};
+use std::{process::Command, thread, time::Duration};
 
 use super::{vec2::Vec2, UserEvent};
 
@@ -15,7 +14,9 @@ use image_view::ImageView;
 mod image_list;
 use image_list::ImageList;
 mod arrows;
-use arrows::{Arrows, Action};
+use arrows::{Action, Arrows};
+pub mod load_image;
+use load_image::load_image;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -65,24 +66,26 @@ impl App {
             match event {
                 UserEvent::ImageLoaded(image, path, instant) => {
                     let replace = if let Some(ref old) = self.image_view {
-                        if old.start.saturating_duration_since(*instant) == Duration::from_secs(0) {
-                            true
-                        } else {
-                            false
-                        }
+                        old.start.saturating_duration_since(*instant) == Duration::from_secs(0)
                     } else {
                         true
                     };
 
                     if replace {
-                        self.image_view = Some(ImageView::new(display, image.clone(), path.clone(), *instant));
+                        self.image_view = Some(ImageView::new(
+                            display,
+                            image.clone(),
+                            path.clone(),
+                            *instant,
+                        ));
                         let view = self.image_view.as_mut().unwrap();
-                        self.current_filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                        self.current_filename =
+                            path.file_name().unwrap().to_str().unwrap().to_string();
                         self.image_list.change_dir(path);
 
                         let scaling = min!(
                             self.size.x() / view.size.x(),
-                            (self.size.y() - TOP_BAR_SIZE) / view.size.y()
+                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
                         );
                         view.scale = min!(scaling, 1.0);
                         view.position = self.size / 2.0;
@@ -161,7 +164,7 @@ impl App {
                                     let window_context = display.gl_window();
                                     let window = window_context.window();
                                     let fullscreen = window.fullscreen();
-                                    if let Some(_) = fullscreen {
+                                    if fullscreen.is_some() {
                                         window.set_fullscreen(None);
                                     } else {
                                         window.set_fullscreen(Some(Fullscreen::Borderless(None)));
@@ -171,7 +174,7 @@ impl App {
                                     let window_context = display.gl_window();
                                     let window = window_context.window();
                                     let fullscreen = window.fullscreen();
-                                    if let Some(_) = fullscreen {
+                                    if fullscreen.is_some() {
                                         window.set_fullscreen(None);
                                     }
                                 }
@@ -566,40 +569,6 @@ fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
         let mouse_to_center = image.position - mouse_position;
         image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
     }
-}
-
-pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
-    let path_buf = path.as_ref().to_path_buf();
-    thread::spawn(move || {
-        let start = Instant::now();
-        let file = fs::read(&path_buf);
-        let bytes = match file {
-            Ok(bytes) => bytes,
-            Err(_) => {
-                let _ =
-                    proxy.send_event(UserEvent::ImageError(format!("Error could not read: {}", path_buf.to_str().unwrap())));
-                return;
-            }
-        };
-
-        let format = match image::guess_format(&bytes) {
-            Ok(format) => format,
-            Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(format!("Error unknown format: {}", path_buf.to_str().unwrap())));
-                return;
-            }
-        };
-
-        let image = match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-            Ok(image) => image.into_rgba16(),
-            Err(_) => {
-                let _ = proxy.send_event(UserEvent::ImageError(format!("Error decode image: {}", path_buf.to_str().unwrap())));
-                return;
-            }
-        };
-
-        let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
-    });
 }
 
 struct Range(f32, f32);

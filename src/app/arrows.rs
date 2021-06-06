@@ -33,7 +33,7 @@ impl Arrows {
                 ui.tooltip(|| {
                     ui.text(im_str!("Previous Image"));
                     ui.same_line_with_spacing(0.0, 10.0);
-                    ui. text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Left Arrow"));
+                    ui.text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Left Arrow"));
                 });
             }
         } else {
@@ -50,12 +50,12 @@ impl Arrows {
                 ui.tooltip(|| {
                     ui.text(im_str!("Next Image"));
                     ui.same_line_with_spacing(0.0, 10.0);
-                    ui. text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Right Arrow"));
+                    ui.text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Right Arrow"));
                 });
             }
         } else {
             self.right_hover_start = now;
         }
-        return action;
+        action
     }
 }

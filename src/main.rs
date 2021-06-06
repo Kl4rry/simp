@@ -13,7 +13,7 @@ use image::{ImageBuffer, Rgba};
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::{env, path::PathBuf, time::Instant, panic};
+use std::{env, panic, path::PathBuf, time::Instant};
 
 mod app;
 mod clipboard;
@@ -223,7 +223,7 @@ fn main() {
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         if let Some(arg) = args.pop() {
-            app::load_image(system.proxy.clone(), arg);
+            app::load_image::load_image(system.proxy.clone(), arg);
         }
     }
 

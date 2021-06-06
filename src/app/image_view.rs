@@ -60,7 +60,12 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(display: &Display, image: ImageBuffer<Rgba<u16>, Vec<u16>>, path: PathBuf, start: Instant) -> Self {
+    pub fn new(
+        display: &Display,
+        image: ImageBuffer<Rgba<u16>, Vec<u16>>,
+        path: PathBuf,
+        start: Instant,
+    ) -> Self {
         let texture_cords = (
             Vec2::new(0.0, 0.0),
             Vec2::new(0.0, 1.0),
