@@ -31,7 +31,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 | ICO    | ✅ |
 | TIFF   | Baseline(no fax support) + LZW + PackBits |
 | WebP   | ✅ |
-| AVIF   | ✅ |
+| AVIF   | Only 8-bit |
 | PNM    | PBM, PGM, PPM, standard PAM |
 | DDS    | DXT1, DXT3, DXT5 |
 | TGA    | ✅ |
