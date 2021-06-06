@@ -14,6 +14,8 @@ mod image_view;
 use image_view::ImageView;
 mod image_list;
 use image_list::ImageList;
+mod arrows;
+use arrows::{Arrows, Action};
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -41,6 +43,7 @@ pub struct App {
     current_filename: String,
     about_visible: bool,
     image_list: ImageList,
+    arrows: Arrows,
 }
 
 impl App {
@@ -382,20 +385,18 @@ impl App {
             .always_use_window_padding(true)
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
-                    ui.same_line_with_spacing(0.0, 5.0);
-
-                    if ui.arrow_button(im_str!("Left"), Direction::Left) {
-                        if let Some(path) = self.image_list.previous() {
-                            load_image(self.proxy.clone(), path);
+                    match self.arrows.build(&ui) {
+                        Action::Left => {
+                            if let Some(path) = self.image_list.previous() {
+                                load_image(self.proxy.clone(), path);
+                            }
                         }
-                    }
-
-                    ui.same_line_with_spacing(0.0, 10.0);
-
-                    if ui.arrow_button(im_str!("Right"), Direction::Right) {
-                        if let Some(path) = self.image_list.next() {
-                            load_image(self.proxy.clone(), path);
+                        Action::Right => {
+                            if let Some(path) = self.image_list.next() {
+                                load_image(self.proxy.clone(), path);
+                            }
                         }
+                        Action::None => (),
                     }
 
                     ui.same_line_with_spacing(0.0, 10.0);
@@ -518,6 +519,7 @@ impl App {
             current_filename: String::new(),
             about_visible: false,
             image_list: ImageList::new(),
+            arrows: Arrows::new(),
         }
     }
 }
