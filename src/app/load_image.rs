@@ -1,6 +1,7 @@
 use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, Rgba, ImageFormat};
+use libwebp::WebPDecodeRGBA;
 use lazy_static::*;
 use usvg::{FitTo, Tree, Options, fontdb::Database};
 use psd::Psd;
@@ -56,9 +57,18 @@ fn load_raster(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
         Err(_) => return None,
     };
 
-    match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-        Ok(image) => Some(image.into_rgba8()),
-        Err(_) => None,
+    if matches!(format, ImageFormat::WebP) {
+        match WebPDecodeRGBA(bytes) {
+            Ok((width, height, buf)) => {
+                ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec())
+            },
+            Err(_) => None,
+        }
+    } else {
+        match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
+            Ok(image) => Some(image.into_rgba8()),
+            Err(_) => None,
+        }
     }
 }
 
