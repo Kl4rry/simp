@@ -10,7 +10,7 @@ repository = "https://github.com/Kl4rry/simp"
 
 [dependencies]
 clipboard = "0.5"
-glium = { version = "0.29", default-features = true }
+glium = "0.29"
 image = "0.23.14"
 imgui = "0.7.0"
 imgui-glium-renderer = "0.7.0"
