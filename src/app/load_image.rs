@@ -1,10 +1,10 @@
 use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
-use image::{ImageBuffer, Rgba, ImageFormat};
+use image::{ImageBuffer, ImageFormat, Rgba};
 use libwebp::WebPDecodeRGBA;
-use usvg::{FitTo, Tree, Options, fontdb::Database};
 use psd::Psd;
 use std::{fs, io::Cursor, path::Path, thread, time::Instant};
+use usvg::{fontdb::Database, FitTo, Options, Tree};
 
 use super::super::UserEvent;
 
@@ -56,7 +56,7 @@ fn load_raster(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
         match WebPDecodeRGBA(bytes) {
             Ok((width, height, buf)) => {
                 ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec())
-            },
+            }
             Err(_) => None,
         }
     } else {
@@ -81,7 +81,8 @@ fn load_svg(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     };
 
     let svg = tree.svg_node();
-    let mut pix_map = tiny_skia::Pixmap::new((*svg).size.width() as u32, (*svg).size.height() as u32).unwrap();
+    let mut pix_map =
+        tiny_skia::Pixmap::new((*svg).size.width() as u32, (*svg).size.height() as u32).unwrap();
 
     resvg::render(&tree, FitTo::Original, pix_map.as_mut())?;
 
@@ -97,6 +98,6 @@ fn load_psd(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
         Err(_) => return None,
     };
 
-    let raw = psd.flatten_layers_rgba(&|(_, _)| {return true}).unwrap();
+    let raw = psd.flatten_layers_rgba(&|(_, _)| return true).unwrap();
     Some(ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap())
 }

@@ -20,8 +20,8 @@ pub struct ImageList {
 
 lazy_static! {
     static ref EXTENSIONS: HashSet<&'static str> = [
-        "png", ".jpg", ".jpeg", ".jpe", ".jif", ".jfif", "jpg", "gif", "bmp", "ico", "tiff", "webp", "avif", "pnm", "pbm", "pgm", "ppm",
-        "pam", "dds", "tga", "ff", "svg", "psd",
+        "png", ".jpg", ".jpeg", ".jpe", ".jif", ".jfif", "jpg", "gif", "bmp", "ico", "tiff",
+        "webp", "avif", "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "svg", "psd",
     ]
     .iter()
     .cloned()
