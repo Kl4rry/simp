@@ -2,16 +2,11 @@ use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
 use image::{ImageBuffer, Rgba, ImageFormat};
 use libwebp::WebPDecodeRGBA;
-use lazy_static::*;
 use usvg::{FitTo, Tree, Options, fontdb::Database};
 use psd::Psd;
-use std::{collections::HashSet, fs, io::Cursor, path::Path, thread, time::Instant};
+use std::{fs, io::Cursor, path::Path, thread, time::Instant};
 
 use super::super::UserEvent;
-
-lazy_static! {
-    static ref SVG: HashSet<&'static str> = ["svg"].iter().cloned().collect();
-}
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();

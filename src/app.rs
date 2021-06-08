@@ -561,14 +561,8 @@ fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
 fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
     let old_scale = image.scale;
     image.scale += image.scale * zoom as f32 / 10.0;
-
-    let new_size = image.scaled();
-    if new_size.x() < 100.0 || new_size.y() < 100.0 {
-        image.scale = old_scale;
-    } else {
-        let mouse_to_center = image.position - mouse_position;
-        image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
-    }
+    let mouse_to_center = image.position - mouse_position;
+    image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
 }
 
 struct Range(f32, f32);
