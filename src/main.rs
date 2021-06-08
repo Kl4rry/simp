@@ -146,13 +146,14 @@ impl System {
                     imgui.io_mut().update_delta_time(now - last_frame);
                     last_frame = now;
                 }
-                Event::MainEventsCleared => (),
                 Event::RedrawRequested(_) => {
                     let mut ui = imgui.frame();
 
-                    let exit = app.update(&mut ui, &display, &mut renderer, None, None);
+                    let (exit, delay) = app.update(&mut ui, &display, &mut renderer, None, None);
                     if exit {
                         *control_flow = ControlFlow::Exit;
+                    } else if let Some(delay) = delay {
+                        *control_flow = ControlFlow::WaitUntil(Instant::now() + delay);
                     }
 
                     let gl_window = display.gl_window();
@@ -182,7 +183,7 @@ impl System {
                     {
                         let mut ui = imgui.frame();
 
-                        let exit = match &event {
+                        let (exit, delay) = match &event {
                             Event::WindowEvent { event, .. } => {
                                 app.update(&mut ui, &display, &mut renderer, Some(event), None)
                             }
@@ -194,6 +195,8 @@ impl System {
 
                         if exit {
                             *control_flow = ControlFlow::Exit;
+                        } else if let Some(delay) = delay {
+                            *control_flow = ControlFlow::WaitUntil(Instant::now() + delay);
                         }
                     }
 

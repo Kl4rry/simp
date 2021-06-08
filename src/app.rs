@@ -55,11 +55,16 @@ impl App {
         _renderer: &mut Renderer,
         window_event: Option<&WindowEvent>,
         user_event: Option<&UserEvent>,
-    ) -> bool {
+    ) -> (bool, Option<Duration>) {
         let mut exit = false;
+        let mut delay: Option<Duration> = None; 
         {
             let dimensions = display.get_framebuffer_dimensions();
             self.size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32)
+        }
+
+        if let Some(ref mut image) = self.image_view {
+            update_delay(&mut delay, &image.animate());
         }
 
         if let Some(event) = user_event {
@@ -507,7 +512,7 @@ impl App {
         }
 
         styles.pop(&ui);
-        exit
+        (exit, delay)
     }
 
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
@@ -563,6 +568,18 @@ fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
     image.scale += image.scale * zoom as f32 / 10.0;
     let mouse_to_center = image.position - mouse_position;
     image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+}
+
+fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
+    if let Some(ref mut old_time) = old {
+        if let Some(ref new_time) = new {
+            if *old_time > *new_time {
+                *old_time = *new_time;
+            }
+        }
+    } else {
+        *old = *new;
+    }
 }
 
 struct Range(f32, f32);

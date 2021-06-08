@@ -11,7 +11,7 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{ImageBuffer, Rgba};
-use std::{borrow::Cow, mem::swap, path::PathBuf, time::Instant};
+use std::{borrow::Cow, mem::swap, path::PathBuf, time::{Instant, Duration}};
 
 use super::super::vec2::Vec2;
 
@@ -284,6 +284,10 @@ impl ImageView {
         ];
 
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
+    }
+
+    pub fn animate(&mut self) -> Option<Duration> {
+        Some(Duration::from_secs(0))
     }
 }
 
