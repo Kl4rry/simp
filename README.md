@@ -12,9 +12,6 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 ## Non Goals
 * Powerful image manipulation (I am not making the next photoshop)
 
-# TODO
-Reimplement zoom limit.
-
 # Supported Platforms
 | OS            | Support|
 | ------------- |:------:|
