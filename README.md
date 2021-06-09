@@ -5,7 +5,7 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 
 # Goals
 * Support of as many image formats as possible
-* 60 Hz (Nothing should ever block for more then 16ms)
+* 60 Hz (Nothing should ever block for more than 16ms)
 * Flicker free redrawing
 * Basic image manipulation (Not reached)
 
