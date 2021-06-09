@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use glium::{
     glutin,
@@ -9,7 +9,7 @@ use glium::{
     },
     {Display, Surface},
 };
-use image::{ImageBuffer, Rgba};
+use image::Frame;
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
@@ -25,7 +25,7 @@ use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {
-    ImageLoaded(ImageBuffer<Rgba<u8>, Vec<u8>>, PathBuf, Instant),
+    ImageLoaded(Vec::<Frame>, PathBuf, Instant),
     ImageError(String),
 }
 

@@ -26,11 +26,11 @@ The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplici
 | ------ | -------- |
 | PNG    | ✅ |
 | JPEG   | Baseline and progressive |
-| GIF    | No animation |
+| GIF    | ✅ |
 | BMP    | ✅ |
 | ICO    | ✅ |
 | TIFF   | Baseline(no fax support) + LZW + PackBits |
-| WebP   | ✅ |
+| WebP   | No animation |
 | AVIF   | Only 8-bit |
 | PNM    | PBM, PGM, PPM, standard PAM |
 | DDS    | DXT1, DXT3, DXT5 |

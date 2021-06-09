@@ -1,6 +1,6 @@
 use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
-use image::{ImageBuffer, ImageFormat, Rgba};
+use image::{ImageBuffer, ImageFormat, Rgba, Frame, codecs::gif::GifDecoder, AnimationDecoder};
 use libwebp::WebPDecodeRGBA;
 use psd::Psd;
 use std::{fs, io::Cursor, path::Path, thread, time::Instant};
@@ -28,14 +28,14 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
             return;
         }
-
+        
         if let Some(image) = load_svg(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
+            let _ = proxy.send_event(UserEvent::ImageLoaded(vec![Frame::new(image)], path_buf, start));
             return;
         }
 
         if let Some(image) = load_psd(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(image, path_buf, start));
+            let _ = proxy.send_event(UserEvent::ImageLoaded(vec![Frame::new(image)], path_buf, start));
             return;
         }
 
@@ -46,24 +46,40 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     });
 }
 
-fn load_raster(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
     let format = match image::guess_format(&bytes) {
         Ok(format) => format,
         Err(_) => return None,
     };
 
-    if matches!(format, ImageFormat::WebP) {
-        match WebPDecodeRGBA(bytes) {
-            Ok((width, height, buf)) => {
-                ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec())
+    match format {
+        ImageFormat::Gif => {
+            if let Ok(decoder) = GifDecoder::new(bytes) {
+                let frames = decoder.into_frames().collect_frames();
+                if let Ok(frames) = frames {
+                    return Some(frames);
+                }
             }
-            Err(_) => None,
-        }
-    } else {
-        match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-            Ok(image) => Some(image.into_rgba8()),
-            Err(_) => None,
-        }
+            None
+        },
+        ImageFormat::WebP => {
+            match WebPDecodeRGBA(bytes) {
+                Ok((width, height, buf)) => {
+                    if let Some(image) = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(width, height, buf.to_vec()) {
+                        Some(vec![Frame::new(image)])
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }
+        },
+        format => {
+            match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
+                Ok(image) => Some(vec![Frame::new(image.into_rgba8())]),
+                Err(_) => None,
+            }
+        },
     }
 }
 

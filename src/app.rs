@@ -57,14 +57,14 @@ impl App {
         user_event: Option<&UserEvent>,
     ) -> (bool, Option<Duration>) {
         let mut exit = false;
-        let mut delay: Option<Duration> = None; 
+        let mut delay: Option<Duration> = None;
         {
             let dimensions = display.get_framebuffer_dimensions();
             self.size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32)
         }
 
         if let Some(ref mut image) = self.image_view {
-            update_delay(&mut delay, &image.animate());
+            update_delay(&mut delay, &image.animate(display));
         }
 
         if let Some(event) = user_event {

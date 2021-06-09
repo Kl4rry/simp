@@ -10,10 +10,15 @@ use glium::{
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
-use image::{ImageBuffer, Rgba};
-use std::{borrow::Cow, mem::swap, path::PathBuf, time::{Instant, Duration}};
+use image::Frame;
+use std::{
+    borrow::Cow,
+    mem::swap,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
-use super::super::vec2::Vec2;
+use super::{super::vec2::Vec2};
 
 macro_rules! max {
     ($x: expr) => ($x);
@@ -51,6 +56,9 @@ pub struct ImageView {
     pub rotation: f32,
     pub path: PathBuf,
     pub start: Instant,
+    pub frames: Vec::<Frame>,
+    pub last_frame: Instant,
+    pub index: usize,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -62,10 +70,11 @@ pub struct ImageView {
 impl ImageView {
     pub fn new(
         display: &Display,
-        image: ImageBuffer<Rgba<u8>, Vec<u8>>,
+        frames: Vec<Frame>,
         path: PathBuf,
         start: Instant,
     ) -> Self {
+        let image = frames[0].buffer().clone();
         let texture_cords = (
             Vec2::new(0.0, 0.0),
             Vec2::new(0.0, 1.0),
@@ -94,14 +103,16 @@ impl ImageView {
             ),
         ];
         let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
-
+        
         let (width, height) = image.dimensions();
+        let data = Cow::Borrowed(&image.as_raw()[..]);
         let raw = RawImage2d {
-            data: Cow::Owned(image.into_raw()),
+            data,
             width,
             height,
             format: ClientFormat::U8U8U8U8,
         };
+
         let texture = SrgbTexture2d::new(display, raw).unwrap();
 
         let sampler = SamplerBehavior {
@@ -115,6 +126,9 @@ impl ImageView {
             position: Vec2::default(),
             scale: 1.0,
             rotation: 0.0,
+            frames,
+            last_frame: Instant::now(),
+            index: 0,
             start,
             shader: Program::from_source(
                 display,
@@ -286,8 +300,38 @@ impl ImageView {
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
     }
 
-    pub fn animate(&mut self) -> Option<Duration> {
-        Some(Duration::from_secs(0))
+    pub fn animate(&mut self, display: &Display) -> Option<Duration> {
+        if self.frames.len() > 1 {
+            let now = Instant::now();
+            let time_passed = now.duration_since(self.last_frame);
+            let (num, deno) = self.frames[self.index].delay().numer_denom_ms();
+            let delay = Duration::from_millis((num / deno) as u64);
+
+            if time_passed > delay {
+                self.index += 1;
+                if self.index >= self.frames.len() {
+                    self.index = 0;
+                }
+
+                let image = self.frames[self.index].buffer();
+                let data = Cow::Borrowed(&image.as_raw()[..]);
+                let raw = RawImage2d {
+                    data,
+                    width: image.width(),
+                    height: image.height(),
+                    format: ClientFormat::U8U8U8U8,
+                };
+                self.texture = SrgbTexture2d::new(display, raw).unwrap();
+                self.last_frame = now;
+
+                Some(delay)
+            } else {
+                Some(delay - time_passed)
+            }
+        } else {
+            None
+        }
+        
     }
 }
 
