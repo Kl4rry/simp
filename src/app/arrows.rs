@@ -20,8 +20,9 @@ impl Arrows {
         }
     }
 
-    pub fn build(&mut self, ui: &Ui) -> Action {
+    pub fn build(&mut self, ui: &Ui) -> (Action, Option<Duration>) {
         let mut action = Action::None;
+        let mut delay = None;
         let now = Instant::now();
         ui.same_line_with_spacing(0.0, 5.0);
         if ui.arrow_button(im_str!("Left"), Direction::Left) {
@@ -29,12 +30,14 @@ impl Arrows {
         }
 
         if ui.is_item_hovered() {
-            if now.duration_since(self.left_hover_start) > Duration::from_secs(1) {
+            if now.duration_since(self.left_hover_start) > Duration::from_millis(500) {
                 ui.tooltip(|| {
                     ui.text(im_str!("Previous Image"));
                     ui.same_line_with_spacing(0.0, 10.0);
                     ui.text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Left Arrow"));
                 });
+            } else {
+                delay = Some(Duration::from_millis(16));
             }
         } else {
             self.left_hover_start = now;
@@ -46,16 +49,18 @@ impl Arrows {
         }
 
         if ui.is_item_hovered() {
-            if now.duration_since(self.right_hover_start) > Duration::from_secs(1) {
+            if now.duration_since(self.right_hover_start) > Duration::from_millis(500) {
                 ui.tooltip(|| {
                     ui.text(im_str!("Next Image"));
                     ui.same_line_with_spacing(0.0, 10.0);
                     ui.text_colored([0.501, 0.501, 0.501, 1.0], im_str!("Right Arrow"));
                 });
+            } else {
+                delay = Some(Duration::from_millis(16));
             }
         } else {
             self.right_hover_start = now;
         }
-        action
+        (action, delay)
     }
 }

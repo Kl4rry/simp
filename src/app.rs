@@ -393,7 +393,9 @@ impl App {
             .always_use_window_padding(true)
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
-                    match self.arrows.build(&ui) {
+                    let (action, new_delay) = self.arrows.build(&ui);
+                    update_delay(&mut delay, &new_delay);
+                    match action {
                         Action::Left => {
                             if let Some(path) = self.image_list.previous() {
                                 load_image(self.proxy.clone(), path);
@@ -566,8 +568,16 @@ fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
 fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
     let old_scale = image.scale;
     image.scale += image.scale * zoom as f32 / 10.0;
-    let mouse_to_center = image.position - mouse_position;
-    image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+
+    let new_size = image.scaled();
+    if new_size.x() < 100.0 || new_size.y() < 100.0 {
+        if image.size.x() > new_size.x() && image.size.y() > new_size.y() {
+            image.scale = min!(old_scale, 1.0);
+        }
+    } else {
+        let mouse_to_center = image.position - mouse_position;
+        image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+    }
 }
 
 fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
