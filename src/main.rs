@@ -25,7 +25,7 @@ use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {
-    ImageLoaded(Vec::<Frame>, PathBuf, Instant),
+    ImageLoaded(Option<Vec::<Frame>>, PathBuf, Instant),
     ImageError(String),
 }
 
@@ -179,11 +179,11 @@ impl System {
                     event: WindowEvent::CloseRequested,
                     ..
                 } => *control_flow = ControlFlow::Exit,
-                event => {
+                mut event => {
                     {
                         let mut ui = imgui.frame();
 
-                        let (exit, delay) = match &event {
+                        let (exit, delay) = match &mut event {
                             Event::WindowEvent { event, .. } => {
                                 app.update(&mut ui, &display, &mut renderer, Some(event), None)
                             }

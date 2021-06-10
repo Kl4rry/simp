@@ -54,7 +54,7 @@ impl App {
         display: &glium::Display,
         _renderer: &mut Renderer,
         window_event: Option<&WindowEvent>,
-        user_event: Option<&UserEvent>,
+        user_event: Option<&mut UserEvent>,
     ) -> (bool, Option<Duration>) {
         let mut exit = false;
         let mut delay: Option<Duration> = None;
@@ -76,10 +76,11 @@ impl App {
                         true
                     };
 
+                    let image = image.take().unwrap();
                     if replace {
                         self.image_view = Some(ImageView::new(
                             display,
-                            image.clone(),
+                            image,
                             path.clone(),
                             *instant,
                         ));
