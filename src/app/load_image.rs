@@ -24,17 +24,17 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
         };
 
         if let Some(image) = load_raster(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(image), path_buf, start));
+            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
             return;
         }
         
         if let Some(image) = load_svg(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), path_buf, start));
+            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), Some(path_buf), start));
             return;
         }
 
         if let Some(image) = load_psd(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), path_buf, start));
+            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), Some(path_buf), start));
             return;
         }
 

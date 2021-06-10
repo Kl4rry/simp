@@ -5,7 +5,8 @@ use glium::glutin::{
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use std::{process::Command, thread, time::Duration};
+use image::{ImageBuffer, Rgba, Frame};
+use std::{process::Command, thread, time::{Duration, Instant}, borrow::Cow};
 
 use super::{vec2::Vec2, UserEvent};
 
@@ -85,9 +86,13 @@ impl App {
                             *instant,
                         ));
                         let view = self.image_view.as_mut().unwrap();
-                        self.current_filename =
-                            path.file_name().unwrap().to_str().unwrap().to_string();
-                        self.image_list.change_dir(path);
+
+                        self.current_filename = if let Some(path) = path {
+                            self.image_list.change_dir(&path);
+                            path.file_name().unwrap().to_str().unwrap().to_string()
+                        } else {
+                            String::new()
+                        };
 
                         let scaling = min!(
                             self.size.x() / view.size.x(),
@@ -150,7 +155,39 @@ impl App {
 
                                 VirtualKeyCode::R => {
                                     if let Some(image) = self.image_view.as_ref() {
-                                        load_image(self.proxy.clone(), &image.path);
+                                        if let Some(path) = &image.path {
+                                            load_image(self.proxy.clone(), path);
+                                        }
+                                    }
+                                }
+
+                                VirtualKeyCode::C if self.modifiers.ctrl() => {
+                                    if let Some(ref view) = self.image_view {
+                                        let image = view.frames[0].clone().into_buffer();
+                                        let (width, height) = image.dimensions();
+                                        let image_data = arboard::ImageData {
+                                            width: width as usize,
+                                            height: height as usize,
+                                            bytes: Cow::Borrowed(image.as_raw()),
+                                        };
+
+                                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                            let _ = clipboard.set_image(image_data);
+                                        }
+                                    }
+                                }
+
+                                VirtualKeyCode::V if self.modifiers.ctrl() => {
+                                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                        if let Ok(image_data) = clipboard.get_image() {
+                                            let width = image_data.width;
+                                            let height = image_data.height;
+                                            let mut data = Vec::with_capacity(image_data.bytes.len());
+                                            data.extend_from_slice(&*image_data.bytes);
+                                            let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
+                                            let event = UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), None, Instant::now());
+                                            let _ = self.proxy.send_event(event);
+                                        }
                                     }
                                 }
 
@@ -307,7 +344,9 @@ impl App {
                         .shortcut(im_str!("R"))
                         .build(&ui)
                     {
-                        load_image(self.proxy.clone(), &image.path);
+                        if let Some(path) = &image.path {
+                            load_image(self.proxy.clone(), path);
+                        }
                     }
 
                     ui.separator();

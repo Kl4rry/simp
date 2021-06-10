@@ -54,7 +54,7 @@ pub struct ImageView {
     pub position: Vec2<f32>,
     pub scale: f32,
     pub rotation: f32,
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
     pub start: Instant,
     pub frames: Vec::<Frame>,
     pub last_frame: Instant,
@@ -71,7 +71,7 @@ impl ImageView {
     pub fn new(
         display: &Display,
         frames: Vec<Frame>,
-        path: PathBuf,
+        path: Option<PathBuf>,
         start: Instant,
     ) -> Self {
         let image = frames[0].buffer().clone();

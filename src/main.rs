@@ -25,7 +25,7 @@ use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {
-    ImageLoaded(Option<Vec::<Frame>>, PathBuf, Instant),
+    ImageLoaded(Option<Vec::<Frame>>, Option<PathBuf>, Instant),
     ImageError(String),
 }
 
