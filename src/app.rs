@@ -3,10 +3,15 @@ use glium::glutin::{
     event_loop::EventLoopProxy,
     window::Fullscreen,
 };
+use image::{Frame, ImageBuffer, Rgba};
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use image::{ImageBuffer, Rgba, Frame};
-use std::{process::Command, thread, time::{Duration, Instant}, borrow::Cow};
+use std::{
+    borrow::Cow,
+    process::Command,
+    thread,
+    time::{Duration, Instant},
+};
 
 use super::{vec2::Vec2, UserEvent};
 
@@ -79,12 +84,8 @@ impl App {
 
                     let image = image.take().unwrap();
                     if replace {
-                        self.image_view = Some(ImageView::new(
-                            display,
-                            image,
-                            path.clone(),
-                            *instant,
-                        ));
+                        self.image_view =
+                            Some(ImageView::new(display, image, path.clone(), *instant));
                         let view = self.image_view.as_mut().unwrap();
 
                         self.current_filename = if let Some(path) = path {
@@ -182,10 +183,20 @@ impl App {
                                         if let Ok(image_data) = clipboard.get_image() {
                                             let width = image_data.width;
                                             let height = image_data.height;
-                                            let mut data = Vec::with_capacity(image_data.bytes.len());
+                                            let mut data =
+                                                Vec::with_capacity(image_data.bytes.len());
                                             data.extend_from_slice(&*image_data.bytes);
-                                            let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
-                                            let event = UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), None, Instant::now());
+                                            let image = ImageBuffer::<Rgba<u8>, _>::from_raw(
+                                                width as u32,
+                                                height as u32,
+                                                data,
+                                            )
+                                            .unwrap();
+                                            let event = UserEvent::ImageLoaded(
+                                                Some(vec![Frame::new(image)]),
+                                                None,
+                                                Instant::now(),
+                                            );
                                             let _ = self.proxy.send_event(event);
                                         }
                                     }

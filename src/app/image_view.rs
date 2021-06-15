@@ -18,7 +18,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{super::vec2::Vec2};
+use super::super::vec2::Vec2;
 
 macro_rules! max {
     ($x: expr) => ($x);
@@ -56,7 +56,7 @@ pub struct ImageView {
     pub rotation: f32,
     pub path: Option<PathBuf>,
     pub start: Instant,
-    pub frames: Vec::<Frame>,
+    pub frames: Vec<Frame>,
     pub last_frame: Instant,
     pub index: usize,
     shader: Program,
@@ -103,7 +103,7 @@ impl ImageView {
             ),
         ];
         let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
-        
+
         let (width, height) = image.dimensions();
         let data = Cow::Borrowed(&image.as_raw()[..]);
         let raw = RawImage2d {
@@ -331,7 +331,6 @@ impl ImageView {
         } else {
             None
         }
-        
     }
 }
 

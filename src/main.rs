@@ -1,4 +1,5 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![feature(vec_into_raw_parts)]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use glium::{
     glutin,
@@ -25,7 +26,7 @@ use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {
-    ImageLoaded(Option<Vec::<Frame>>, Option<PathBuf>, Instant),
+    ImageLoaded(Option<Vec<Frame>>, Option<PathBuf>, Instant),
     ImageError(String),
 }
 
