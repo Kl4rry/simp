@@ -9,23 +9,24 @@ repository = "https://github.com/Kl4rry/simp"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arboard = "1.2.1"
+cgmath = "0.18.0"
 clipboard = "0.5"
 glium = "0.29"
 image = "0.23.14"
 imgui = "0.7.0"
 imgui-glium-renderer = "0.7.0"
 imgui-winit-support = "0.7.0"
-tinyfiledialogs = "3.3.10"
-cgmath = "0.18.0"
-webbrowser = "0.5.5"
 lazy_static = "1.4.0"
 msgbox = "0.6.0"
-usvg = "0.14.1"
+psd = "0.1.9"
+rawloader = "0.37.0"
 resvg = "0.14.1"
 tiny-skia = "0.5.1"
-psd = "0.1.9"
+tinyfiledialogs = "3.3.10"
+usvg = "0.14.1"
+webbrowser = "0.5.5"
 webp-animation = { version = "0.2.2", features = ["image"] }
-arboard = "1.2.1"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
