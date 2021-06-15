@@ -37,7 +37,10 @@ The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simpl
 | TGA    | ✅ |
 | farbfeld | ✅ |
 | SVG    | Rastarized at 96 dpi |
-| PSD    | ✅ |
+| PSD    | ✅ 
+| Raw    | Support from [rawloader](https://github.com/pedrocr/rawloader) <sup>1</sup> |
+
+<sup>1</sup> Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 
 # Installation
 ## Cargo
