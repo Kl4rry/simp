@@ -1,5 +1,5 @@
+use super::extensions::*;
 use std::{
-    collections::HashSet,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -8,24 +8,12 @@ use std::{
     thread,
 };
 
-use lazy_static::*;
-
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
 
 pub struct ImageList {
     list: List,
     index: Arc<AtomicUsize>,
     path: Option<PathBuf>,
-}
-
-lazy_static! {
-    static ref EXTENSIONS: HashSet<&'static str> = [
-        "png", ".jpg", ".jpeg", ".jpe", ".jif", ".jfif", "jpg", "gif", "bmp", "ico", "tiff",
-        "webp", "avif", "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "svg", "psd",
-    ]
-    .iter()
-    .cloned()
-    .collect();
 }
 
 impl ImageList {

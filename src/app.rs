@@ -23,6 +23,7 @@ mod arrows;
 use arrows::{Action, Arrows};
 pub mod load_image;
 use load_image::load_image;
+pub mod extensions;
 
 macro_rules! min {
     ($x: expr) => ($x);

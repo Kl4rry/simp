@@ -1,4 +1,3 @@
-use super::super::UserEvent;
 use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
 use image::{
@@ -14,6 +13,8 @@ use std::{
     time::{Duration, Instant},
 };
 use usvg::{fontdb::Database, FitTo, Options, Tree};
+
+use super::{super::UserEvent, extensions::*};
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
@@ -31,36 +32,23 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             }
         };
 
-        if let Some(image) = load_raw(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(image),
-                Some(path_buf),
-                start,
-            ));
-            return;
+        let extension = path_buf.extension().unwrap_or_default().to_string_lossy().to_ascii_lowercase();
+
+        let mut loaders = [load_raw, load_svg, load_psd, load_raster];
+
+        if RASTER.contains(&*extension) {
+            loaders.swap(0, 3);
+        } else if VECTOR.contains(&*extension) {
+            loaders.swap(0, 1);
+        } else if PHOTOSHOP.contains(&*extension) {
+            loaders.swap(0, 2);
         }
 
-        if let Some(image) = load_raster(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
-            return;
-        }
-
-        if let Some(image) = load_svg(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(image),
-                Some(path_buf),
-                start,
-            ));
-            return;
-        }
-
-        if let Some(image) = load_psd(&bytes) {
-            let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(image),
-                Some(path_buf),
-                start,
-            ));
-            return;
+        for loader in loaders {
+            if let Some(image) = loader(&bytes) {
+                let _ = proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
+                return;
+            }
         }
 
         let _ = proxy.send_event(UserEvent::ImageError(format!(
@@ -142,7 +130,9 @@ fn load_svg(bytes: &[u8]) -> Option<Vec<Frame>> {
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(vec![Frame::new(ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap())])
+    Some(vec![Frame::new(
+        ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap(),
+    )])
 }
 
 fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
@@ -152,7 +142,9 @@ fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
     };
 
     let raw = psd.flatten_layers_rgba(&|(_, _)| return true).unwrap();
-    Some(vec![Frame::new(ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap())])
+    Some(vec![Frame::new(
+        ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap(),
+    )])
 }
 
 fn load_raw(bytes: &[u8]) -> Option<Vec<Frame>> {
