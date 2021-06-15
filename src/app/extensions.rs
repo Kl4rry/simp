@@ -7,8 +7,8 @@ fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
 
 lazy_static! {
     pub static ref RASTER: HashSet<&'static str> = create_set(&[
-        "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp",
-        "avif", "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff"
+        "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff"
     ]);
     pub static ref VECTOR: HashSet<&'static str> = create_set(&["svg"]);
     pub static ref RAW: HashSet<&'static str> = create_set(&[
@@ -16,7 +16,6 @@ lazy_static! {
         "dcr", "dng", "pef", "crw", "iiq", "3fr", "nrw", "nef", "mos", "cr2", "ari"
     ]);
     pub static ref PHOTOSHOP: HashSet<&'static str> = create_set(&["psd"]);
-
     pub static ref EXTENSIONS: HashSet<&'static str> = {
         let mut set: HashSet<&'static str> = HashSet::new();
         set.extend(RASTER.iter());

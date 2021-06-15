@@ -32,7 +32,11 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             }
         };
 
-        let extension = path_buf.extension().unwrap_or_default().to_string_lossy().to_ascii_lowercase();
+        let extension = path_buf
+            .extension()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_ascii_lowercase();
 
         let mut loaders = [load_raw, load_svg, load_psd, load_raster];
 
@@ -46,7 +50,8 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         for loader in loaders {
             if let Some(image) = loader(&bytes) {
-                let _ = proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
+                let _ =
+                    proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
                 return;
             }
         }
@@ -95,7 +100,7 @@ fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
                     })
                     .collect();
 
-                if frames.len() > 0 {
+                if frames.is_empty() {
                     return Some(frames);
                 }
             }
@@ -141,7 +146,7 @@ fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
         Err(_) => return None,
     };
 
-    let raw = psd.flatten_layers_rgba(&|(_, _)| return true).unwrap();
+    let raw = psd.flatten_layers_rgba(&|(_, _)| true).unwrap();
     Some(vec![Frame::new(
         ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap(),
     )])
