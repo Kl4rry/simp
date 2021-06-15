@@ -1,12 +1,11 @@
+use super::super::UserEvent;
 use glium::glutin::event_loop::EventLoopProxy;
 use image::io::Reader as ImageReader;
 use image::{
     codecs::gif::GifDecoder, AnimationDecoder, Delay, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
 };
+use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use usvg::{fontdb::Database, FitTo, Options, Tree};
-use rawloader::RawImageData;
-use imagepipe::{ImageSource, demosaic::OpDemosaic, Pipeline};
 use std::{
     fs,
     io::Cursor,
@@ -14,7 +13,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use super::super::UserEvent;
+use usvg::{fontdb::Database, FitTo, Options, Tree};
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
@@ -34,7 +33,7 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         if let Some(image) = load_raw(&bytes) {
             let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(vec![Frame::new(image)]),
+                Some(image),
                 Some(path_buf),
                 start,
             ));
@@ -48,7 +47,7 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         if let Some(image) = load_svg(&bytes) {
             let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(vec![Frame::new(image)]),
+                Some(image),
                 Some(path_buf),
                 start,
             ));
@@ -57,7 +56,7 @@ pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         if let Some(image) = load_psd(&bytes) {
             let _ = proxy.send_event(UserEvent::ImageLoaded(
-                Some(vec![Frame::new(image)]),
+                Some(image),
                 Some(path_buf),
                 start,
             ));
@@ -121,7 +120,7 @@ fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
     }
 }
 
-fn load_svg(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+fn load_svg(bytes: &[u8]) -> Option<Vec<Frame>> {
     let mut fontdb = Database::new();
     fontdb.load_system_fonts();
     let options = Options {
@@ -143,20 +142,20 @@ fn load_svg(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap())
+    Some(vec![Frame::new(ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap())])
 }
 
-fn load_psd(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
     let psd = match Psd::from_bytes(bytes) {
         Ok(psd) => psd,
         Err(_) => return None,
     };
 
     let raw = psd.flatten_layers_rgba(&|(_, _)| return true).unwrap();
-    Some(ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap())
+    Some(vec![Frame::new(ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap())])
 }
 
-fn load_raw(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+fn load_raw(bytes: &[u8]) -> Option<Vec<Frame>> {
     let t = timing::Timer::start();
     let raw = match rawloader::decode(&mut Cursor::new(bytes)) {
         Ok(raw) => raw,
@@ -166,20 +165,31 @@ fn load_raw(bytes: &[u8]) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     let width = raw.width;
     let height = raw.height;
     let source = ImageSource::Raw(raw);
-    let demosaic = OpDemosaic::new(&source);
-    let mut pipeline = Pipeline::new_from_source(source, width, height, true).unwrap();
-    pipeline.ops.demosaic = demosaic;
+
+    let mut pipeline = match Pipeline::new_from_source(source, width, height, true) {
+        Ok(pipeline) => pipeline,
+        Err(_) => return None,
+    };
+
     pipeline.run(None);
-    let image = pipeline.output_8bit(None).unwrap();
+    let image = match pipeline.output_8bit(None) {
+        Ok(image) => image,
+        Err(_) => return None,
+    };
 
     let image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
         image.width as u32,
         image.height as u32,
         image.data,
-    )
-    .unwrap();
+    );
+
+    let image = match image {
+        Some(image) => image,
+        None => return None,
+    };
+
     let dyn_img = image::DynamicImage::ImageRgb8(image);
     let rgba_image: ImageBuffer<Rgba<u8>, Vec<u8>> = dyn_img.into_rgba8();
     t.print_ms();
-    Some(rgba_image)
+    Some(vec![Frame::new(rgba_image)])
 }
