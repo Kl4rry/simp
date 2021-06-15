@@ -1,5 +1,5 @@
 # simp  
-The (s)imple (im)age (p)rogram is a lightweight image viewer focused on simplicity and speed.
+The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simplicity and speed.
 
 ![Screenshot](images/screenshot.png)
 
