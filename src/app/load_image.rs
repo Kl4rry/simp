@@ -145,8 +145,9 @@ fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
         Ok(psd) => psd,
         Err(_) => return None,
     };
+    
+    let raw = psd.rgba();
 
-    let raw = psd.flatten_layers_rgba(&|(_, _)| true).unwrap();
     Some(vec![Frame::new(
         ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap(),
     )])
