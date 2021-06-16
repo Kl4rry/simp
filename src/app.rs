@@ -271,13 +271,7 @@ impl App {
             window_size.set_y(window_size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE);
 
             if image_size.x() < window_size.x() {
-                if image.position.x() - image_size.x() / 2.0 < 0.0 {
-                    image.position.set_x(image_size.x() / 2.0);
-                }
-
-                if image.position.x() + image_size.x() / 2.0 > window_size.x() {
-                    image.position.set_x(window_size.x() - image_size.x() / 2.0);
-                }
+                image.position.set_x(self.size.x() / 2.0);
             } else {
                 if image.position.x() - image_size.x() / 2.0 > 0.0 {
                     image.position.set_x(image_size.x() / 2.0);
@@ -289,15 +283,7 @@ impl App {
             }
 
             if image_size.y() < window_size.y() {
-                if image.position.y() - image_size.y() / 2.0 < TOP_BAR_SIZE {
-                    image.position.set_y((image_size.y() / 2.0) + TOP_BAR_SIZE);
-                }
-
-                if image.position.y() + image_size.y() / 2.0 - TOP_BAR_SIZE > window_size.y() {
-                    image
-                        .position
-                        .set_y((window_size.y() - image_size.y() / 2.0) + TOP_BAR_SIZE);
-                }
+                image.position.set_y(self.size.y() / 2.0);
             } else {
                 if image.position.y() - image_size.y() / 2.0 > TOP_BAR_SIZE {
                     image.position.set_y(image_size.y() / 2.0 + TOP_BAR_SIZE);
