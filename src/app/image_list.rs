@@ -32,6 +32,14 @@ impl ImageList {
 
         if let Some(ref p) = self.path {
             if *p == dir_path && self.list.lock().unwrap().is_some() {
+                let lock = self.list.lock().unwrap();
+                if let Some(ref dirs) = *lock {
+                    for (index, path) in dirs.iter().enumerate() {
+                        if *path == path_buf {
+                            self.index.store(index, Ordering::SeqCst);
+                        }
+                    }
+                }
                 return;
             }
         }
@@ -62,6 +70,7 @@ impl ImageList {
                     }
                 }
             }
+            list.sort();
             *t_list.lock().unwrap() = Some(list);
         });
     }
