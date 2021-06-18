@@ -15,7 +15,7 @@ use std::{
 
 use super::{vec2::Vec2, UserEvent};
 
-mod image_view;
+pub mod image_view;
 use image_view::ImageView;
 mod image_list;
 use image_list::ImageList;
@@ -24,6 +24,7 @@ use arrows::{Action, Arrows};
 pub mod load_image;
 use load_image::load_image;
 pub mod extensions;
+mod clipboard;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -165,42 +166,12 @@ impl App {
 
                                 VirtualKeyCode::C if self.modifiers.ctrl() => {
                                     if let Some(ref view) = self.image_view {
-                                        let image = view.frames[0].clone().into_buffer();
-                                        let (width, height) = image.dimensions();
-                                        let image_data = arboard::ImageData {
-                                            width: width as usize,
-                                            height: height as usize,
-                                            bytes: Cow::Borrowed(image.as_raw()),
-                                        };
-
-                                        if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                                            let _ = clipboard.set_image(image_data);
-                                        }
+                                        clipboard::copy(view);
                                     }
                                 }
 
                                 VirtualKeyCode::V if self.modifiers.ctrl() => {
-                                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                                        if let Ok(image_data) = clipboard.get_image() {
-                                            let width = image_data.width;
-                                            let height = image_data.height;
-                                            let mut data =
-                                                Vec::with_capacity(image_data.bytes.len());
-                                            data.extend_from_slice(&*image_data.bytes);
-                                            let image = ImageBuffer::<Rgba<u8>, _>::from_raw(
-                                                width as u32,
-                                                height as u32,
-                                                data,
-                                            )
-                                            .unwrap();
-                                            let event = UserEvent::ImageLoaded(
-                                                Some(vec![Frame::new(image)]),
-                                                None,
-                                                Instant::now(),
-                                            );
-                                            let _ = self.proxy.send_event(event);
-                                        }
-                                    }
+                                    clipboard::paste(&self.proxy);
                                 }
 
                                 VirtualKeyCode::Left => {
