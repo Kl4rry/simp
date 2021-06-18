@@ -1410,6 +1410,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libwebp"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7792a82f95b5b2528d9fe1642231f972d2cdd73b91ccbcb6ab214c2cf1a74f4"
+dependencies = [
+ "libwebp-sys2",
+]
+
+[[package]]
 name = "libwebp-sys2"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2231,6 +2240,7 @@ dependencies = [
  "imgui-glium-renderer",
  "imgui-winit-support",
  "lazy_static",
+ "libwebp",
  "msgbox",
  "psd",
  "rawloader",

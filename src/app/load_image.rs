@@ -104,6 +104,12 @@ fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
                     return Some(frames);
                 }
             }
+            if let Ok((width, height, buf)) = libwebp::WebPDecodeRGBA(bytes) {
+                return Some(vec![Frame::new(
+                    ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec()).unwrap(),
+                )]);
+            }
+            println!("oof");
             None
         }
         format => match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
