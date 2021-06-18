@@ -1,17 +1,6 @@
-use glium::glutin::{
-    event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
-    event_loop::EventLoopProxy,
-    window::Fullscreen,
-};
+use glium::glutin::event_loop::EventLoopProxy;
 use image::{Frame, ImageBuffer, Rgba};
-use imgui::*;
-use imgui_glium_renderer::Renderer;
-use std::{
-    borrow::Cow,
-    process::Command,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{borrow::Cow, time::Instant};
 
 use super::super::UserEvent;
 use super::image_view::ImageView;
@@ -35,20 +24,11 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
         if let Ok(image_data) = clipboard.get_image() {
             let width = image_data.width;
             let height = image_data.height;
-            let mut data =
-                Vec::with_capacity(image_data.bytes.len());
+            let mut data = Vec::with_capacity(image_data.bytes.len());
             data.extend_from_slice(&*image_data.bytes);
-            let image = ImageBuffer::<Rgba<u8>, _>::from_raw(
-                width as u32,
-                height as u32,
-                data,
-            )
-            .unwrap();
-            let event = UserEvent::ImageLoaded(
-                Some(vec![Frame::new(image)]),
-                None,
-                Instant::now(),
-            );
+            let image =
+                ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
+            let event = UserEvent::ImageLoaded(Some(vec![Frame::new(image)]), None, Instant::now());
             let _ = proxy.send_event(event);
         }
     }

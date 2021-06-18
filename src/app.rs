@@ -3,15 +3,9 @@ use glium::glutin::{
     event_loop::EventLoopProxy,
     window::Fullscreen,
 };
-use image::{Frame, ImageBuffer, Rgba};
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use std::{
-    borrow::Cow,
-    process::Command,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{process::Command, thread, time::Duration};
 
 use super::{vec2::Vec2, UserEvent};
 
@@ -23,8 +17,8 @@ mod arrows;
 use arrows::{Action, Arrows};
 pub mod load_image;
 use load_image::load_image;
-pub mod extensions;
 mod clipboard;
+pub mod extensions;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -276,9 +270,7 @@ impl App {
             StyleVar::WindowBorderSize(0.0),
         ]);
 
-        let colors = ui.push_style_colors(&[
-            (StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0]),
-        ]);
+        let colors = ui.push_style_colors(&[(StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0])]);
 
         ui.main_menu_bar(|| {
             /*if let Some(image) = self.image_view.as_mut() {

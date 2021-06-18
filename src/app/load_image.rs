@@ -145,7 +145,7 @@ fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
         Ok(psd) => psd,
         Err(_) => return None,
     };
-    
+
     let raw = psd.rgba();
 
     Some(vec![Frame::new(

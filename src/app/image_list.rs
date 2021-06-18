@@ -61,7 +61,10 @@ impl ImageList {
                                 t_index.store(index, Ordering::SeqCst);
                             }
                             match dir.path().extension() {
-                                Some(ext) if EXTENSIONS.contains(&*ext.to_string_lossy().to_ascii_lowercase()) => {
+                                Some(ext)
+                                    if EXTENSIONS
+                                        .contains(&*ext.to_string_lossy().to_ascii_lowercase()) =>
+                                {
                                     list.push(path)
                                 }
                                 _ => (),
