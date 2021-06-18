@@ -302,6 +302,11 @@ impl App {
             StyleVar::WindowPadding([10.0, 10.0]),
             StyleVar::FramePadding([0.0, 6.0]),
             StyleVar::ItemSpacing([5.0, 10.0]),
+            StyleVar::WindowBorderSize(0.0),
+        ]);
+
+        let colors = ui.push_style_colors(&[
+            (StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0]),
         ]);
 
         ui.main_menu_bar(|| {
@@ -416,7 +421,7 @@ impl App {
         ]);
 
         let c = ui.push_style_colors(&[
-            (StyleColor::WindowBg, [0.141, 0.141, 0.141, 1.0]),
+            (StyleColor::WindowBg, [0.117, 0.117, 0.117, 1.0]),
             (StyleColor::Button, [0.141, 0.141, 0.141, 1.0]),
         ]);
 
@@ -552,6 +557,7 @@ impl App {
         }
 
         styles.pop(&ui);
+        colors.pop(&ui);
         (exit, delay)
     }
 

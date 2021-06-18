@@ -26,7 +26,7 @@ pub struct Background {
 
 impl Background {
     pub fn new(display: &Display) -> Self {
-        let shape = vec![
+        let shape = [
             Vertex::new(-1.0, 1.0),
             Vertex::new(-1.0, -1.0),
             Vertex::new(1.0, 1.0),

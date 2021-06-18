@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![warn(clippy::all)]
 
 use glium::{
     glutin,
@@ -158,7 +159,9 @@ impl System {
 
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
-                    target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
+                    //target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
+                    
+                    target.clear_color_srgb(0.156, 0.156, 0.156, 1.0);
 
                     let dimensions = display.get_framebuffer_dimensions();
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
