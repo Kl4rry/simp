@@ -109,7 +109,6 @@ fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
                     ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec()).unwrap(),
                 )]);
             }
-            println!("oof");
             None
         }
         format => match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
