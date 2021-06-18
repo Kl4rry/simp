@@ -47,5 +47,9 @@ The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simpl
 ```shell
 cargo install simp
 ```
+## Latest from github
+```shell
+cargo install --git https://github.com/Kl4rry/simp
+```
 ## Manual
 Just download the exe from the releases tab. No actual installation is required.
