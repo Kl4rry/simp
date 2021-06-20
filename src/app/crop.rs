@@ -1,7 +1,7 @@
 use cgmath::{Matrix4, Ortho};
 use glium::{
-    backend::glutin::Display, implement_vertex, index::PrimitiveType, program::Program, draw_parameters::DrawParameters, uniform,
-    IndexBuffer, Surface, VertexBuffer,
+    backend::glutin::Display, draw_parameters::DrawParameters, implement_vertex,
+    index::PrimitiveType, program::Program, uniform, IndexBuffer, Surface, VertexBuffer,
 };
 
 use super::super::Vec2;
@@ -47,9 +47,7 @@ impl Crop {
         }
     }
 
-    pub fn start() {
-        
-    }
+    pub fn start() {}
 
     pub fn render(&self, target: &mut glium::Frame, display: &Display, size: Vec2<f32>) {
         if let Some(ref inner) = self.inner {

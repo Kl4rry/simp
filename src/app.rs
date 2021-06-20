@@ -297,13 +297,21 @@ impl App {
         let colors = ui.push_style_colors(&[(StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0])]);
 
         ui.main_menu_bar(|| {
-            /*if let Some(image) = self.image_view.as_mut() {
-                AngleSlider::new(im_str!("Rotation"))
-                    .range_degrees(Range(0.0, 360.0))
-                    .build(&ui, &mut image.rotation);
-            }*/
-
             ui.menu(im_str!("File"), true, || {
+                if MenuItem::new(im_str!("Open"))
+                    .shortcut(im_str!("Ctrl + O"))
+                    .build(&ui)
+                {
+                    open_load_image(self.proxy.clone());
+                }
+
+                if MenuItem::new(im_str!("Save as"))
+                    .shortcut(im_str!("Ctrl + S"))
+                    .build(&ui)
+                {}
+
+                ui.separator();
+
                 if MenuItem::new(im_str!("New Window"))
                     .shortcut(im_str!("Ctrl + N"))
                     .build(&ui)
@@ -311,14 +319,17 @@ impl App {
                     new_window();
                 }
 
-                ui.separator();
-
-                if MenuItem::new(im_str!("Open"))
-                    .shortcut(im_str!("Ctrl + O"))
+                if MenuItem::new(im_str!("Refresh"))
+                    .shortcut(im_str!("R"))
+                    .enabled(self.image_view.is_some())
                     .build(&ui)
                 {
-                    open_load_image(self.proxy.clone());
+                    if let Some(ref path) = self.image_view.as_ref().unwrap().path {
+                        load_image(self.proxy.clone(), path);
+                    }
                 }
+
+                ui.separator();
 
                 if MenuItem::new(im_str!("Exit"))
                     .shortcut(im_str!("Ctrl + W"))
@@ -328,81 +339,108 @@ impl App {
                 }
             });
 
-            ui.menu(im_str!("Edit"), self.image_view.is_some(), || {
-                if let Some(image) = self.image_view.as_mut() {
-                    if MenuItem::new(im_str!("Undo"))
-                        .shortcut(im_str!("Ctrl + Z"))
-                        .build(&ui)
-                    {}
+            ui.menu(im_str!("Edit"), true, || {
+                if MenuItem::new(im_str!("Undo"))
+                    .shortcut(im_str!("Ctrl + Z"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {}
 
-                    if MenuItem::new(im_str!("Redo"))
-                        .shortcut(im_str!("Ctrl + Y"))
-                        .build(&ui)
-                    {}
+                if MenuItem::new(im_str!("Redo"))
+                    .shortcut(im_str!("Ctrl + Y"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {}
 
-                    ui.separator();
+                ui.separator();
 
-                    if MenuItem::new(im_str!("Crop"))
-                        .shortcut(im_str!("Ctrl + X"))
-                        .build(&ui)
-                    {
-                        self.crop.cropping = true;
-                    }
+                if MenuItem::new(im_str!("Copy"))
+                    .shortcut(im_str!("Ctrl + C"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_ref().unwrap();
+                    clipboard::copy(image);
+                }
+
+                if MenuItem::new(im_str!("Paste"))
+                    .shortcut(im_str!("Ctrl + V"))
+                    .build(&ui)
+                {
+                    clipboard::paste(&self.proxy);
                 }
             });
 
-            ui.menu(im_str!("Image"), self.image_view.is_some(), || {
-                if let Some(image) = self.image_view.as_mut() {
-                    if MenuItem::new(im_str!("Refresh"))
-                        .shortcut(im_str!("R"))
-                        .build(&ui)
-                    {
-                        if let Some(path) = &image.path {
-                            load_image(self.proxy.clone(), path);
-                        }
-                    }
+            ui.menu(im_str!("Image"), true, || {
+                if MenuItem::new(im_str!("Rotate Left"))
+                    .shortcut(im_str!("Q"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    image.rotation += 90.0;
+                }
 
-                    ui.separator();
+                if MenuItem::new(im_str!("Rotate Right"))
+                    .shortcut(im_str!("E"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    image.rotation -= 90.0;
+                }
 
-                    if MenuItem::new(im_str!("Rotate Left"))
-                        .shortcut(im_str!("Q"))
-                        .build(&ui)
-                    {
-                        image.rotation += 90.0;
-                    }
+                ui.separator();
 
-                    if MenuItem::new(im_str!("Rotate Right"))
-                        .shortcut(im_str!("E"))
-                        .build(&ui)
-                    {
-                        image.rotation -= 90.0;
-                    }
+                if MenuItem::new(im_str!("Zoom in"))
+                    .shortcut(im_str!("+"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    zoom(image, 1.0, self.size / 2.0);
+                }
 
-                    ui.separator();
+                if MenuItem::new(im_str!("Zoom out"))
+                    .shortcut(im_str!("-"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    zoom(image, -1.0, image.size / 2.0);
+                }
 
-                    if MenuItem::new(im_str!("Zoom in"))
-                        .shortcut(im_str!("+"))
-                        .build(&ui)
-                    {
-                        zoom(image, 1.0, self.size / 2.0);
-                    }
+                ui.separator();
 
-                    if MenuItem::new(im_str!("Zoom out"))
-                        .shortcut(im_str!("-"))
-                        .build(&ui)
-                    {
-                        zoom(image, -1.0, image.size / 2.0);
-                    }
+                if MenuItem::new(im_str!("Flip Horizontal"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    image.flip_horizontal(display);
+                }
 
-                    ui.separator();
+                if MenuItem::new(im_str!("Flip Vertical"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    let image = self.image_view.as_mut().unwrap();
+                    image.flip_vertical(display);
+                }
 
-                    if MenuItem::new(im_str!("Flip Horizontal")).build(&ui) {
-                        image.flip_horizontal(display);
-                    }
+                ui.separator();
 
-                    if MenuItem::new(im_str!("Flip Vertical")).build(&ui) {
-                        image.flip_vertical(display);
-                    }
+                if MenuItem::new(im_str!("Resize"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {}
+
+                if MenuItem::new(im_str!("Crop"))
+                    .shortcut(im_str!("Ctrl + X"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {
+                    self.crop.cropping = true;
                 }
             });
 
@@ -432,7 +470,7 @@ impl App {
 
         let c = ui.push_style_colors(&[
             (StyleColor::WindowBg, [0.117, 0.117, 0.117, 1.0]),
-            (StyleColor::Button, [0.141, 0.141, 0.141, 1.0]),
+            (StyleColor::Button, [0.117, 0.117, 0.117, 1.0]),
         ]);
 
         Window::new(im_str!("Bottom"))
