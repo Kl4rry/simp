@@ -56,7 +56,7 @@ impl System {
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
 
-        let app = App::new(proxy.clone(), [1100f32, 720f32]);
+        let app = App::new(proxy.clone(), [1100f32, 720f32], &display);
 
         let mut imgui = Context::create();
         imgui.set_ini_filename(None);
@@ -159,8 +159,6 @@ impl System {
 
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
-                    //target.clear_color_srgb(0.262, 0.286, 0.337, 1.0);
-
                     target.clear_color_srgb(0.156, 0.156, 0.156, 1.0);
 
                     let dimensions = display.get_framebuffer_dimensions();
@@ -170,6 +168,8 @@ impl System {
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);
                     }
+
+                    app.crop.render(&mut target, &display, size);
 
                     platform.prepare_render(&ui, gl_window.window());
                     let draw_data = ui.render();

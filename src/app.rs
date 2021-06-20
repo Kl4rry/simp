@@ -1,7 +1,10 @@
-use glium::glutin::{
-    event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
-    event_loop::EventLoopProxy,
-    window::Fullscreen,
+use glium::{
+    backend::glutin::Display,
+    glutin::{
+        event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+        event_loop::EventLoopProxy,
+        window::Fullscreen,
+    },
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
@@ -11,14 +14,16 @@ use super::{vec2::Vec2, UserEvent};
 
 pub mod image_view;
 use image_view::ImageView;
-mod image_list;
+pub mod image_list;
 use image_list::ImageList;
-mod arrows;
+pub mod arrows;
 use arrows::{Action, Arrows};
 pub mod load_image;
 use load_image::load_image;
-mod clipboard;
+pub mod clipboard;
+pub mod crop;
 pub mod extensions;
+use crop::Crop;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -47,6 +52,7 @@ pub struct App {
     about_visible: bool,
     image_list: ImageList,
     arrows: Arrows,
+    pub crop: Crop,
 }
 
 impl App {
@@ -95,7 +101,7 @@ impl App {
                             self.size.x() / view.size.x(),
                             (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
                         );
-                        view.scale = min!(scaling, 1.0);
+                        view.scale = scaling;
                         view.position = self.size / 2.0;
                     }
                 }
@@ -135,16 +141,16 @@ impl App {
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
                                 VirtualKeyCode::A => {
-                                    move_image(&mut self.image_view, Vec2::new(-20.0, 0.0))
-                                }
-                                VirtualKeyCode::D => {
                                     move_image(&mut self.image_view, Vec2::new(20.0, 0.0))
                                 }
+                                VirtualKeyCode::D => {
+                                    move_image(&mut self.image_view, Vec2::new(-20.0, 0.0))
+                                }
                                 VirtualKeyCode::W => {
-                                    move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
+                                    move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
                                 }
                                 VirtualKeyCode::S => {
-                                    move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
+                                    move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
                                 }
 
                                 VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
@@ -221,12 +227,30 @@ impl App {
             };
         }
 
-        if ui.is_mouse_dragging(imgui::MouseButton::Left) {
-            if let Some(ref mut image) = self.image_view {
-                let delta = ui.mouse_drag_delta(imgui::MouseButton::Left);
-                let delta = Vec2::new(delta[0] as f32, delta[1] as f32);
-                image.position += delta;
-                ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
+        if let Some(ref mut image) = self.image_view {
+            if ui.is_mouse_dragging(imgui::MouseButton::Left) {
+                if self.crop.cropping {
+                    if let Some(ref mut inner) = self.crop.inner {
+                        let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        inner.current += delta;
+                        ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
+                    } else {
+                        let cursor_pos = self.mouse_position;
+                        let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        self.crop.inner = Some(crop::Inner {
+                            start: cursor_pos - delta,
+                            current: cursor_pos,
+                        });
+                        ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
+                    }
+                } else {
+                    let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                    image.position += delta;
+                    ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
+                }
+            } else if self.crop.cropping && self.crop.inner.is_some() {
+                self.crop.inner = None;
+                self.crop.cropping = false;
             }
         }
 
@@ -301,6 +325,29 @@ impl App {
                     .build(&ui)
                 {
                     exit = true;
+                }
+            });
+
+            ui.menu(im_str!("Edit"), self.image_view.is_some(), || {
+                if let Some(image) = self.image_view.as_mut() {
+                    if MenuItem::new(im_str!("Undo"))
+                        .shortcut(im_str!("Ctrl + Z"))
+                        .build(&ui)
+                    {}
+
+                    if MenuItem::new(im_str!("Redo"))
+                        .shortcut(im_str!("Ctrl + Y"))
+                        .build(&ui)
+                    {}
+
+                    ui.separator();
+
+                    if MenuItem::new(im_str!("Crop"))
+                        .shortcut(im_str!("Ctrl + X"))
+                        .build(&ui)
+                    {
+                        self.crop.cropping = true;
+                    }
                 }
             });
 
@@ -524,7 +571,7 @@ impl App {
         (exit, delay)
     }
 
-    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
         App {
             image_view: None,
             size: Vec2::new(size[0], size[1]),
@@ -537,6 +584,7 @@ impl App {
             about_visible: false,
             image_list: ImageList::new(),
             arrows: Arrows::new(),
+            crop: Crop::new(display),
         }
     }
 }

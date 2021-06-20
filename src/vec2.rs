@@ -14,6 +14,10 @@ impl<T: Copy> Vec2<T> {
         Self { inner: [x, y] }
     }
 
+    pub fn from_array(inner: [T; 2]) -> Self {
+        Self { inner }
+    }
+
     pub fn x(&self) -> T {
         self.inner[0]
     }
