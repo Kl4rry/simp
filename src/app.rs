@@ -3,7 +3,7 @@ use glium::{
     glutin::{
         event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
         event_loop::EventLoopProxy,
-        window::Fullscreen,
+        window::{Fullscreen, CursorIcon},
     },
 };
 use imgui::*;
@@ -24,6 +24,7 @@ pub mod clipboard;
 pub mod crop;
 pub mod extensions;
 use crop::Crop;
+pub mod cursor;
 
 macro_rules! min {
     ($x: expr) => ($x);
@@ -78,6 +79,7 @@ impl App {
         if let Some(event) = user_event {
             match event {
                 UserEvent::ImageLoaded(image, path, instant) => {
+                    cursor::set_cursor_icon(CursorIcon::default(), display);
                     let replace = if let Some(ref old) = self.image_view {
                         old.start.saturating_duration_since(*instant) == Duration::from_secs(0)
                     } else {
@@ -106,9 +108,11 @@ impl App {
                     }
                 }
                 UserEvent::ImageError(error) => {
+                    cursor::set_cursor_icon(CursorIcon::default(), display);
                     self.error_visible = true;
                     self.error_message = error.clone();
                 }
+                UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display), 
             };
         }
 
@@ -125,7 +129,7 @@ impl App {
                             MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                         };
 
-                        if self.crop.inner.is_some() {
+                        if self.crop.inner.is_none() {
                             zoom(image, scroll, self.mouse_position);
                         }
                     }
@@ -171,20 +175,26 @@ impl App {
                                         clipboard::copy(view);
                                     }
                                 }
-
                                 VirtualKeyCode::V if self.modifiers.ctrl() => {
                                     clipboard::paste(&self.proxy);
+                                }
+                                VirtualKeyCode::X if self.modifiers.ctrl() => {
+                                    self.crop.cropping = true;
                                 }
 
                                 VirtualKeyCode::Left => {
                                     if let Some(path) = self.image_list.previous() {
-                                        load_image(self.proxy.clone(), path);
+                                        if self.crop.inner.is_none() {
+                                            load_image(self.proxy.clone(), path);
+                                        }
                                     }
                                 }
 
                                 VirtualKeyCode::Right => {
                                     if let Some(path) = self.image_list.next() {
-                                        load_image(self.proxy.clone(), path);
+                                        if self.crop.inner.is_none() {
+                                            load_image(self.proxy.clone(), path);
+                                        }
                                     }
                                 }
 
@@ -215,14 +225,14 @@ impl App {
                 WindowEvent::ReceivedCharacter(c) => match c {
                     '+' => {
                         if let Some(image) = self.image_view.as_mut() {
-                            if self.crop.inner.is_some() {
+                            if self.crop.inner.is_none() {
                                 zoom(image, 1.0, self.size / 2.0);
                             }
                         }
                     }
                     '-' => {
                         if let Some(image) = self.image_view.as_mut() {
-                            if self.crop.inner.is_some() {
+                            if self.crop.inner.is_none() {
                                 zoom(image, -1.0, self.size / 2.0);
                             }
                         }
@@ -300,7 +310,11 @@ impl App {
             StyleVar::WindowBorderSize(0.0),
         ]);
 
-        let colors = ui.push_style_colors(&[(StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0])]);
+        let colors = ui.push_style_colors(&[
+            (StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0]),
+            (StyleColor::ButtonHovered, [0.078, 0.078, 0.078, 1.0]),
+            (StyleColor::ButtonActive, [0.078, 0.078, 0.078, 1.0]),
+        ]);
 
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
@@ -436,11 +450,6 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Resize"))
-                    .enabled(self.image_view.is_some())
-                    .build(&ui)
-                {}
-
                 if MenuItem::new(im_str!("Crop"))
                     .shortcut(im_str!("Ctrl + X"))
                     .enabled(self.image_view.is_some())
@@ -448,6 +457,11 @@ impl App {
                 {
                     self.crop.cropping = true;
                 }
+
+                if MenuItem::new(im_str!("Resize"))
+                    .enabled(self.image_view.is_some())
+                    .build(&ui)
+                {}
             });
 
             ui.menu(im_str!("Help"), true, || {

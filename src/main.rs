@@ -6,7 +6,7 @@ use glium::{
     glutin::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop, EventLoopProxy},
-        window::WindowBuilder,
+        window::{WindowBuilder, CursorIcon},
     },
     {Display, Surface},
 };
@@ -28,6 +28,7 @@ mod icon;
 pub enum UserEvent {
     ImageLoaded(Option<Vec<Frame>>, Option<PathBuf>, Instant),
     ImageError(String),
+    SetCursor(CursorIcon),
 }
 
 pub struct System {

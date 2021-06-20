@@ -1,4 +1,4 @@
-use glium::glutin::event_loop::EventLoopProxy;
+use glium::glutin::{event_loop::EventLoopProxy, window::CursorIcon};
 use image::io::Reader as ImageReader;
 use image::{
     codecs::gif::GifDecoder, AnimationDecoder, Delay, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
@@ -18,6 +18,7 @@ use super::{super::UserEvent, extensions::*};
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
+    let _ = proxy.send_event(UserEvent::SetCursor(CursorIcon::Progress));
     thread::spawn(move || {
         let start = Instant::now();
         let file = fs::read(&path_buf);
