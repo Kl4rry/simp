@@ -1,6 +1,6 @@
 use cgmath::{Matrix4, Ortho};
 use glium::{
-    backend::glutin::Display, implement_vertex, index::PrimitiveType, program::Program, uniform,
+    backend::glutin::Display, implement_vertex, index::PrimitiveType, program::Program, draw_parameters::DrawParameters, uniform,
     IndexBuffer, Surface, VertexBuffer,
 };
 
@@ -82,7 +82,10 @@ impl Crop {
                     &indices,
                     &self.shader,
                     &uniform! { matrix: raw },
-                    &Default::default(),
+                    &DrawParameters {
+                        line_width: Some(3.0),
+                        ..DrawParameters::default()
+                    },
                 )
                 .unwrap();
         }

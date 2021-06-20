@@ -117,7 +117,7 @@ impl ImageView {
 
         let sampler = SamplerBehavior {
             magnify_filter: MagnifySamplerFilter::Nearest,
-            minify_filter: MinifySamplerFilter::Linear,
+            minify_filter: MinifySamplerFilter::LinearMipmapNearest,
             ..Default::default()
         };
 
