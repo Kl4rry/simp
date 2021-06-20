@@ -125,7 +125,9 @@ impl App {
                             MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                         };
 
-                        zoom(image, scroll, self.mouse_position);
+                        if self.crop.inner.is_some() {
+                            zoom(image, scroll, self.mouse_position);
+                        }
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -213,12 +215,16 @@ impl App {
                 WindowEvent::ReceivedCharacter(c) => match c {
                     '+' => {
                         if let Some(image) = self.image_view.as_mut() {
-                            zoom(image, 1.0, self.size / 2.0)
+                            if self.crop.inner.is_some() {
+                                zoom(image, 1.0, self.size / 2.0);
+                            }
                         }
                     }
                     '-' => {
                         if let Some(image) = self.image_view.as_mut() {
-                            zoom(image, -1.0, self.size / 2.0)
+                            if self.crop.inner.is_some() {
+                                zoom(image, -1.0, self.size / 2.0);
+                            }
                         }
                     }
                     _ => (),

@@ -32,7 +32,7 @@ impl Background {
             Vertex::new(1.0, 1.0),
             Vertex::new(1.0, -1.0),
         ];
-        let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
+        let index_buffer = &[0, 1, 2, 2, 1, 3];
 
         Self {
             shader: Program::from_source(
@@ -43,7 +43,7 @@ impl Background {
             )
             .unwrap(),
             vertices: VertexBuffer::new(display, &shape).unwrap(),
-            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &index_buffer)
+            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer)
                 .unwrap(),
         }
     }

@@ -169,7 +169,7 @@ impl System {
                         image.render(&mut target, size);
                     }
 
-                    app.crop.render(&mut target, &display, size);
+                    app.crop.render(&mut target, size);
 
                     platform.prepare_render(&ui, gl_window.window());
                     let draw_data = ui.render();

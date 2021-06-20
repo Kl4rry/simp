@@ -4,6 +4,7 @@ use std::{
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
 };
 
+#[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Debug)]
 pub struct Vec2<T> {
     inner: [T; 2],
