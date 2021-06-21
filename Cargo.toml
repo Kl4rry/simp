@@ -29,6 +29,7 @@ tinyfiledialogs = "3.3.10"
 usvg = "0.14.1"
 webbrowser = "0.5.5"
 webp-animation = { version = "0.2.2", features = ["image"] }
+vec2 = { path = "./vec2" }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
@@ -39,3 +40,8 @@ OriginalFilename = "simp.exe"
 FileDescription = "Simp"
 LegalCopyright = "Copyright © 2021 Axel Kappel"
 ProductName = "Simp"
+
+[workspace]
+members = [
+    "vec2",
+]

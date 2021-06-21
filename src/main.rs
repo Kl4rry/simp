@@ -14,6 +14,7 @@ use image::Frame;
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use vec2::Vec2;
 use std::{env, panic, path::PathBuf, time::Instant};
 
 mod app;
@@ -21,8 +22,6 @@ mod clipboard;
 use app::App;
 mod background;
 use background::Background;
-mod vec2;
-use vec2::Vec2;
 mod icon;
 
 pub enum UserEvent {

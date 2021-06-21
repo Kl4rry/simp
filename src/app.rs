@@ -8,9 +8,10 @@ use glium::{
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
+use vec2::Vec2;
 use std::{process::Command, thread, time::Duration};
 
-use super::{vec2::Vec2, UserEvent};
+use super::UserEvent;
 
 pub mod image_view;
 use image_view::ImageView;
@@ -247,12 +248,12 @@ impl App {
             if ui.is_mouse_dragging(imgui::MouseButton::Left) {
                 if self.crop.cropping {
                     if let Some(ref mut inner) = self.crop.inner {
-                        let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
                         inner.current += delta;
                         ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                     } else {
                         let cursor_pos = self.mouse_position;
-                        let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
                         self.crop.inner = Some(crop::Inner {
                             start: cursor_pos - delta,
                             current: cursor_pos,
@@ -260,7 +261,7 @@ impl App {
                         ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                     }
                 } else {
-                    let delta = Vec2::from_array(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                    let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
                     image.position += delta;
                     ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                 }

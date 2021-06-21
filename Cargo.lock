@@ -2249,6 +2249,7 @@ dependencies = [
  "tiny-skia",
  "tinyfiledialogs",
  "usvg",
+ "vec2",
  "webbrowser",
  "webp-animation",
  "winapi 0.3.9",
@@ -2584,6 +2585,10 @@ name = "vcpkg"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "025ce40a007e1907e58d5bc1a594def78e5573bb0b1160bc389634e8f12e4faa"
+
+[[package]]
+name = "vec2"
+version = "0.1.0"
 
 [[package]]
 name = "version-compare"

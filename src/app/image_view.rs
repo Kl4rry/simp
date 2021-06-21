@@ -11,14 +11,13 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::Frame;
+use vec2::Vec2;
 use std::{
     borrow::Cow,
     mem::swap,
     path::PathBuf,
     time::{Duration, Instant},
 };
-
-use super::super::vec2::Vec2;
 
 macro_rules! max {
     ($x: expr) => ($x);
@@ -331,6 +330,10 @@ impl ImageView {
         } else {
             None
         }
+    }
+
+    pub fn crop(&mut self, display: &Display, rectangle: (Vec2<f32>, Vec2<f32>)) {
+
     }
 }
 
