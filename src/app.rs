@@ -328,7 +328,9 @@ impl App {
                 if MenuItem::new(im_str!("Save as"))
                     .shortcut(im_str!("Ctrl + S"))
                     .build(&ui)
-                {}
+                {
+                    unimplemented!();
+                }
 
                 ui.separator();
 
@@ -364,13 +366,17 @@ impl App {
                     .shortcut(im_str!("Ctrl + Z"))
                     .enabled(self.image_view.is_some())
                     .build(&ui)
-                {}
+                {
+                    unimplemented!();
+                }
 
                 if MenuItem::new(im_str!("Redo"))
                     .shortcut(im_str!("Ctrl + Y"))
                     .enabled(self.image_view.is_some())
                     .build(&ui)
-                {}
+                {
+                    unimplemented!();
+                }
 
                 ui.separator();
 

@@ -20,6 +20,18 @@ void main() {
 	start_inv.y = size.y - start.y;
 	end_inv.y = size.y - end.y;
 
+	if(start_inv.y < end_inv.y) {
+		float temp = start_inv.y;
+		start_inv.y = end_inv.y;
+		end_inv.y = temp;
+	}
+
+	if(start_inv.x > end_inv.x) {
+		float temp = start_inv.x;
+		start_inv.x = end_inv.x;
+		end_inv.x = temp;
+	}
+
 	vec2 start_outer = start_inv + vec2(-2.0, 2.0);
 	vec2 end_outer = end_inv + vec2(2.0, -2.0);
 
