@@ -12,9 +12,10 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use user_event::UserEvent;
 use usvg::{fontdb::Database, FitTo, Options, Tree};
 
-use super::{super::UserEvent, extensions::*};
+use super::extensions::*;
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();

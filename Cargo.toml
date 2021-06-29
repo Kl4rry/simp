@@ -1,10 +1,12 @@
 [package]
 name = "simp"
 version = "1.5.3"
+authors = ["Axel Kappel <axel.e.kappel@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
 description = "The (s)imple (im)age (p)rogram"
 repository = "https://github.com/Kl4rry/simp"
+readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -30,6 +32,7 @@ usvg = "0.14.1"
 webbrowser = "0.5.5"
 webp-animation = { version = "0.2.2", features = ["image"] }
 vec2 = { path = "./vec2" }
+user_event = { path = "./user_event" }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
@@ -44,4 +47,5 @@ ProductName = "Simp"
 [workspace]
 members = [
     "vec2",
+    "user_event"
 ]

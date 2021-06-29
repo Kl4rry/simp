@@ -1,9 +1,8 @@
 use glium::{
     backend::glutin::Display, draw_parameters::DrawParameters, implement_vertex,
-    index::PrimitiveType, program::Program, uniform, IndexBuffer, Surface, VertexBuffer, Blend,
+    index::PrimitiveType, program::Program, uniform, Blend, IndexBuffer, Surface, VertexBuffer,
 };
-
-use super::super::Vec2;
+use vec2::Vec2;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -65,7 +64,7 @@ impl Crop {
     pub fn start() {}
 
     pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
-        if let Some(ref inner) = self.inner { 
+        if let Some(ref inner) = self.inner {
             target
                 .draw(
                     &self.vertices,
