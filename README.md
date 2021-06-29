@@ -42,6 +42,16 @@ The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simpl
 
 <sup>1</sup> Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 
+# System dependencies
+System dependencies are only required at compile time.
+## Linux
+* libcairo2-dev
+* libpango1.0-dev
+* libgtk-3-dev
+* libxcb-render0-dev
+* libxcb-shape0-dev
+* libxcb-xfixes0-dev
+
 # Installation
 ## Cargo
 ```shell
