@@ -332,7 +332,7 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&mut self, display: &Display, rectangle: (Vec2<f32>, Vec2<f32>)) {
+    pub fn crop(&mut self, _display: &Display, _rectangle: (Vec2<f32>, Vec2<f32>)) {
 
     }
 }
