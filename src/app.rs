@@ -59,10 +59,10 @@ pub struct App {
 impl App {
     pub fn update(
         &mut self,
-        ui: &mut Ui,
+        ui: &mut Ui<'_>,
         display: &glium::Display,
         _renderer: &mut Renderer,
-        window_event: Option<&WindowEvent>,
+        window_event: Option<&WindowEvent<'_>>,
         user_event: Option<&mut UserEvent>,
     ) -> (bool, Option<Duration>) {
         let mut exit = false;
