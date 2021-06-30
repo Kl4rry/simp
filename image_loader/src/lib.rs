@@ -4,8 +4,8 @@ use image::{
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use std::{io::Cursor, time::Duration};
 use usvg::{fontdb::Database, FitTo, Options, Tree};
+use std::{io::Cursor, time::Duration};
 
 #[inline]
 pub fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
