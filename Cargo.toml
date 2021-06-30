@@ -15,24 +15,17 @@ cgmath = "0.18.0"
 clipboard = "0.5"
 glium = "0.29"
 image = "0.23.14"
-imagepipe = "0.4.0"
+image_loader = { path = "./image_loader" }
 imgui = "0.7.0"
 imgui-glium-renderer = "0.7.0"
 imgui-winit-support = "0.7.0"
 lazy_static = "1.4.0"
-libwebp = "0.1.2"
 msgbox = "0.6.0"
-psd = "0.1.9"
-rawloader = "0.37.0"
-resvg = "0.14.1"
 timing = "0.2.1"
-tiny-skia = "0.5.1"
 tinyfiledialogs = "3.3.10"
-usvg = "0.14.1"
-webbrowser = "0.5.5"
-webp-animation = { version = "0.2.2", features = ["image"] }
-vec2 = { path = "./vec2" }
 user_event = { path = "./user_event" }
+vec2 = { path = "./vec2" }
+webbrowser = "0.5.5"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
@@ -46,6 +39,7 @@ ProductName = "Simp"
 
 [workspace]
 members = [
+    "image_loader",
+    "user_event",
     "vec2",
-    "user_event"
 ]

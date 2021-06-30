@@ -1236,6 +1236,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "image_loader"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "imagepipe",
+ "libwebp",
+ "psd",
+ "rawloader",
+ "resvg",
+ "tiny-skia",
+ "usvg",
+ "webp-animation",
+]
+
+[[package]]
 name = "imagepipe"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2235,24 +2250,17 @@ dependencies = [
  "clipboard",
  "glium",
  "image",
- "imagepipe",
+ "image_loader",
  "imgui",
  "imgui-glium-renderer",
  "imgui-winit-support",
  "lazy_static",
- "libwebp",
  "msgbox",
- "psd",
- "rawloader",
- "resvg",
  "timing",
- "tiny-skia",
  "tinyfiledialogs",
  "user_event",
- "usvg",
  "vec2",
  "webbrowser",
- "webp-animation",
  "winapi 0.3.9",
  "winres",
 ]
