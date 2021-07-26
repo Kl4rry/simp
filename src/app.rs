@@ -3,15 +3,14 @@ use glium::{
     glutin::{
         event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
         event_loop::EventLoopProxy,
-        window::{Fullscreen, CursorIcon},
+        window::{CursorIcon, Fullscreen},
     },
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use vec2::Vec2;
 use std::{process::Command, thread, time::Duration};
-
-use super::UserEvent;
+use user_event::UserEvent;
+use vec2::Vec2;
 
 pub mod image_view;
 use image_view::ImageView;
@@ -60,10 +59,10 @@ pub struct App {
 impl App {
     pub fn update(
         &mut self,
-        ui: &mut Ui,
+        ui: &mut Ui<'_>,
         display: &glium::Display,
         _renderer: &mut Renderer,
-        window_event: Option<&WindowEvent>,
+        window_event: Option<&WindowEvent<'_>>,
         user_event: Option<&mut UserEvent>,
     ) -> (bool, Option<Duration>) {
         let mut exit = false;
@@ -113,7 +112,7 @@ impl App {
                     self.error_visible = true;
                     self.error_message = error.clone();
                 }
-                UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display), 
+                UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             };
         }
 

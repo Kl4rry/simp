@@ -1,0 +1,16 @@
+[package]
+name = "image_loader"
+version = "0.1.0"
+edition = "2018"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image = "0.23.14"
+imagepipe = "0.4.0"
+libwebp = "0.1.2"
+psd = "0.1.9"
+rawloader = "0.37.0"
+resvg = "0.14.1"
+tiny-skia = "0.5.1"
+usvg = "0.14.1"
+webp-animation = { version = "0.2.2", features = ["image"] }

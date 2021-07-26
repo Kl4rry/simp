@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
 use glium::{
@@ -6,16 +7,16 @@ use glium::{
     glutin::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop, EventLoopProxy},
-        window::{WindowBuilder, CursorIcon},
+        window::WindowBuilder,
     },
     {Display, Surface},
 };
-use image::Frame;
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use std::{env, panic, time::Instant};
+use user_event::UserEvent;
 use vec2::Vec2;
-use std::{env, panic, path::PathBuf, time::Instant};
 
 mod app;
 mod clipboard;
@@ -23,12 +24,6 @@ use app::App;
 mod background;
 use background::Background;
 mod icon;
-
-pub enum UserEvent {
-    ImageLoaded(Option<Vec<Frame>>, Option<PathBuf>, Instant),
-    ImageError(String),
-    SetCursor(CursorIcon),
-}
 
 pub struct System {
     pub event_loop: EventLoop<UserEvent>,

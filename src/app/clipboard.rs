@@ -1,8 +1,8 @@
 use glium::glutin::event_loop::EventLoopProxy;
 use image::{Frame, ImageBuffer, Rgba};
 use std::{borrow::Cow, time::Instant};
+use user_event::UserEvent;
 
-use super::super::UserEvent;
 use super::image_view::ImageView;
 
 pub fn copy(view: &ImageView) {

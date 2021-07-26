@@ -20,7 +20,7 @@ impl Arrows {
         }
     }
 
-    pub fn build(&mut self, ui: &Ui) -> (Action, Option<Duration>) {
+    pub fn build(&mut self, ui: &Ui<'_>) -> (Action, Option<Duration>) {
         let mut action = Action::None;
         let mut delay = None;
         let now = Instant::now();

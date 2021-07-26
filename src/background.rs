@@ -42,8 +42,7 @@ impl Background {
             )
             .unwrap(),
             vertices: VertexBuffer::new(display, &shape).unwrap(),
-            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer)
-                .unwrap(),
+            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer).unwrap(),
         }
     }
 

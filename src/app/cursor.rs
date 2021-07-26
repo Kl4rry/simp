@@ -1,5 +1,4 @@
-
-use glium::{glutin::window::CursorIcon, backend::glutin::Display};
+use glium::{backend::glutin::Display, glutin::window::CursorIcon};
 
 pub fn set_cursor_icon(icon: CursorIcon, display: &Display) {
     let window_context = display.gl_window();
