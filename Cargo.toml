@@ -31,6 +31,9 @@ webbrowser = "0.5.5"
 webp-animation = { version = "0.2.2", features = ["image"] }
 vec2 = { path = "./vec2" }
 
+[target.'cfg(windows)'.dependencies]
+native-windows-gui = "1.0.12"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
 winapi = "0.3.9"

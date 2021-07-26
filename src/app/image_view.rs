@@ -19,16 +19,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-macro_rules! max {
-    ($x: expr) => ($x);
-    ($x: expr, $($z: expr),+) => {{
-        let y = max!($($z),*);
-        if $x > y {
-            $x
-        } else {
-            y
-        }
-    }}
+#[inline(always)]
+fn max<T: PartialOrd>(a: T, b: T) -> T {
+    if a > b {
+        a 
+    } else {
+        b
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -233,8 +230,8 @@ impl ImageView {
 
         for outer in &vectors {
             for inner in &vectors {
-                size.set_x(max!((inner.x - outer.x).abs(), size.x()));
-                size.set_y(max!((inner.y - outer.y).abs(), size.y()));
+                size.set_x(max((inner.x - outer.x).abs(), size.x()));
+                size.set_y(max((inner.y - outer.y).abs(), size.y()));
             }
         }
 

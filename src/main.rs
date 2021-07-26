@@ -44,6 +44,8 @@ pub struct System {
 
 impl System {
     pub fn new() -> Self {
+        #[cfg(target_os = "windows")]
+        native_windows_gui::enable_visual_styles();
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new().with_vsync(true);
