@@ -22,7 +22,7 @@ use vec2::Vec2;
 #[inline(always)]
 fn max<T: PartialOrd>(a: T, b: T) -> T {
     if a > b {
-        a 
+        a
     } else {
         b
     }
