@@ -554,35 +554,6 @@ impl App {
         c.pop(&ui);
         s.pop(&ui);
 
-        /*Window::new(im_str!("Tools"))
-        .position([self.size.x() - 120.0, TOP_BAR_SIZE], Condition::Always)
-        .size([120.0, 250.0], Condition::Always)
-        .resizable(false)
-        .movable(false)
-        .focus_on_appearing(false)
-        .always_use_window_padding(true)
-        .build(ui, || {
-            if ui.button(im_str!("Rotate Right"), [100.0, 40.0]) {
-                rotate_image(&mut self.image_view, 90.0);
-            }
-
-            if ui.button(im_str!("Rotate Left"), [100.0, 40.0]) {
-                rotate_image(&mut self.image_view, -90.0);
-            }
-
-            if ui.button(im_str!("Flip Horizontal"), [100.0, 40.0]) {
-                if let Some(image) = self.image_view.as_mut() {
-                    image.flip_horizontal(display);
-                }
-            }
-
-            if ui.button(im_str!("Flip Vertical"), [100.0, 40.0]) {
-                if let Some(image) = self.image_view.as_mut() {
-                    image.flip_vertical(display);
-                }
-            }
-        });*/
-
         styles.pop(&ui);
         colors.pop(&ui);
         (exit, delay)
