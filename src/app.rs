@@ -530,7 +530,13 @@ impl App {
                     }
 
                     ui.same_line_with_spacing(0.0, 10.0);
-                    ui.text(&self.current_filename);
+                    if self.current_filename.len() > 20 {
+                        let mut text = self.current_filename.chars().take(20).collect::<String>();
+                        text.push_str("...");
+                        ui.text(&text);
+                    } else {
+                        ui.text(&self.current_filename);
+                    }
 
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
