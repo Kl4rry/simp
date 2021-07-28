@@ -45,12 +45,9 @@ pub struct App {
     pub image_view: Option<ImageView>,
     size: Vec2<f32>,
     proxy: EventLoopProxy<UserEvent>,
-    error_visible: bool,
-    error_message: String,
     modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
     current_filename: String,
-    about_visible: bool,
     image_list: ImageList,
     arrows: Arrows,
     pub crop: Crop,
@@ -109,8 +106,7 @@ impl App {
                 }
                 UserEvent::ImageError(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
-                    self.error_visible = true;
-                    self.error_message = error.clone();
+                    msgbox::create("Error", &error, msgbox::IconType::Error).unwrap();
                 }
                 UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             };
@@ -482,7 +478,14 @@ impl App {
                 ui.separator();
 
                 if MenuItem::new(im_str!("About")).build(&ui) {
-                    self.about_visible = true;
+                    let about = format!(
+                        "{}\n{}\n{}\n{}",
+                        env!("CARGO_PKG_NAME"),
+                        env!("CARGO_PKG_DESCRIPTION"),
+                        &format!("Version: {}", env!("CARGO_PKG_VERSION")),
+                        &format!("Commit: {}", env!("GIT_HASH")),
+                    );
+                    msgbox::create("About", &about, msgbox::IconType::Info).unwrap();
                 }
             });
         });
@@ -574,62 +577,6 @@ impl App {
             }
         });*/
 
-        if self.error_visible {
-            let mut exit = false;
-            let message = self.error_message.clone();
-            Window::new(im_str!("Error"))
-                .size([350.0, 100.0], Condition::Always)
-                .position_pivot([0.5, 0.5])
-                .position(
-                    [self.size.x() / 2.0, self.size.y() / 2.0],
-                    Condition::Appearing,
-                )
-                .resizable(true)
-                .focus_on_appearing(false)
-                .always_use_window_padding(true)
-                .focused(true)
-                .opened(&mut self.error_visible)
-                .build(ui, || {
-                    ui.text(message);
-                    if ui.button(im_str!("Ok"), [50.0, 30.0]) {
-                        exit = true;
-                    }
-                });
-
-            if exit {
-                self.error_visible = false;
-            }
-        }
-
-        if self.about_visible {
-            let mut exit = false;
-            Window::new(im_str!("About"))
-                .size([380.0, 170.0], Condition::Always)
-                .position_pivot([0.5, 0.5])
-                .position(
-                    [self.size.x() / 2.0, self.size.y() / 2.0],
-                    Condition::Appearing,
-                )
-                .resizable(false)
-                .focus_on_appearing(false)
-                .always_use_window_padding(true)
-                .focused(true)
-                .opened(&mut self.about_visible)
-                .build(ui, || {
-                    ui.text(env!("CARGO_PKG_NAME"));
-                    ui.text(env!("CARGO_PKG_DESCRIPTION"));
-                    ui.text(env!("CARGO_PKG_VERSION"));
-                    ui.text(&format!("Commit: {}", env!("GIT_HASH")));
-                    if ui.button(im_str!("Ok"), [50.0, 30.0]) {
-                        exit = true;
-                    }
-                });
-
-            if exit {
-                self.about_visible = false;
-            }
-        }
-
         styles.pop(&ui);
         colors.pop(&ui);
         (exit, delay)
@@ -640,12 +587,9 @@ impl App {
             image_view: None,
             size: Vec2::new(size[0], size[1]),
             proxy,
-            error_visible: false,
-            error_message: String::new(),
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
             current_filename: String::new(),
-            about_visible: false,
             image_list: ImageList::new(),
             arrows: Arrows::new(),
             crop: Crop::new(display),
