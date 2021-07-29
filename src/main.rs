@@ -11,6 +11,7 @@ use glium::{
     },
     {Display, Surface},
 };
+use raw_window_handle::HasRawWindowHandle;
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
@@ -47,11 +48,20 @@ impl System {
         let builder = WindowBuilder::new()
             .with_title(String::from("Simp"))
             .with_visible(false)
+            .with_transparent(true)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
             .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64))
             .with_window_icon(Some(icon::get_icon()));
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
+        
+        #[cfg(target_os = "windows")]
+        {
+            let window_context = display.gl_window();
+            let window = window_context.window();
+            let raw = window.raw_window_handle();
+            acrylic::set_acrylic(&raw);
+        }
 
         let app = App::new(proxy.clone(), [1100f32, 720f32], &display);
 
@@ -156,11 +166,11 @@ impl System {
 
                     let gl_window = display.gl_window();
                     let mut target = display.draw();
-                    target.clear_color_srgb(0.156, 0.156, 0.156, 1.0);
+                    target.clear_color_srgb(0.0, 0.0, 0.0, 0.0);
 
                     let dimensions = display.get_framebuffer_dimensions();
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
-                    background.render(&mut target, size);
+                    //background.render(&mut target, size);
 
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);

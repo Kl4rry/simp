@@ -1,6 +1,6 @@
 use glium::{
-    backend::glutin::Display, implement_vertex, index::PrimitiveType, program::Program, uniform,
-    IndexBuffer, Surface, VertexBuffer,
+    backend::glutin::Display, draw_parameters::DrawParameters, implement_vertex,
+    index::PrimitiveType, program::Program, uniform, Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use vec2::Vec2;
 
@@ -53,7 +53,10 @@ impl Background {
                 &self.indices,
                 &self.shader,
                 &uniform! { size: *size },
-                &Default::default(),
+                &DrawParameters {
+                    blend: Blend::alpha_blending(),
+                    ..DrawParameters::default()
+                },
             )
             .unwrap();
     }

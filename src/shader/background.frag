@@ -6,8 +6,8 @@ uniform vec2 size;
 const float top_offset = 25.0;
 
 void main() {
-	vec4 color1 = vec4(0.03, 0.03, 0.03, 1.0);
-	vec4 color2 = vec4(0.02, 0.02, 0.02, 1.0);
+	vec4 color1 = vec4(0.03, 0.03, 0.03, 0.5);
+	vec4 color2 = vec4(0.02, 0.02, 0.02, 0.5);
 
 	float checkSize = 10.0;
 	float x = floor(gl_FragCoord[0] / checkSize);

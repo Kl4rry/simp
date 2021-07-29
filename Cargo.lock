@@ -9,6 +9,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9fe5e32de01730eb1f6b7f5b51c17e03e2325bf40a74f754f04f130043affff"
 
 [[package]]
+name = "acrylic"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "raw-window-handle",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2284,6 +2293,7 @@ dependencies = [
 name = "simp"
 version = "1.5.3"
 dependencies = [
+ "acrylic",
  "arboard",
  "cgmath",
  "clipboard",
@@ -2296,6 +2306,7 @@ dependencies = [
  "lazy_static",
  "msgbox",
  "native-windows-gui",
+ "raw-window-handle",
  "timing",
  "tinyfiledialogs",
  "user_event",

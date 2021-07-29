@@ -26,6 +26,8 @@ tinyfiledialogs = "3.3.10"
 user_event = { path = "./user_event" }
 vec2 = { path = "./vec2" }
 webbrowser = "0.5.5"
+raw-window-handle = "0.3.3"
+acrylic = { path = "./acrylic" }
 
 [target.'cfg(windows)'.dependencies]
 native-windows-gui = "1.0.12"
@@ -45,4 +47,5 @@ members = [
     "image_loader",
     "user_event",
     "vec2",
+    "acrylic",
 ]
