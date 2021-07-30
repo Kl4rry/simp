@@ -23,7 +23,7 @@ lazy_static = "1.4.0"
 msgbox = "0.6.0"
 timing = "0.2.1"
 tinyfiledialogs = "3.3.10"
-user_event = { path = "./user_event" }
+util = { path = "./util" }
 vec2 = { path = "./vec2" }
 webbrowser = "0.5.5"
 
@@ -43,6 +43,6 @@ ProductName = "Simp"
 [workspace]
 members = [
     "image_loader",
-    "user_event",
+    "util",
     "vec2",
 ]

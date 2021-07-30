@@ -1247,6 +1247,7 @@ dependencies = [
  "resvg",
  "tiny-skia",
  "usvg",
+ "util",
  "webp-animation",
 ]
 
@@ -2298,7 +2299,7 @@ dependencies = [
  "native-windows-gui",
  "timing",
  "tinyfiledialogs",
- "user_event",
+ "util",
  "vec2",
  "webbrowser",
  "winapi 0.3.9",
@@ -2613,14 +2614,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 
 [[package]]
-name = "user_event"
-version = "0.1.0"
-dependencies = [
- "glium",
- "image",
-]
-
-[[package]]
 name = "usvg"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2645,6 +2638,14 @@ dependencies = [
  "unicode-script",
  "unicode-vo",
  "xmlwriter",
+]
+
+[[package]]
+name = "util"
+version = "0.1.0"
+dependencies = [
+ "glium",
+ "image",
 ]
 
 [[package]]

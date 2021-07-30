@@ -10,13 +10,14 @@ use glium::{
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
-use image::Frame;
 use std::{
     borrow::Cow,
     mem::swap,
     path::PathBuf,
     time::{Duration, Instant},
+    //convert::From,
 };
+use util::Image;
 use vec2::Vec2;
 
 #[inline(always)]
@@ -52,9 +53,11 @@ pub struct ImageView {
     pub rotation: f32,
     pub path: Option<PathBuf>,
     pub start: Instant,
-    pub frames: Vec<Frame>,
+    pub frames: Vec<Image>,
     pub last_frame: Instant,
     pub index: usize,
+    horizontal_flip: bool,
+    vertical_flip: bool,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -66,7 +69,7 @@ pub struct ImageView {
 impl ImageView {
     pub fn new(
         display: &Display,
-        frames: Vec<Frame>,
+        frames: Vec<Image>,
         path: Option<PathBuf>,
         start: Instant,
     ) -> Self {
@@ -98,7 +101,7 @@ impl ImageView {
                 texture_cords.3.y(),
             ),
         ];
-        let index_buffer: [u8; 6] = [0, 1, 2, 2, 1, 3];
+        let index_buffer = &[0, 1, 2, 2, 1, 3];
 
         let (width, height) = image.dimensions();
         let data = Cow::Borrowed(&image.as_raw()[..]);
@@ -128,6 +131,8 @@ impl ImageView {
             last_frame: Instant::now(),
             index: 0,
             start,
+            horizontal_flip: false,
+            vertical_flip: false,
             shader: Program::from_source(
                 display,
                 include_str!("../shader/image.vert"),
@@ -136,8 +141,7 @@ impl ImageView {
             )
             .unwrap(),
             vertices: VertexBuffer::new(display, &shape).unwrap(),
-            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &index_buffer)
-                .unwrap(),
+            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer).unwrap(),
             texture,
             texture_cords,
             sampler,
@@ -241,6 +245,7 @@ impl ImageView {
     }
 
     pub fn flip_horizontal(&mut self, display: &Display) {
+        self.horizontal_flip = !self.horizontal_flip;
         swap(&mut self.texture_cords.0, &mut self.texture_cords.2);
         swap(&mut self.texture_cords.1, &mut self.texture_cords.3);
 
@@ -270,6 +275,7 @@ impl ImageView {
     }
 
     pub fn flip_vertical(&mut self, display: &Display) {
+        self.vertical_flip = !self.vertical_flip;
         swap(&mut self.texture_cords.0, &mut self.texture_cords.1);
         swap(&mut self.texture_cords.2, &mut self.texture_cords.3);
 
@@ -302,8 +308,7 @@ impl ImageView {
         if self.frames.len() > 1 {
             let now = Instant::now();
             let time_passed = now.duration_since(self.last_frame);
-            let (num, deno) = self.frames[self.index].delay().numer_denom_ms();
-            let delay = Duration::from_millis((num / deno) as u64);
+            let delay = self.frames[self.index].delay;
 
             if time_passed > delay {
                 self.index += 1;
@@ -333,7 +338,9 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&mut self, _display: &Display, _rectangle: (Vec2<f32>, Vec2<f32>)) {}
+    pub fn crop(&mut self, rectangle: (Vec2<f32>, Vec2<f32>)) {
+        println!("crop: {:?}", rectangle);
+    }
 }
 
 fn degrees_to_radians(deg: f32) -> f32 {

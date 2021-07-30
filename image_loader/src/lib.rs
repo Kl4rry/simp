@@ -1,15 +1,35 @@
 use image::io::Reader as ImageReader;
 use image::{
-    codecs::gif::GifDecoder, AnimationDecoder, Delay, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
+    codecs::gif::GifDecoder, AnimationDecoder, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
 use std::{io::Cursor, time::Duration};
 use usvg::{fontdb::Database, FitTo, Options, Tree};
+use util::Image;
 
-#[inline]
-pub fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
-    let format = match image::guess_format(&bytes) {
+pub fn images_into_frames<T>(frames: T) -> Vec<Image>
+where
+    T: IntoIterator<Item = Frame>,
+{
+    frames.into_iter().map(|frame| frame.into()).collect()
+}
+
+pub fn decode_images<T, E>(frames: T) -> Vec<Image>
+where
+    T: IntoIterator<Item = Result<Frame, E>>,
+{
+    frames
+        .into_iter()
+        .filter_map(|result| match result {
+            Ok(frame) => Some(frame.into()),
+            Err(_) => None,
+        })
+        .collect()
+}
+
+pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
+    let format = match image::guess_format(bytes) {
         Ok(format) => format,
         Err(_) => return None,
     };
@@ -17,54 +37,49 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Frame>> {
     match format {
         ImageFormat::Gif => {
             if let Ok(decoder) = GifDecoder::new(bytes) {
-                let frames = decoder.into_frames().collect_frames();
-                if let Ok(frames) = frames {
-                    return Some(frames);
-                }
+                return Some(decode_images(decoder.into_frames()));
             }
             None
         }
         ImageFormat::WebP => {
             if let Ok(decoder) = webp_animation::Decoder::new(bytes) {
                 let mut time = 0;
-                let frames: Vec<Frame> = decoder
+                let frames: Vec<Image> = decoder
                     .into_iter()
                     .filter_map(|frame| {
                         let timestamp = frame.timestamp();
                         let difference = timestamp - time;
 
-                        if let Ok(image) = frame.into_image() {
-                            time = timestamp;
-                            let delay = Delay::from_saturating_duration(Duration::from_millis(
-                                difference as u64,
-                            ));
-                            Some(Frame::from_parts(image, 0, 0, delay))
-                        } else {
-                            None
+                        match frame.into_image() {
+                            Ok(image) => {
+                                time = timestamp;
+                                let delay = Duration::from_millis(difference as u64);
+                                Some(Image::with_delay(image, delay))
+                            }
+                            Err(_) => None,
                         }
                     })
                     .collect();
 
-                if frames.is_empty() {
+                if !frames.is_empty() {
                     return Some(frames);
                 }
             }
             if let Ok((width, height, buf)) = libwebp::WebPDecodeRGBA(bytes) {
-                return Some(vec![Frame::new(
-                    ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, buf.to_vec()).unwrap(),
+                return Some(vec![Image::new(
+                    ImageBuffer::from_raw(width, height, buf.to_vec()).unwrap(),
                 )]);
             }
             None
         }
         format => match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-            Ok(image) => Some(vec![Frame::new(image.into_rgba8())]),
+            Ok(image) => Some(vec![Image::new(image.into_rgba8())]),
             Err(_) => None,
         },
     }
 }
 
-#[inline]
-pub fn load_svg(bytes: &[u8]) -> Option<Vec<Frame>> {
+pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let mut fontdb = Database::new();
     fontdb.load_system_fonts();
     let options = Options {
@@ -72,7 +87,7 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Frame>> {
         ..Options::default()
     };
 
-    let tree = match Tree::from_data(&bytes, &options) {
+    let tree = match Tree::from_data(bytes, &options) {
         Ok(tree) => tree,
         Err(_) => return None,
     };
@@ -86,13 +101,12 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Frame>> {
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(vec![Frame::new(
+    Some(vec![Image::new(
         ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap(),
     )])
 }
 
-#[inline]
-pub fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
+pub fn load_psd(bytes: &[u8]) -> Option<Vec<Image>> {
     let psd = match Psd::from_bytes(bytes) {
         Ok(psd) => psd,
         Err(_) => return None,
@@ -100,13 +114,12 @@ pub fn load_psd(bytes: &[u8]) -> Option<Vec<Frame>> {
 
     let raw = psd.rgba();
 
-    Some(vec![Frame::new(
+    Some(vec![Image::new(
         ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap(),
     )])
 }
 
-#[inline]
-pub fn load_raw(bytes: &[u8]) -> Option<Vec<Frame>> {
+pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
     let raw = match rawloader::decode(&mut Cursor::new(bytes)) {
         Ok(raw) => raw,
         Err(_) => return None,
@@ -140,5 +153,5 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Frame>> {
 
     let dyn_img = image::DynamicImage::ImageRgb8(image);
     let rgba_image: ImageBuffer<Rgba<u8>, Vec<u8>> = dyn_img.into_rgba8();
-    Some(vec![Frame::new(rgba_image)])
+    Some(vec![Image::new(rgba_image)])
 }

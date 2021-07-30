@@ -9,7 +9,7 @@ use glium::{
 use imgui::*;
 use imgui_glium_renderer::Renderer;
 use std::{process::Command, thread, time::Duration};
-use user_event::UserEvent;
+use util::UserEvent;
 use vec2::Vec2;
 
 pub mod image_view;
@@ -26,16 +26,13 @@ pub mod extensions;
 use crop::Crop;
 pub mod cursor;
 
-macro_rules! min {
-    ($x: expr) => ($x);
-    ($x: expr, $($z: expr),+) => {{
-        let y = min!($($z),*);
-        if $x < y {
-            $x
-        } else {
-            y
-        }
-    }}
+#[inline(always)]
+fn min<T: PartialOrd>(a: T, b: T) -> T {
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 const TOP_BAR_SIZE: f32 = 25.0;
@@ -75,7 +72,7 @@ impl App {
 
         if let Some(event) = user_event {
             match event {
-                UserEvent::ImageLoaded(image, path, instant) => {
+                UserEvent::ImageLoaded(images, path, instant) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
                     let replace = if let Some(ref old) = self.image_view {
                         old.start.saturating_duration_since(*instant) == Duration::from_secs(0)
@@ -83,10 +80,10 @@ impl App {
                         true
                     };
 
-                    let image = image.take().unwrap();
+                    let images = images.take().unwrap();
                     if replace {
                         self.image_view =
-                            Some(ImageView::new(display, image, path.clone(), *instant));
+                            Some(ImageView::new(display, images, path.clone(), *instant));
                         let view = self.image_view.as_mut().unwrap();
 
                         self.current_filename = if let Some(path) = path {
@@ -96,9 +93,9 @@ impl App {
                             String::new()
                         };
 
-                        let scaling = min!(
+                        let scaling = min(
                             self.size.x() / view.size.x(),
-                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
+                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y(),
                         );
                         view.scale = scaling;
                         view.position = self.size / 2.0;
@@ -106,7 +103,7 @@ impl App {
                 }
                 UserEvent::ImageError(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
-                    msgbox::create("Error", &error, msgbox::IconType::Error).unwrap();
+                    msgbox::create("Error", error, msgbox::IconType::Error).unwrap();
                 }
                 UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             };
@@ -260,9 +257,22 @@ impl App {
                     image.position += delta;
                     ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                 }
-            } else if self.crop.cropping && self.crop.inner.is_some() {
-                self.crop.inner = None;
-                self.crop.cropping = false;
+            } else if self.crop.cropping {
+                if let Some(ref inner) = self.crop.inner {
+                    let mut size = inner.current - inner.start;
+                    *size.mut_x() = size.x().abs();
+                    *size.mut_y() = size.y().abs();
+
+                    let start = Vec2::new(
+                        min(inner.start.x(), inner.current.x()),
+                        min(inner.start.y(), inner.current.y()),
+                    );
+
+                    image.crop((start, size));
+
+                    self.crop.inner = None;
+                    self.crop.cropping = false;
+                }
             }
         }
 
@@ -316,14 +326,14 @@ impl App {
             ui.menu(im_str!("File"), true, || {
                 if MenuItem::new(im_str!("Open"))
                     .shortcut(im_str!("Ctrl + O"))
-                    .build(&ui)
+                    .build(ui)
                 {
                     open_load_image(self.proxy.clone());
                 }
 
                 if MenuItem::new(im_str!("Save as"))
                     .shortcut(im_str!("Ctrl + S"))
-                    .build(&ui)
+                    .build(ui)
                 {
                     unimplemented!();
                 }
@@ -332,7 +342,7 @@ impl App {
 
                 if MenuItem::new(im_str!("New Window"))
                     .shortcut(im_str!("Ctrl + N"))
-                    .build(&ui)
+                    .build(ui)
                 {
                     new_window();
                 }
@@ -340,7 +350,7 @@ impl App {
                 if MenuItem::new(im_str!("Refresh"))
                     .shortcut(im_str!("R"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     if let Some(ref path) = self.image_view.as_ref().unwrap().path {
                         load_image(self.proxy.clone(), path);
@@ -351,7 +361,7 @@ impl App {
 
                 if MenuItem::new(im_str!("Exit"))
                     .shortcut(im_str!("Ctrl + W"))
-                    .build(&ui)
+                    .build(ui)
                 {
                     exit = true;
                 }
@@ -361,7 +371,7 @@ impl App {
                 if MenuItem::new(im_str!("Undo"))
                     .shortcut(im_str!("Ctrl + Z"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     unimplemented!();
                 }
@@ -369,7 +379,7 @@ impl App {
                 if MenuItem::new(im_str!("Redo"))
                     .shortcut(im_str!("Ctrl + Y"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     unimplemented!();
                 }
@@ -379,7 +389,7 @@ impl App {
                 if MenuItem::new(im_str!("Copy"))
                     .shortcut(im_str!("Ctrl + C"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_ref().unwrap();
                     clipboard::copy(image);
@@ -387,7 +397,7 @@ impl App {
 
                 if MenuItem::new(im_str!("Paste"))
                     .shortcut(im_str!("Ctrl + V"))
-                    .build(&ui)
+                    .build(ui)
                 {
                     clipboard::paste(&self.proxy);
                 }
@@ -397,7 +407,7 @@ impl App {
                 if MenuItem::new(im_str!("Rotate Left"))
                     .shortcut(im_str!("Q"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     image.rotation += 90.0;
@@ -406,7 +416,7 @@ impl App {
                 if MenuItem::new(im_str!("Rotate Right"))
                     .shortcut(im_str!("E"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     image.rotation -= 90.0;
@@ -417,7 +427,7 @@ impl App {
                 if MenuItem::new(im_str!("Zoom in"))
                     .shortcut(im_str!("+"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     zoom(image, 1.0, self.size / 2.0);
@@ -426,7 +436,7 @@ impl App {
                 if MenuItem::new(im_str!("Zoom out"))
                     .shortcut(im_str!("-"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     zoom(image, -1.0, image.size / 2.0);
@@ -436,7 +446,7 @@ impl App {
 
                 if MenuItem::new(im_str!("Flip Horizontal"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     image.flip_horizontal(display);
@@ -444,7 +454,7 @@ impl App {
 
                 if MenuItem::new(im_str!("Flip Vertical"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     let image = self.image_view.as_mut().unwrap();
                     image.flip_vertical(display);
@@ -455,29 +465,29 @@ impl App {
                 if MenuItem::new(im_str!("Crop"))
                     .shortcut(im_str!("Ctrl + X"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {
                     self.crop.cropping = true;
                 }
 
                 if MenuItem::new(im_str!("Resize"))
                     .enabled(self.image_view.is_some())
-                    .build(&ui)
+                    .build(ui)
                 {}
             });
 
             ui.menu(im_str!("Help"), true, || {
-                if MenuItem::new(im_str!("Repository")).build(&ui) {
+                if MenuItem::new(im_str!("Repository")).build(ui) {
                     webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
                 }
 
-                if MenuItem::new(im_str!("Report Bug")).build(&ui) {
+                if MenuItem::new(im_str!("Report Bug")).build(ui) {
                     webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
                 }
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("About")).build(&ui) {
+                if MenuItem::new(im_str!("About")).build(ui) {
                     let about = format!(
                         "{}\n{}\n{}\n{}",
                         env!("CARGO_PKG_NAME"),
@@ -513,7 +523,7 @@ impl App {
             .always_use_window_padding(true)
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
-                    let (action, new_delay) = self.arrows.build(&ui);
+                    let (action, new_delay) = self.arrows.build(ui);
                     update_delay(&mut delay, &new_delay);
                     match action {
                         Action::Left => {
@@ -551,11 +561,11 @@ impl App {
                 }
             });
 
-        c.pop(&ui);
-        s.pop(&ui);
+        c.pop(ui);
+        s.pop(ui);
 
-        styles.pop(&ui);
-        colors.pop(&ui);
+        styles.pop(ui);
+        colors.pop(ui);
         (exit, delay)
     }
 
@@ -612,7 +622,7 @@ fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
     let new_size = image.scaled();
     if new_size.x() < 100.0 || new_size.y() < 100.0 {
         if image.size.x() > new_size.x() && image.size.y() > new_size.y() {
-            image.scale = min!(old_scale, 1.0);
+            image.scale = min(old_scale, 1.0);
         }
     } else {
         let mouse_to_center = image.position - mouse_position;

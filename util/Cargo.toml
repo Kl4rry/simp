@@ -1,5 +1,5 @@
 [package]
-name = "user_event"
+name = "util"
 version = "0.1.0"
 edition = "2018"
 

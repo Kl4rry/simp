@@ -15,7 +15,7 @@ use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use std::{env, panic, time::Instant};
-use user_event::UserEvent;
+use util::UserEvent;
 use vec2::Vec2;
 
 mod app;
@@ -166,13 +166,14 @@ impl System {
                         image.render(&mut target, size);
                     }
 
-                    app.crop.render(&mut target, size);
-
                     platform.prepare_render(&ui, gl_window.window());
                     let draw_data = ui.render();
                     renderer
                         .render(&mut target, draw_data)
                         .expect("Rendering failed");
+
+                    app.crop.render(&mut target, size);
+
                     target.finish().expect("Failed to swap buffers");
                 }
                 Event::WindowEvent {
