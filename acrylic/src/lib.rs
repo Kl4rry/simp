@@ -87,7 +87,7 @@ pub fn set_acrylic(raw: &RawWindowHandle) {
         let hwnd = handle.hwnd;
         let gradient_color: i32 =
             (ALPHA_VALUE << 24) + (BLUE_VALUE << 16) + (GREEN_VALUE << 8) + (RED_VALUE);
-        let blur_type = AccentState::AccentEnableBlurbehind;
+        let blur_type = AccentState::AccentEnableAcrylicblurbehind;
         let policy = AccentPolicy {
             accent_state: blur_type,
             accent_flags: 2,
