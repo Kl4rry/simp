@@ -1,12 +1,12 @@
 use glium::glutin::window::CursorIcon;
-use image::{DynamicImage, Frame, ImageBuffer, Rgba};
+use image::{Frame, ImageBuffer, Rgba};
 use std::{
     path::PathBuf,
     time::{Duration, Instant},
 };
 
 pub struct Image {
-    pub img: DynamicImage,
+    pub img: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub delay: Duration,
 }
 
@@ -14,7 +14,7 @@ impl Image {
     #[inline]
     pub fn new(image: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
         Image {
-            img: DynamicImage::ImageRgba8(image),
+            img: image,
             delay: Duration::default(),
         }
     }
@@ -22,13 +22,17 @@ impl Image {
     #[inline]
     pub fn with_delay(image: ImageBuffer<Rgba<u8>, Vec<u8>>, delay: Duration) -> Self {
         Image {
-            img: DynamicImage::ImageRgba8(image),
+            img: image,
             delay,
         }
     }
 
     pub fn buffer(&self) -> &ImageBuffer<Rgba<u8>, Vec<u8>> {
-        self.img.as_rgba8().unwrap()
+        &self.img
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut ImageBuffer<Rgba<u8>, Vec<u8>> {
+        &mut self.img
     }
 }
 
@@ -38,7 +42,7 @@ impl From<Frame> for Image {
         let (num, deno) = frame.delay().numer_denom_ms();
         let delay = Duration::from_millis((num / deno) as u64);
         Image {
-            img: DynamicImage::ImageRgba8(frame.into_buffer()),
+            img: frame.into_buffer(),
             delay,
         }
     }
