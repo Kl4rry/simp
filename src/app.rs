@@ -11,6 +11,7 @@ use imgui_glium_renderer::Renderer;
 use std::{process::Command, thread, time::Duration};
 use util::UserEvent;
 use vec2::Vec2;
+use rect::Rect;
 use util::min;
 
 pub mod image_view;
@@ -85,9 +86,9 @@ impl App {
                             String::new()
                         };
 
-                        let scaling = min(
+                        let scaling = min!(
                             self.size.x() / view.size.x(),
-                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y(),
+                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
                         );
                         view.scale = scaling;
                         view.position = self.size / 2.0;
@@ -256,11 +257,11 @@ impl App {
                     *size.mut_y() = size.y().abs();
 
                     let start = Vec2::new(
-                        min(inner.start.x(), inner.current.x()),
-                        min(inner.start.y(), inner.current.y()),
+                        min!(inner.start.x(), inner.current.x()),
+                        min!(inner.start.y(), inner.current.y()),
                     );
 
-                    image.crop((start, size));
+                    image.crop(Rect::new(start, size));
 
                     self.crop.inner = None;
                     self.crop.cropping = false;
@@ -614,7 +615,7 @@ fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
     let new_size = image.scaled();
     if new_size.x() < 100.0 || new_size.y() < 100.0 {
         if image.size.x() > new_size.x() && image.size.y() > new_size.y() {
-            image.scale = min(old_scale, 1.0);
+            image.scale = min!(old_scale, 1.0);
         }
     } else {
         let mouse_to_center = image.position - mouse_position;

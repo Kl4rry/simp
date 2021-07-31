@@ -16,8 +16,9 @@ use std::{
     path::PathBuf,
     time::{Duration, Instant},
 };
-use util::{Image, max};
+use util::{Image, max, min};
 use vec2::Vec2;
+use rect::Rect;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -155,15 +156,7 @@ impl ImageView {
         let translation =
             Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
 
-        let rot = degrees_to_radians(self.rotation);
-
-        #[rustfmt::skip]
-        let rotation = Matrix4::new(
-            rot.cos(), -(rot.sin()), 0.0, 0.0,
-            rot.sin(), rot.cos(), 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,
-        );
+        let rotation = get_rotation_matrix(degrees_to_radians(self.rotation));
 
         let pre_rotation =
             Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
@@ -226,12 +219,59 @@ impl ImageView {
 
         for outer in &vectors {
             for inner in &vectors {
-                size.set_x(max((inner.x - outer.x).abs(), size.x()));
-                size.set_y(max((inner.y - outer.y).abs(), size.y()));
+                size.set_x(max!((inner.x - outer.x).abs(), size.x()));
+                size.set_y(max!((inner.y - outer.y).abs(), size.y()));
             }
         }
 
         size
+    }
+
+    pub fn bounds(&self) -> Rect {
+        let mut vectors = [
+            Vector4::new(0.0, 0.0, 0.0, 1.0),
+            Vector4::new(0.0, self.size.y(), 0.0, 1.0),
+            Vector4::new(self.size.x(), 0.0, 0.0, 1.0),
+            Vector4::new(self.size.x(), self.size.y(), 0.0, 1.0),
+        ];
+
+        let position = self.position - self.scaled() / 2.0;
+        let scale = Matrix4::from_scale(self.scale);
+        let translation =
+            Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
+
+        let rotation = get_rotation_matrix(degrees_to_radians(self.rotation));
+
+        let pre_rotation =
+            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
+        let post_rotation = Matrix4::from_translation(Vector3::new(
+            -self.size.x() / 2.0,
+            -self.size.y() / 2.0,
+            0.0,
+        ));
+        let final_rotation = (pre_rotation * rotation) * post_rotation;
+
+        let matrix = translation * scale * final_rotation;
+
+        for vector in &mut vectors {
+            (*vector) = matrix * (*vector);
+        }
+
+        let mut size = Vec2::new(0.0, 0.0);
+        
+        for outer in vectors {
+            for inner in vectors {
+                size.set_x(max!((inner.x - outer.x).abs(), size.x()));
+                size.set_y(max!((inner.y - outer.y).abs(), size.y()));
+            }
+        }
+
+        let position = Vec2::new(
+            min!(vectors[0].x, vectors[1].x, vectors[2].x, vectors[3].x),
+            min!(vectors[0].y, vectors[1].y, vectors[2].y, vectors[3].y),
+        );
+
+        Rect::new(position, size)
     }
 
     pub fn flip_horizontal(&mut self, display: &Display) {
@@ -328,12 +368,34 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&mut self, rectangle: (Vec2<f32>, Vec2<f32>)) {
-        println!("crop: {:?}", rectangle);
+    pub fn crop(&mut self, cut: Rect) {
+        let bounds = self.bounds();
+        if !bounds.intersects(&cut) {
+            return;
+        }
+
+        let left = max!(cut.left(), bounds.left()) - bounds.x();
+        let right = min!(cut.right(), bounds.right()) - bounds.x();
+
+        let top = max!(cut.top(), bounds.top()) - bounds.y();
+        let bottom = min!(cut.bottom() + cut.bottom(), bounds.bottom() + bounds.bottom()) - bounds.y();
+
+        println!("overlap: {:?}, {:?}, {:?}, {:?}", left, right, top, bottom);
     }
 }
 
 #[inline(always)]
 fn degrees_to_radians(deg: f32) -> f32 {
     (std::f32::consts::PI / 180.0) * deg
+}
+
+fn get_rotation_matrix(rad: f32) -> Matrix4<f32> {
+    #[rustfmt::skip]
+    let matrix = Matrix4::new(
+        rad.cos(), -(rad.sin()), 0.0, 0.0,
+        rad.sin(), rad.cos(), 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0,
+    );
+    matrix
 }

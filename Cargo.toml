@@ -21,6 +21,7 @@ imgui-glium-renderer = "0.7.0"
 imgui-winit-support = "0.7.0"
 lazy_static = "1.4.0"
 msgbox = "0.6.0"
+rect = { path = "./rect" }
 timing = "0.2.1"
 tinyfiledialogs = "3.3.10"
 util = { path = "./util" }
@@ -43,6 +44,7 @@ ProductName = "Simp"
 [workspace]
 members = [
     "image_loader",
+    "rect",
     "util",
     "vec2",
 ]
