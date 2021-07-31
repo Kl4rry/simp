@@ -333,6 +333,7 @@ impl ImageView {
     }
 }
 
+#[inline(always)]
 fn degrees_to_radians(deg: f32) -> f32 {
     (std::f32::consts::PI / 180.0) * deg
 }
