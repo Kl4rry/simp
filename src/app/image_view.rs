@@ -15,19 +15,9 @@ use std::{
     mem::swap,
     path::PathBuf,
     time::{Duration, Instant},
-    //convert::From,
 };
-use util::Image;
+use util::{Image, max};
 use vec2::Vec2;
-
-#[inline(always)]
-fn max<T: PartialOrd>(a: T, b: T) -> T {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
 
 #[derive(Copy, Clone)]
 pub struct Vertex {

@@ -11,6 +11,7 @@ pub struct Image {
 }
 
 impl Image {
+    #[inline]
     pub fn new(image: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
         Image {
             img: DynamicImage::ImageRgba8(image),
@@ -18,6 +19,7 @@ impl Image {
         }
     }
 
+    #[inline]
     pub fn with_delay(image: ImageBuffer<Rgba<u8>, Vec<u8>>, delay: Duration) -> Self {
         Image {
             img: DynamicImage::ImageRgba8(image),
@@ -31,6 +33,7 @@ impl Image {
 }
 
 impl From<Frame> for Image {
+    #[inline]
     fn from(frame: Frame) -> Self {
         let (num, deno) = frame.delay().numer_denom_ms();
         let delay = Duration::from_millis((num / deno) as u64);
@@ -40,6 +43,25 @@ impl From<Frame> for Image {
         }
     }
 }
+
+#[inline(always)]
+pub fn min<T: PartialOrd>(a: T, b: T) -> T {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+
+#[inline(always)]
+pub fn max<T: PartialOrd>(a: T, b: T) -> T {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
 
 pub enum UserEvent {
     ImageLoaded(Option<Vec<Image>>, Option<PathBuf>, Instant),

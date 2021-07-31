@@ -11,6 +11,7 @@ use imgui_glium_renderer::Renderer;
 use std::{process::Command, thread, time::Duration};
 use util::UserEvent;
 use vec2::Vec2;
+use util::min;
 
 pub mod image_view;
 use image_view::ImageView;
@@ -25,15 +26,6 @@ pub mod crop;
 pub mod extensions;
 use crop::Crop;
 pub mod cursor;
-
-#[inline(always)]
-fn min<T: PartialOrd>(a: T, b: T) -> T {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
 
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
