@@ -25,7 +25,7 @@ The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simpl
 | Format | Support |
 | ------ | -------- |
 | PNG    | ✅ |
-| JPEG   | Baseline and progressive |
+| JPEG   | ✅ Baseline and progressive |
 | GIF    | ✅ |
 | BMP    | ✅ |
 | ICO    | ✅ |
