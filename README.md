@@ -29,16 +29,16 @@ The (s)imple (im)age (p)rogram is a cross-platform image viewer focused on simpl
 | GIF    | ✅ |
 | BMP    | ✅ |
 | ICO    | ✅ |
-| TIFF   | Baseline(no fax support) + LZW + PackBits |
+| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits |
 | WebP   | ✅ |
-| AVIF   | Only 8-bit |
-| PNM    | PBM, PGM, PPM, standard PAM |
-| DDS    | DXT1, DXT3, DXT5 |
+| AVIF   | ✅ Only 8-bit |
+| PNM    | ✅ PBM, PGM, PPM, standard PAM |
+| DDS    | ✅ DXT1, DXT3, DXT5 |
 | TGA    | ✅ |
 | farbfeld | ✅ |
-| SVG    | Rastarized at 96 dpi |
+| SVG    | ✅ Rastarized at 96 dpi |
 | PSD    | ✅ 
-| Raw    | Support from [rawloader](https://github.com/pedrocr/rawloader) (1) |
+| Raw    | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (1) |
 
 1. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 
@@ -61,5 +61,6 @@ cargo install simp
 ```shell
 cargo install --git https://github.com/Kl4rry/simp
 ```
+The latest bulid is very likely buggy and unfinished.
 ## Manual
 Just download the exe from the releases tab. No actual installation is required.
