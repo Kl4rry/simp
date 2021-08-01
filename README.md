@@ -4,10 +4,10 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 ![Screenshot](images/screenshot.png)
 
 # Goals
-* Support of as many image formats as possible
-* 60 Hz (Nothing should ever block for more than 16ms)
-* Flicker free redrawing
-* Basic image manipulation (Not reached)
+* Support of as many image formats as possible.
+* 60 Hz. Avoid blocking for more then 16ms.
+* Flicker free redrawing.
+* Basic image manipulation (Not reached).
 
 ## Non Goals
 * Powerful image manipulation (I am not making the next photoshop)
