@@ -1,9 +1,10 @@
-use glium::glutin::window::CursorIcon;
-use image::{Frame, ImageBuffer, Rgba};
 use std::{
     path::PathBuf,
     time::{Duration, Instant},
 };
+
+use glium::glutin::window::CursorIcon;
+use image::{Frame, ImageBuffer, Rgba};
 
 #[macro_export]
 macro_rules! min {

@@ -1,10 +1,11 @@
-use image::io::Reader as ImageReader;
+use std::{io::Cursor, time::Duration};
+
 use image::{
-    codecs::gif::GifDecoder, AnimationDecoder, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
+    codecs::gif::GifDecoder, io::Reader as ImageReader, AnimationDecoder, Frame, ImageBuffer,
+    ImageFormat, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use std::{io::Cursor, time::Duration};
 use usvg::{fontdb::Database, FitTo, Options, Tree};
 use util::Image;
 

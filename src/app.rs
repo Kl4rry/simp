@@ -1,3 +1,5 @@
+use std::{process::Command, thread, time::Duration};
+
 use glium::{
     backend::glutin::Display,
     glutin::{
@@ -8,11 +10,9 @@ use glium::{
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use std::{process::Command, thread, time::Duration};
-use util::UserEvent;
-use vec2::Vec2;
 use rect::Rect;
-use util::min;
+use util::{min, UserEvent};
+use vec2::Vec2;
 
 pub mod image_view;
 use image_view::ImageView;

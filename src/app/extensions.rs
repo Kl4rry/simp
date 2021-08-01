@@ -1,5 +1,6 @@
-use lazy_static::*;
 use std::collections::HashSet;
+
+use lazy_static::*;
 
 fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
     input.iter().cloned().collect()

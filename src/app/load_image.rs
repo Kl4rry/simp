@@ -1,6 +1,7 @@
+use std::{fs, path::Path, thread, time::Instant};
+
 use glium::glutin::{event_loop::EventLoopProxy, window::CursorIcon};
 use image_loader::*;
-use std::{fs, path::Path, thread, time::Instant};
 use util::UserEvent;
 
 use super::extensions::*;

@@ -2,6 +2,8 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
+use std::{env, panic, time::Instant};
+
 use glium::{
     glutin,
     glutin::{
@@ -9,12 +11,11 @@ use glium::{
         event_loop::{ControlFlow, EventLoop, EventLoopProxy},
         window::WindowBuilder,
     },
-    {Display, Surface},
+    Display, Surface,
 };
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::{env, panic, time::Instant};
 use util::UserEvent;
 use vec2::Vec2;
 

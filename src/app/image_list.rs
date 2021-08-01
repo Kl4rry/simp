@@ -1,4 +1,3 @@
-use super::extensions::*;
 use std::{
     path::{Path, PathBuf},
     sync::{
@@ -7,6 +6,8 @@ use std::{
     },
     thread,
 };
+
+use super::extensions::*;
 
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
 

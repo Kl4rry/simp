@@ -1,6 +1,7 @@
+use std::{borrow::Cow, time::Instant};
+
 use glium::glutin::event_loop::EventLoopProxy;
 use image::{ImageBuffer, Rgba};
-use std::{borrow::Cow, time::Instant};
 use util::{Image, UserEvent};
 
 use super::image_view::ImageView;

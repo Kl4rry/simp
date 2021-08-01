@@ -1,5 +1,6 @@
-use imgui::*;
 use std::time::{Duration, Instant};
+
+use imgui::*;
 
 pub enum Action {
     Right,
