@@ -6,6 +6,8 @@ use std::{
 use glium::glutin::window::CursorIcon;
 use image::{Frame, ImageBuffer, Rgba};
 
+pub mod extensions;
+
 #[macro_export]
 macro_rules! min {
     ($x: expr) => ($x);

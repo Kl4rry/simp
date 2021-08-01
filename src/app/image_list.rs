@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-use super::extensions::*;
+use util::extensions::*;
 
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
 

@@ -24,7 +24,6 @@ pub mod load_image;
 use load_image::load_image;
 pub mod clipboard;
 pub mod crop;
-pub mod extensions;
 use crop::Crop;
 pub mod cursor;
 

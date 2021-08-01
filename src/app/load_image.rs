@@ -2,9 +2,7 @@ use std::{fs, path::Path, thread, time::Instant};
 
 use glium::glutin::{event_loop::EventLoopProxy, window::CursorIcon};
 use image_loader::*;
-use util::UserEvent;
-
-use super::extensions::*;
+use util::{extensions::*, UserEvent};
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();

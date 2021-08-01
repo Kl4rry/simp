@@ -2654,6 +2654,7 @@ version = "0.1.0"
 dependencies = [
  "glium",
  "image",
+ "lazy_static",
 ]
 
 [[package]]
