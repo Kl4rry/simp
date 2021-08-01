@@ -7,10 +7,12 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 * Support of as many image formats as possible.
 * 60 Hz. Avoid blocking for more then 16ms.
 * Flicker free redrawing.
+* Desktop OS support.
 * Basic image manipulation (Not reached).
 
 ## Non Goals
 * Powerful image manipulation (I am not making the next photoshop)
+* Web/Mobile platform support.
 
 # Supported Platforms
 | OS            | Support|
