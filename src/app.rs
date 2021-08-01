@@ -328,7 +328,7 @@ impl App {
                     .shortcut(im_str!("Ctrl + S"))
                     .build(ui)
                 {
-                    unimplemented!();
+                    todo!();
                 }
 
                 ui.separator();
@@ -366,7 +366,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    unimplemented!();
+                    todo!();
                 }
 
                 if MenuItem::new(im_str!("Redo"))
@@ -374,7 +374,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    unimplemented!();
+                    todo!();
                 }
 
                 ui.separator();
