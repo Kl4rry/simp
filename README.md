@@ -19,7 +19,8 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 | Linux         | ✅ |
 | MacOS         | 🆗 |
 
-✅ = Tested and working 🆗 = Untested but should work with minimal changes
+✅ = Tested and working  
+🆗 = Untested but should work with minimal changes
 
 # Supported Codecs
 | Format | Support |
