@@ -17,6 +17,7 @@ use std::{
     time::{Duration, Instant},
 };
 use util::{Image, max, min};
+use image::{ImageBuffer, imageops::{crop_imm, rotate90_in, rotate180_in_place, rotate270_in}};
 use vec2::Vec2;
 use rect::Rect;
 
@@ -41,7 +42,7 @@ pub struct ImageView {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
     pub scale: f32,
-    pub rotation: f32,
+    pub rotation: i32,
     pub path: Option<PathBuf>,
     pub start: Instant,
     pub frames: Vec<Image>,
@@ -64,7 +65,7 @@ impl ImageView {
         path: Option<PathBuf>,
         start: Instant,
     ) -> Self {
-        let image = frames[0].buffer().clone();
+        let image = frames[0].buffer();
         let texture_cords = (
             Vec2::new(0.0, 0.0),
             Vec2::new(0.0, 1.0),
@@ -117,7 +118,7 @@ impl ImageView {
             size: Vec2::new(width as f32, height as f32),
             position: Vec2::default(),
             scale: 1.0,
-            rotation: 0.0,
+            rotation: 0,
             frames,
             last_frame: Instant::now(),
             index: 0,
@@ -156,7 +157,7 @@ impl ImageView {
         let translation =
             Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
 
-        let rotation = get_rotation_matrix(degrees_to_radians(self.rotation));
+        let rotation = get_rotation_matrix(degrees_to_radians((self.rotation * 90) as f32));
 
         let pre_rotation =
             Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
@@ -197,7 +198,7 @@ impl ImageView {
             Vector4::new(self.size.x(), self.size.y(), 0.0, 1.0),
         ];
 
-        let rot = degrees_to_radians(self.rotation);
+        let rot = degrees_to_radians((self.rotation * 90) as f32);
 
         #[rustfmt::skip]
         let rotation = Matrix4::new(
@@ -240,7 +241,7 @@ impl ImageView {
         let translation =
             Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
 
-        let rotation = get_rotation_matrix(degrees_to_radians(self.rotation));
+        let rotation = get_rotation_matrix(degrees_to_radians((self.rotation * 90) as f32));
 
         let pre_rotation =
             Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
@@ -368,7 +369,7 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&mut self, cut: Rect) {
+    pub fn crop(&mut self, cut: Rect, display: &Display) {
         let bounds = self.bounds();
         if !bounds.intersects(&cut) {
             return;
@@ -378,9 +379,98 @@ impl ImageView {
         let right = min!(cut.right(), bounds.right()) - bounds.x();
 
         let top = max!(cut.top(), bounds.top()) - bounds.y();
-        let bottom = min!(cut.bottom() + cut.bottom(), bounds.bottom() + bounds.bottom()) - bounds.y();
+        let bottom = min!(cut.bottom(), bounds.bottom()) - bounds.y();
 
-        println!("overlap: {:?}, {:?}, {:?}, {:?}", left, right, top, bottom);
+        let width = right - left;
+        let height = bottom - top;
+
+        let normalized_width = 1.0 / (bounds.width() / width);
+        let normalized_height = 1.0 / (bounds.height() / height);
+
+        let mut normalized_x = 1.0 / (bounds.width() / left);
+        let mut normalized_y = 1.0 / (bounds.height() / top);
+
+        if self.horizontal_flip {
+            normalized_x = 1.0 - normalized_x - normalized_width;
+        }
+
+        if self.vertical_flip {
+            normalized_y = 1.0 - normalized_y - normalized_height;
+        }
+
+        for frame in &mut self.frames {
+            match self.rotation {
+                0 => (),
+                1 => {
+                    let width = frame.buffer().width();
+                    let height = frame.buffer().height();
+                    let mut buffer = ImageBuffer::new(height, width);
+                    rotate270_in(frame.buffer(), &mut buffer).unwrap();
+                    *frame.buffer_mut() = buffer;
+                }
+                2 => {
+                    rotate180_in_place(frame.buffer_mut()); 
+                }
+                3 => {
+                    let width = frame.buffer().width();
+                    let height = frame.buffer().height();
+                    let mut buffer = ImageBuffer::new(height, width);
+                    rotate90_in(frame.buffer(), &mut buffer).unwrap();
+                    *frame.buffer_mut() = buffer;
+                }
+                _ => unreachable!(),
+            }
+
+            let real_width = (normalized_width * frame.buffer().width() as f32) as u32;
+            let real_height = (normalized_height * frame.buffer().height() as f32) as u32;
+
+            let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
+            let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
+
+            let sub_image = crop_imm(frame.buffer(), real_x, real_y, real_width, real_height);
+            let image = sub_image.to_image();
+            drop(sub_image);
+            *frame.buffer_mut() = image;
+        }
+
+        let image = self.frames[self.index].buffer();
+        self.size = Vec2::new(image.width() as f32, image.height() as f32);
+        let data = Cow::Borrowed(&image.as_raw()[..]);
+        let raw = RawImage2d {
+            data,
+            width: image.width(),
+            height: image.height(),
+            format: ClientFormat::U8U8U8U8,
+        };
+        self.texture =
+            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps)
+                .unwrap();
+
+        let shape = vec![
+            Vertex::new(0.0, 0.0, self.texture_cords.0.x(), self.texture_cords.0.y()),
+            Vertex::new(
+                0.0,
+                image.height() as f32,
+                self.texture_cords.1.x(),
+                self.texture_cords.1.y(),
+            ),
+            Vertex::new(
+                image.width() as f32,
+                0.0,
+                self.texture_cords.2.x(),
+                self.texture_cords.2.y(),
+            ),
+            Vertex::new(
+                image.width() as f32,
+                image.height() as f32,
+                self.texture_cords.3.x(),
+                self.texture_cords.3.y(),
+            ),
+        ];
+        self.vertices = VertexBuffer::new(display, &shape).unwrap();
+        self.rotation = 0;
+        self.horizontal_flip = false;
+        self.vertical_flip = false;
     }
 }
 

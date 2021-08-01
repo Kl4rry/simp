@@ -145,8 +145,8 @@ impl App {
                                     move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
                                 }
 
-                                VirtualKeyCode::Q => rotate_image(&mut self.image_view, 90.0),
-                                VirtualKeyCode::E => rotate_image(&mut self.image_view, -90.0),
+                                VirtualKeyCode::Q => rotate_image(&mut self.image_view, 1),
+                                VirtualKeyCode::E => rotate_image(&mut self.image_view, -1),
 
                                 VirtualKeyCode::R => {
                                     if let Some(image) = self.image_view.as_ref() {
@@ -261,7 +261,7 @@ impl App {
                         min!(inner.start.y(), inner.current.y()),
                     );
 
-                    image.crop(Rect::new(start, size));
+                    image.crop(Rect::new(start, size), display);
 
                     self.crop.inner = None;
                     self.crop.cropping = false;
@@ -402,8 +402,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    let image = self.image_view.as_mut().unwrap();
-                    image.rotation += 90.0;
+                    rotate_image(&mut self.image_view, 1);
                 }
 
                 if MenuItem::new(im_str!("Rotate Right"))
@@ -411,8 +410,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    let image = self.image_view.as_mut().unwrap();
-                    image.rotation -= 90.0;
+                    rotate_image(&mut self.image_view, -1);
                 }
 
                 ui.separator();
@@ -577,13 +575,13 @@ impl App {
     }
 }
 
-fn rotate_image(image_view: &mut Option<ImageView>, deg: f32) {
+fn rotate_image(image_view: &mut Option<ImageView>, deg: i32) {
     if let Some(image) = image_view.as_mut() {
         image.rotation += deg;
-        if image.rotation > 360.0 {
-            image.rotation -= 360.0;
-        } else if image.rotation < 0.0 {
-            image.rotation += 360.0;
+        if image.rotation > 3 {
+            image.rotation -= 4;
+        } else if image.rotation < 0 {
+            image.rotation += 4;
         }
     }
 }
