@@ -1,5 +1,5 @@
 # simp  
-The (s)imple (i)age (m)anipulation (p)rogram is a cross-platform image viewer focused on simplicity and speed.
+The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer focused on simplicity and speed.
 
 ![Screenshot](images/screenshot.png)
 
