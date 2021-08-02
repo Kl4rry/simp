@@ -262,8 +262,7 @@ impl ImageView {
             (*vector) = matrix * (*vector);
         }
 
-        let mut size = Vec2::new(0.0, 0.0);
-
+        let mut size = Vec2::default();
         for outer in vectors {
             for inner in vectors {
                 size.set_x(max!((inner.x - outer.x).abs(), size.x()));
@@ -473,6 +472,16 @@ impl ImageView {
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
         self.rotation = 0;
     }
+
+    pub fn rotate(&mut self, deg: i32) {
+        self.rotation += deg;
+        if self.rotation > 3 {
+            self.rotation -= 4;
+        } else if self.rotation < 0 {
+            self.rotation += 4;
+        }
+    }
+    
 }
 
 #[inline(always)]

@@ -1,7 +1,7 @@
 use std::{fs, path::Path, thread, time::Instant};
 
 use glium::glutin::{event_loop::EventLoopProxy, window::CursorIcon};
-use image_loader::*;
+use image_io::*;
 use util::{extensions::*, UserEvent};
 
 pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {

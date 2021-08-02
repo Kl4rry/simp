@@ -26,6 +26,8 @@ pub mod clipboard;
 pub mod crop;
 use crop::Crop;
 pub mod cursor;
+mod undo_stack;
+use undo_stack::{UndoStack, UndoFrame};
 
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
@@ -39,6 +41,7 @@ pub struct App {
     current_filename: String,
     image_list: ImageList,
     arrows: Arrows,
+    stack: UndoStack,
     pub crop: Crop,
 }
 
@@ -92,6 +95,7 @@ impl App {
                         view.scale = scaling;
                         view.position = self.size / 2.0;
                     }
+                    self.stack.reset();
                 }
                 UserEvent::ImageError(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
@@ -144,8 +148,19 @@ impl App {
                                     move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
                                 }
 
-                                VirtualKeyCode::Q => rotate_image(&mut self.image_view, 1),
-                                VirtualKeyCode::E => rotate_image(&mut self.image_view, -1),
+                                VirtualKeyCode::Q => {
+                                    if let Some(ref mut image) = self.image_view {
+                                        self.stack.push(UndoFrame::Rotate(1));
+                                        image.rotate(1);
+                                    }
+                                    
+                                }
+                                VirtualKeyCode::E => {
+                                    if let Some(ref mut image) = self.image_view {
+                                        self.stack.push(UndoFrame::Rotate(-1));
+                                        image.rotate(-1);
+                                    }
+                                }
 
                                 VirtualKeyCode::R => {
                                     if let Some(image) = self.image_view.as_ref() {
@@ -165,6 +180,13 @@ impl App {
                                 }
                                 VirtualKeyCode::X if self.modifiers.ctrl() => {
                                     self.crop.cropping = true;
+                                }
+
+                                VirtualKeyCode::Z if self.modifiers.ctrl() => {
+                                    self.undo(display);
+                                }
+                                VirtualKeyCode::Y if self.modifiers.ctrl() => {
+                                    self.redo(display);
                                 }
 
                                 VirtualKeyCode::Left => {
@@ -365,7 +387,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    todo!();
+                    self.undo(display);
                 }
 
                 if MenuItem::new(im_str!("Redo"))
@@ -373,7 +395,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    todo!();
+                    self.redo(display);
                 }
 
                 ui.separator();
@@ -401,7 +423,8 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    rotate_image(&mut self.image_view, 1);
+                    self.stack.push(UndoFrame::Rotate(1));
+                    self.image_view.as_mut().unwrap().rotate(1);
                 }
 
                 if MenuItem::new(im_str!("Rotate Right"))
@@ -409,7 +432,8 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    rotate_image(&mut self.image_view, -1);
+                    self.stack.push(UndoFrame::Rotate(-1));
+                    self.image_view.as_mut().unwrap().rotate(-1);
                 }
 
                 ui.separator();
@@ -438,6 +462,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
+                    self.stack.push(UndoFrame::FlipHorizontal);
                     let image = self.image_view.as_mut().unwrap();
                     image.flip_horizontal(display);
                 }
@@ -446,6 +471,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
+                    self.stack.push(UndoFrame::FlipVertical);
                     let image = self.image_view.as_mut().unwrap();
                     image.flip_vertical(display);
                 }
@@ -559,6 +585,42 @@ impl App {
         (exit, delay)
     }
 
+    pub fn undo(&mut self, display: &Display) {
+        let frame = self.stack.undo();
+        if let Some(frame) = frame {
+            match frame {
+                UndoFrame::Rotate(rot) => {
+                    self.image_view.as_mut().unwrap().rotate(-*rot);
+                }
+                UndoFrame::FlipHorizontal => {
+                    self.image_view.as_mut().unwrap().flip_horizontal(display);
+                }
+                UndoFrame::FlipVertical => {
+                    self.image_view.as_mut().unwrap().flip_vertical(display);
+                }
+                _ => (),
+            }
+        }
+    }
+
+    pub fn redo(&mut self, display: &Display) {
+        let frame = self.stack.redo();
+        if let Some(frame) = frame {
+            match frame {
+                UndoFrame::Rotate(rot) => {
+                    self.image_view.as_mut().unwrap().rotate(*rot);
+                }
+                UndoFrame::FlipHorizontal => {
+                    self.image_view.as_mut().unwrap().flip_horizontal(display);
+                }
+                UndoFrame::FlipVertical => {
+                    self.image_view.as_mut().unwrap().flip_vertical(display);
+                }
+                _ => (),
+            }
+        }
+    }
+
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
         App {
             image_view: None,
@@ -569,18 +631,8 @@ impl App {
             current_filename: String::new(),
             image_list: ImageList::new(),
             arrows: Arrows::new(),
+            stack: UndoStack::new(),
             crop: Crop::new(display),
-        }
-    }
-}
-
-fn rotate_image(image_view: &mut Option<ImageView>, deg: i32) {
-    if let Some(image) = image_view.as_mut() {
-        image.rotation += deg;
-        if image.rotation > 3 {
-            image.rotation -= 4;
-        } else if image.rotation < 0 {
-            image.rotation += 4;
         }
     }
 }
