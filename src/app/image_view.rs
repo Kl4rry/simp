@@ -472,8 +472,6 @@ impl ImageView {
         ];
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
         self.rotation = 0;
-        self.horizontal_flip = false;
-        self.vertical_flip = false;
     }
 }
 
