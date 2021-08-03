@@ -25,7 +25,7 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 🆗 = Untested but should work with minimal changes
 
 # Supported Codecs
-| Format | Support |
+| Format | Loading |
 | ------ | -------- |
 | PNG    | ✅ |
 | JPEG   | ✅ Baseline and progressive |
