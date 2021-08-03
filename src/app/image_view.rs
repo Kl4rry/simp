@@ -303,7 +303,7 @@ impl ImageView {
                 if self.index >= self.frames.len() {
                     self.index = 0;
                 }
-                
+
                 self.update_image_data(display);
 
                 self.last_frame = now;
@@ -388,7 +388,7 @@ impl ImageView {
 
         self.update_image_data(display);
         self.update_vertex_data(display);
-        
+
         let old_rotation = self.rotation;
         self.rotation = 0;
         return Some((old_frames, old_rotation));

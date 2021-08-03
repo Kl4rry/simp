@@ -23,7 +23,7 @@ lazy_static = "1.4.0"
 msgbox = "0.6.0"
 rect = { path = "./rect" }
 timing = "0.2.1"
-tinyfiledialogs = "3.3.10"
+rfd = "0.4.0"
 util = { path = "./util" }
 vec2 = { path = "./vec2" }
 webbrowser = "0.5.5"

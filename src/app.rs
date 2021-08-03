@@ -1,4 +1,4 @@
-use std::{process::Command, thread, time::Duration};
+use std::{process::Command, time::Duration};
 
 use glium::{
     backend::glutin::Display,
@@ -20,10 +20,10 @@ pub mod image_list;
 use image_list::ImageList;
 pub mod arrows;
 use arrows::{Action, Arrows};
-pub mod load_image;
-use load_image::load_image;
-pub mod clipboard;
+mod clipboard;
 pub mod crop;
+pub mod load_image;
+mod save_image;
 use crop::Crop;
 pub mod cursor;
 mod undo_stack;
@@ -124,13 +124,13 @@ impl App {
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
-                WindowEvent::DroppedFile(path) => load_image(self.proxy.clone(), path),
+                WindowEvent::DroppedFile(path) => load_image::load(self.proxy.clone(), path),
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
                             ElementState::Pressed => match key {
                                 VirtualKeyCode::O if self.modifiers.ctrl() => {
-                                    open_load_image(self.proxy.clone())
+                                    load_image::open(self.proxy.clone(), display)
                                 }
                                 VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
@@ -164,7 +164,7 @@ impl App {
                                 VirtualKeyCode::R => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         if let Some(path) = &image.path {
-                                            load_image(self.proxy.clone(), path);
+                                            load_image::load(self.proxy.clone(), path);
                                         }
                                     }
                                 }
@@ -191,7 +191,7 @@ impl App {
                                 VirtualKeyCode::Left => {
                                     if let Some(path) = self.image_list.previous() {
                                         if self.crop.inner.is_none() {
-                                            load_image(self.proxy.clone(), path);
+                                            load_image::load(self.proxy.clone(), path);
                                         }
                                     }
                                 }
@@ -199,7 +199,7 @@ impl App {
                                 VirtualKeyCode::Right => {
                                     if let Some(path) = self.image_list.next() {
                                         if self.crop.inner.is_none() {
-                                            load_image(self.proxy.clone(), path);
+                                            load_image::load(self.proxy.clone(), path);
                                         }
                                     }
                                 }
@@ -344,14 +344,20 @@ impl App {
                     .shortcut(im_str!("Ctrl + O"))
                     .build(ui)
                 {
-                    open_load_image(self.proxy.clone());
+                    load_image::open(self.proxy.clone(), display);
                 }
 
                 if MenuItem::new(im_str!("Save as"))
                     .shortcut(im_str!("Ctrl + S"))
+                    .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    todo!();
+                    save_image::open(
+                        &self.current_filename,
+                        &self.image_view.as_ref().unwrap().frames,
+                        self.proxy.clone(),
+                        display,
+                    );
                 }
 
                 ui.separator();
@@ -369,7 +375,7 @@ impl App {
                     .build(ui)
                 {
                     if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                        load_image(self.proxy.clone(), path);
+                        load_image::load(self.proxy.clone(), path);
                     }
                 }
 
@@ -548,12 +554,12 @@ impl App {
                     match action {
                         Action::Left => {
                             if let Some(path) = self.image_list.previous() {
-                                load_image(self.proxy.clone(), path);
+                                load_image::load(self.proxy.clone(), path);
                             }
                         }
                         Action::Right => {
                             if let Some(path) = self.image_list.next() {
-                                load_image(self.proxy.clone(), path);
+                                load_image::load(self.proxy.clone(), path);
                             }
                         }
                         Action::None => (),
@@ -659,14 +665,6 @@ fn new_window() {
     Command::new(std::env::current_exe().unwrap())
         .spawn()
         .unwrap();
-}
-
-fn open_load_image(proxy: EventLoopProxy<UserEvent>) {
-    thread::spawn(move || {
-        if let Some(file) = tinyfiledialogs::open_file_dialog("Open", "", None) {
-            load_image(proxy, file);
-        }
-    });
 }
 
 fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {

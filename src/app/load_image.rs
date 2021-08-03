@@ -1,10 +1,22 @@
 use std::{fs, path::Path, thread, time::Instant};
 
-use glium::glutin::{event_loop::EventLoopProxy, window::CursorIcon};
+use glium::{
+    glutin::{event_loop::EventLoopProxy, window::CursorIcon},
+    Display,
+};
 use image_io::*;
 use util::{extensions::*, UserEvent};
 
-pub fn load_image(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
+pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display) {
+    let dialog = rfd::FileDialog::new()
+        .set_parent(display.gl_window().window())
+        .pick_file();
+    if let Some(file) = dialog {
+        load(proxy, file);
+    }
+}
+
+pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let path_buf = path.as_ref().to_path_buf();
     let _ = proxy.send_event(UserEvent::SetCursor(CursorIcon::Progress));
     thread::spawn(move || {

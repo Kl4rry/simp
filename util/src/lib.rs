@@ -34,6 +34,7 @@ macro_rules! max {
     }}
 }
 
+#[derive(Clone, Debug)]
 pub struct Image {
     pub img: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub delay: Duration,

@@ -228,7 +228,7 @@ fn main() {
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         if let Some(arg) = args.pop() {
-            app::load_image::load_image(system.proxy.clone(), arg);
+            app::load_image::load(system.proxy.clone(), arg);
         }
     }
 
