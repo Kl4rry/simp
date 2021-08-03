@@ -27,7 +27,7 @@ pub mod crop;
 use crop::Crop;
 pub mod cursor;
 mod undo_stack;
-use undo_stack::{UndoStack, UndoFrame};
+use undo_stack::{UndoFrame, UndoStack};
 
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
@@ -153,7 +153,6 @@ impl App {
                                         self.stack.push(UndoFrame::Rotate(1));
                                         image.rotate(1);
                                     }
-                                    
                                 }
                                 VirtualKeyCode::E => {
                                     if let Some(ref mut image) = self.image_view {
@@ -282,7 +281,10 @@ impl App {
                         min!(inner.start.y(), inner.current.y()),
                     );
 
-                    image.crop(Rect::new(start, size), display);
+                    let frames = image.crop(Rect::new(start, size), display);
+                    if let Some((frames, rotation)) = frames {
+                        self.stack.push(UndoFrame::Crop { frames, rotation })
+                    }
 
                     self.crop.inner = None;
                     self.crop.cropping = false;
@@ -489,7 +491,9 @@ impl App {
                 if MenuItem::new(im_str!("Resize"))
                     .enabled(self.image_view.is_some())
                     .build(ui)
-                {}
+                {
+                    todo!();
+                }
             });
 
             ui.menu(im_str!("Help"), true, || {
@@ -598,7 +602,11 @@ impl App {
                 UndoFrame::FlipVertical => {
                     self.image_view.as_mut().unwrap().flip_vertical(display);
                 }
-                _ => (),
+                UndoFrame::Crop { frames, rotation } => {
+                    let view = self.image_view.as_mut().unwrap();
+                    view.swap_frames(frames, display);
+                    std::mem::swap(&mut view.rotation, rotation);
+                }
             }
         }
     }
@@ -616,7 +624,11 @@ impl App {
                 UndoFrame::FlipVertical => {
                     self.image_view.as_mut().unwrap().flip_vertical(display);
                 }
-                _ => (),
+                UndoFrame::Crop { frames, rotation } => {
+                    let view = self.image_view.as_mut().unwrap();
+                    view.swap_frames(frames, display);
+                    std::mem::swap(&mut view.rotation, rotation);
+                }
             }
         }
     }

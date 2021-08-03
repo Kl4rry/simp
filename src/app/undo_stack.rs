@@ -4,10 +4,7 @@ pub enum UndoFrame {
     Rotate(i32),
     FlipHorizontal,
     FlipVertical,
-    Crop {
-        frames: Vec<Image>,
-        rotation: i64,
-    },
+    Crop { frames: Vec<Image>, rotation: i32 },
 }
 
 pub struct UndoStack {
@@ -49,7 +46,7 @@ impl UndoStack {
             let index = self.stack.len() - self.index;
             self.index -= 1;
             Some(&mut self.stack[index])
-        }else {
+        } else {
             None
         }
     }
