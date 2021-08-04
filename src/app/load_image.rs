@@ -34,9 +34,15 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             .extension()
             .unwrap_or_default()
             .to_string_lossy()
-            .to_ascii_lowercase();
+            .to_lowercase();
 
-        let mut loaders = [load_raw, load_svg, load_psd, load_raster];
+        let mut loaders = [
+            load_raw,
+            load_svg,
+            load_psd,
+            load_raster,
+            load_un_detectable_raster,
+        ];
 
         if RASTER.contains(&*extension) {
             loaders.swap(0, 3);
@@ -44,6 +50,8 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             loaders.swap(0, 1);
         } else if PHOTOSHOP.contains(&*extension) {
             loaders.swap(0, 2);
+        } else if UNDETECTABLE_RASTER.contains(&*extension) {
+            loaders.swap(0, 4);
         }
 
         for loader in loaders {

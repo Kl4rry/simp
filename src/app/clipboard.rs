@@ -7,7 +7,7 @@ use util::{Image, UserEvent};
 use super::image_view::ImageView;
 
 pub fn copy(view: &ImageView) {
-    let image = view.frames[0].buffer();
+    let image = view.frames[0].buffer().to_rgba8();
     let (width, height) = image.dimensions();
     let image_data = arboard::ImageData {
         width: width as usize,
@@ -29,7 +29,8 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
             data.extend_from_slice(&*image_data.bytes);
             let image =
                 ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
-            let event = UserEvent::ImageLoaded(Some(vec![Image::new(image)]), None, Instant::now());
+            let event =
+                UserEvent::ImageLoaded(Some(vec![Image::from(image)]), None, Instant::now());
             let _ = proxy.send_event(event);
         }
     }

@@ -1,8 +1,8 @@
 use std::{io::Cursor, time::Duration};
 
 use image::{
-    codecs::gif::GifDecoder, io::Reader as ImageReader, AnimationDecoder, Frame, ImageBuffer,
-    ImageFormat, Rgb, Rgba,
+    codecs::gif::GifDecoder, io::Reader as ImageReader, AnimationDecoder, DynamicImage, Frame,
+    ImageBuffer, ImageFormat, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -55,7 +55,7 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                             Ok(image) => {
                                 time = timestamp;
                                 let delay = Duration::from_millis(difference as u64);
-                                Some(Image::with_delay(image, delay))
+                                Some(Image::with_delay(DynamicImage::ImageRgba8(image), delay))
                             }
                             Err(_) => None,
                         }
@@ -67,16 +67,23 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                 }
             }
             if let Ok((width, height, buf)) = libwebp::WebPDecodeRGBA(bytes) {
-                return Some(vec![Image::new(
+                return Some(vec![Image::from(
                     ImageBuffer::from_raw(width, height, buf.to_vec()).unwrap(),
                 )]);
             }
             None
         }
         format => match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-            Ok(image) => Some(vec![Image::new(image.into_rgba8())]),
+            Ok(image) => Some(vec![Image::new(image)]),
             Err(_) => None,
         },
+    }
+}
+
+pub fn load_un_detectable_raster(bytes: &[u8]) -> Option<Vec<Image>> {
+    match ImageReader::with_format(Cursor::new(&bytes), ImageFormat::Tga).decode() {
+        Ok(image) => Some(vec![Image::new(image)]),
+        Err(_) => None,
     }
 }
 
@@ -102,7 +109,7 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(vec![Image::new(
+    Some(vec![Image::from(
         ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap(),
     )])
 }
@@ -115,7 +122,7 @@ pub fn load_psd(bytes: &[u8]) -> Option<Vec<Image>> {
 
     let raw = psd.rgba();
 
-    Some(vec![Image::new(
+    Some(vec![Image::from(
         ImageBuffer::<Rgba<u8>, _>::from_raw(psd.width(), psd.height(), raw).unwrap(),
     )])
 }
@@ -154,5 +161,5 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
 
     let dyn_img = image::DynamicImage::ImageRgb8(image);
     let rgba_image: ImageBuffer<Rgba<u8>, Vec<u8>> = dyn_img.into_rgba8();
-    Some(vec![Image::new(rgba_image)])
+    Some(vec![Image::from(rgba_image)])
 }

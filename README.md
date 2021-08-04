@@ -27,18 +27,18 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 # Supported Codecs
 | Format | Decoding | Encoding |
 | ------ | -------- | -------- |
-| PNG    | ✅ | ✅ Rgba8 only |
+| PNG    | ✅ | ✅ |
 | JPEG   | ✅ Baseline and progressive | ✅ Baseline |
 | GIF    | ✅ | ✅ |
-| BMP    | ✅ | ✅ Rgba8 only |
+| BMP    | ✅ | ✅ |
 | ICO    | ✅ | ✅ |
-| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits | ✅ |
-| WebP   | ✅ | ✅ Lossless only |
+| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits | ✅ Rgba8 only |
+| WebP   | ✅ Converted to Rgba8 | ✅ Lossless only |
 | AVIF   | ✅ Only 8-bit | ❌ |
 | PNM    | ✅ PBM, PGM, PPM, standard PAM | ❌ |
 | DDS    | ✅ DXT1, DXT3, DXT5 | ❌ |
-| TGA    | ✅ | ❌ |
-| farbfeld | ✅ | ❌ |
+| TGA    | ✅ | ✅ |
+| farbfeld | ✅ | ✅ |
 | SVG    | ✅ Rastarized at 96 dpi | ❌ |
 | PSD    | ✅ | ❌ |
 | Raw    | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (1) | ❌ |

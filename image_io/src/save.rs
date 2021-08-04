@@ -5,12 +5,8 @@ use std::{
 };
 
 use image::{
-    codecs::{
-        bmp::BmpEncoder, gif::GifEncoder, ico::IcoEncoder, jpeg::JpegEncoder, png::PngEncoder,
-        tiff::TiffEncoder,
-    },
-    ColorType::Rgba8,
-    EncodableLayout, Frame,
+    codecs::{gif::GifEncoder, tiff::TiffEncoder},
+    Frame, GenericImageView, ImageOutputFormat,
 };
 use libwebp::WebPEncodeLosslessRGBA;
 use util::Image;
@@ -32,25 +28,33 @@ fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
     buf
 }
 
-pub fn png(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
+pub fn save_with_format(
+    path: impl AsRef<Path>,
+    image: &Image,
+    format: ImageOutputFormat,
+) -> Result<(), std::io::Error> {
     let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-
-    let encoder = PngEncoder::new(file);
-    let buffer = image.buffer();
-    encoder
-        .encode(buffer.as_bytes(), buffer.width(), buffer.height(), Rgba8)
-        .unwrap();
+    let mut file = open_file(&temp_path)?;
+    image.buffer().write_to(&mut file, format).unwrap();
 
     rename(temp_path, path)
 }
 
-pub fn jpg(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
+pub fn tiff(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
     let temp_path = get_temp_path(path.as_ref());
-    let mut file = open_file(&temp_path)?;
+    let file = open_file(&temp_path)?;
 
-    let mut encoder = JpegEncoder::new(&mut file);
-    encoder.encode_image(image.buffer()).unwrap();
+    let encoder = TiffEncoder::new(file);
+    let buffer = image.buffer();
+
+    encoder
+        .encode(
+            buffer.as_bytes(),
+            buffer.width(),
+            buffer.height(),
+            buffer.color(),
+        )
+        .unwrap();
 
     rename(temp_path, path)
 }
@@ -62,45 +66,6 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> Result<(), std::io::Er
     let frames: Vec<Frame> = images.into_iter().map(|image| image.into()).collect();
     let mut encoder = GifEncoder::new(file);
     encoder.encode_frames(frames).unwrap();
-
-    rename(temp_path, path)
-}
-
-pub fn ico(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-
-    let encoder = IcoEncoder::new(file);
-    let buffer = image.buffer();
-    encoder
-        .encode(buffer.as_bytes(), buffer.width(), buffer.height(), Rgba8)
-        .unwrap();
-
-    rename(temp_path, path)
-}
-
-pub fn bmp(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
-    let temp_path = get_temp_path(path.as_ref());
-    let mut file = open_file(&temp_path)?;
-
-    let mut encoder = BmpEncoder::new(&mut file);
-    let buffer = image.buffer();
-    encoder
-        .encode(buffer.as_bytes(), buffer.width(), buffer.height(), Rgba8)
-        .unwrap();
-
-    rename(temp_path, path)
-}
-
-pub fn tiff(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-
-    let encoder = TiffEncoder::new(file);
-    let buffer = image.buffer();
-    encoder
-        .encode(buffer.as_bytes(), buffer.width(), buffer.height(), Rgba8)
-        .unwrap();
 
     rename(temp_path, path)
 }

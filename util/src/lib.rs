@@ -4,7 +4,7 @@ use std::{
 };
 
 use glium::glutin::window::CursorIcon;
-use image::{Delay, Frame, ImageBuffer, Rgba};
+use image::{Delay, DynamicImage, Frame, ImageBuffer, Rgba};
 
 pub mod extensions;
 
@@ -36,30 +36,42 @@ macro_rules! max {
 
 #[derive(Clone, Debug)]
 pub struct Image {
-    pub img: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    pub image: DynamicImage,
     pub delay: Duration,
 }
 
 impl Image {
     #[inline]
-    pub fn new(image: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
+    pub fn new(image: DynamicImage) -> Self {
         Image {
-            img: image,
+            image,
             delay: Duration::default(),
         }
     }
 
     #[inline]
-    pub fn with_delay(image: ImageBuffer<Rgba<u8>, Vec<u8>>, delay: Duration) -> Self {
-        Image { img: image, delay }
+    pub fn with_delay(image: DynamicImage, delay: Duration) -> Self {
+        Image { image, delay }
     }
 
-    pub fn buffer(&self) -> &ImageBuffer<Rgba<u8>, Vec<u8>> {
-        &self.img
+    #[inline]
+    pub fn buffer(&self) -> &DynamicImage {
+        &self.image
     }
 
-    pub fn buffer_mut(&mut self) -> &mut ImageBuffer<Rgba<u8>, Vec<u8>> {
-        &mut self.img
+    #[inline]
+    pub fn buffer_mut(&mut self) -> &mut DynamicImage {
+        &mut self.image
+    }
+}
+
+impl From<ImageBuffer<Rgba<u8>, Vec<u8>>> for Image {
+    #[inline]
+    fn from(buffer: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
+        Image {
+            image: DynamicImage::ImageRgba8(buffer),
+            delay: Duration::default(),
+        }
     }
 }
 
@@ -68,17 +80,20 @@ impl From<Frame> for Image {
     fn from(frame: Frame) -> Self {
         let (num, deno) = frame.delay().numer_denom_ms();
         let delay = Duration::from_millis((num / deno) as u64);
+        let buffer = frame.into_buffer();
         Image {
-            img: frame.into_buffer(),
+            image: DynamicImage::ImageRgba8(buffer),
             delay,
         }
     }
 }
 
 impl From<Image> for Frame {
+    #[inline]
     fn from(image: Image) -> Frame {
         let duration = image.delay;
-        Frame::from_parts(image.img, 0, 0, Delay::from_saturating_duration(duration))
+        let frame = image.image.to_rgba8();
+        Frame::from_parts(frame, 0, 0, Delay::from_saturating_duration(duration))
     }
 }
 

@@ -1,13 +1,12 @@
 use std::{path::PathBuf, thread};
 
 use glium::{glutin::event_loop::EventLoopProxy, Display};
-use image_io::save::{gif, ico, jpg, png, tiff, webp, webp_animation};
-use util::{Image, UserEvent};
-
 use image::{
-    imageops::{rotate180_in_place, rotate270_in, rotate90_in, flip_horizontal_in_place, flip_vertical_in_place},
-    ImageBuffer,
+    imageops::{flip_horizontal_in_place, flip_vertical_in_place, rotate180_in_place},
+    ImageOutputFormat,
 };
+use image_io::save::{gif, save_with_format, tiff, webp, webp_animation};
+use util::{Image, UserEvent};
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::FileDialog::new()
@@ -19,7 +18,9 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
         .add_filter("ICO", &["ico"])
         .add_filter("BMP", &["bmp"])
         .add_filter("TIFF", &["tiff", "tif"])
-        .add_filter("WEBP", &["webp"]);
+        .add_filter("WEBP", &["webp"])
+        .add_filter("Farbfeld", &["ff", "farbfeld"])
+        .add_filter("TGA", &["tga"]);
 
     thread::spawn(move || {
         if let Some(path) = dialog.save_file() {
@@ -28,7 +29,14 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     });
 }
 
-pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, mut frames: Vec<Image>, rotation: i32, horizontal_flip: bool, vertical_flip: bool) {
+pub fn save(
+    proxy: EventLoopProxy<UserEvent>,
+    mut path: PathBuf,
+    mut frames: Vec<Image>,
+    rotation: i32,
+    horizontal_flip: bool,
+    vertical_flip: bool,
+) {
     let os_str = path.extension();
     let ext = match os_str {
         Some(ext) => ext.to_string_lossy().to_string().to_lowercase(),
@@ -41,18 +49,14 @@ pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, mut frames: Vec
             match rotation {
                 0 => (),
                 1 => {
-                    let (width, height) = frame.buffer().dimensions();
-                    let mut buffer = ImageBuffer::new(height, width);
-                    rotate270_in(frame.buffer(), &mut buffer).unwrap();
+                    let buffer = frame.buffer().rotate270();
                     *frame.buffer_mut() = buffer;
                 }
                 2 => {
                     rotate180_in_place(frame.buffer_mut());
                 }
                 3 => {
-                    let (width, height) = frame.buffer().dimensions();
-                    let mut buffer = ImageBuffer::new(height, width);
-                    rotate90_in(frame.buffer(), &mut buffer).unwrap();
+                    let buffer = frame.buffer().rotate90();
                     *frame.buffer_mut() = buffer;
                 }
                 _ => unreachable!(),
@@ -68,9 +72,13 @@ pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, mut frames: Vec
         }
 
         let res = match ext.as_str() {
-            "png" => png(path, &frames[0]),
-            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => jpg(path, &frames[0]),
-            "ico" => ico(path, &frames[0]),
+            "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
+            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
+                save_with_format(path, &frames[0], ImageOutputFormat::Jpeg(100))
+            }
+            "ico" => save_with_format(path, &frames[0], ImageOutputFormat::Ico),
+            "tga" => save_with_format(path, &frames[0], ImageOutputFormat::Tga),
+            "ff" | "farbfeld" => save_with_format(path, &frames[0], ImageOutputFormat::Farbfeld),
             "tiff" | "tif" => tiff(path, &frames[0]),
             "gif" => gif(path, frames),
             "webp" => {
@@ -82,7 +90,7 @@ pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, mut frames: Vec
             }
             _ => {
                 path.set_extension("png");
-                png(path, &frames[0])
+                save_with_format(path, &frames[0], ImageOutputFormat::Png)
             }
         };
 

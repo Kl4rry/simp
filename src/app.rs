@@ -99,7 +99,14 @@ impl App {
                 }
                 UserEvent::Save(path) => {
                     if let Some(ref view) = self.image_view {
-                        save_image::save(self.proxy.clone(), path.clone(), view.frames.clone(), view.rotation, view.horizontal_flip, view.vertical_flip);
+                        save_image::save(
+                            self.proxy.clone(),
+                            path.clone(),
+                            view.frames.clone(),
+                            view.rotation,
+                            view.horizontal_flip,
+                            view.vertical_flip,
+                        );
                     }
                 }
                 UserEvent::ImageError(error) => {

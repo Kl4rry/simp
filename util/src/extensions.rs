@@ -11,6 +11,7 @@ lazy_static! {
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
         "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff"
     ]);
+    pub static ref UNDETECTABLE_RASTER: HashSet<&'static str> = create_set(&["tga"]);
     pub static ref VECTOR: HashSet<&'static str> = create_set(&["svg"]);
     pub static ref RAW: HashSet<&'static str> = create_set(&[
         "raw", "mrw", "arw", "srf", "sr2", "mef", "orf", "srw", "erf", "kdc", "dcs", "rw2", "raf",
