@@ -352,7 +352,9 @@ impl ImageView {
             let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
             let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
 
-            let mut image = frame.buffer().crop_imm(real_x, real_y, real_width, real_height);
+            let mut image = frame
+                .buffer()
+                .crop_imm(real_x, real_y, real_width, real_height);
 
             let delay = frame.delay;
             mem::swap(frame.buffer_mut(), &mut image);

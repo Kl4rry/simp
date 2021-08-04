@@ -7,8 +7,7 @@ use std::{
 
 use image::{
     codecs::{farbfeld::FarbfeldEncoder, gif::GifEncoder, tiff::TiffEncoder},
-    EncodableLayout, Frame, GenericImageView, ImageError,
-    ImageOutputFormat,
+    EncodableLayout, Frame, GenericImageView, ImageError, ImageOutputFormat,
 };
 use libwebp::WebPEncodeLosslessRGBA;
 use util::Image;
