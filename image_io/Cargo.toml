@@ -13,5 +13,6 @@ rawloader = "0.37.0"
 resvg = "0.14.1"
 tiny-skia = "0.5.1"
 usvg = "0.14.1"
+util = { path = "../util" }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
 webp-animation = { version = "0.2.2", features = ["image"] }
-util = { path = "../util"}

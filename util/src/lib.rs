@@ -4,7 +4,7 @@ use std::{
 };
 
 use glium::glutin::window::CursorIcon;
-use image::{Frame, ImageBuffer, Rgba};
+use image::{Delay, Frame, ImageBuffer, Rgba};
 
 pub mod extensions;
 
@@ -75,8 +75,16 @@ impl From<Frame> for Image {
     }
 }
 
+impl From<Image> for Frame {
+    fn from(image: Image) -> Frame {
+        let duration = image.delay;
+        Frame::from_parts(image.img, 0, 0, Delay::from_saturating_duration(duration))
+    }
+}
+
 pub enum UserEvent {
     ImageLoaded(Option<Vec<Image>>, Option<PathBuf>, Instant),
     ImageError(String),
     SetCursor(CursorIcon),
+    Save(PathBuf),
 }

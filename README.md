@@ -25,23 +25,23 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 🆗 = Untested but should work with minimal changes
 
 # Supported Codecs
-| Format | Loading |
-| ------ | -------- |
-| PNG    | ✅ |
-| JPEG   | ✅ Baseline and progressive |
-| GIF    | ✅ |
-| BMP    | ✅ |
-| ICO    | ✅ |
-| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits |
-| WebP   | ✅ |
-| AVIF   | ✅ Only 8-bit |
-| PNM    | ✅ PBM, PGM, PPM, standard PAM |
-| DDS    | ✅ DXT1, DXT3, DXT5 |
-| TGA    | ✅ |
-| farbfeld | ✅ |
-| SVG    | ✅ Rastarized at 96 dpi |
-| PSD    | ✅ 
-| Raw    | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (1) |
+| Format | Loading | Saving |
+| ------ | -------- | -------- |
+| PNG    | ✅ | ✅ Rgba8 only |
+| JPEG   | ✅ Baseline and progressive | ✅ Baseline |
+| GIF    | ✅ | ✅ |
+| BMP    | ✅ | ✅ Rgba8 only |
+| ICO    | ✅ | ✅ |
+| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits | ✅ |
+| WebP   | ✅ | ✅ Lossless only |
+| AVIF   | ✅ Only 8-bit | ❌ |
+| PNM    | ✅ PBM, PGM, PPM, standard PAM | ❌ |
+| DDS    | ✅ DXT1, DXT3, DXT5 | ❌ |
+| TGA    | ✅ | ❌ |
+| farbfeld | ✅ | ❌ |
+| SVG    | ✅ Rastarized at 96 dpi | ❌ |
+| PSD    | ✅ | ❌ |
+| Raw    | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (1) | ❌ |
 
 1. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 

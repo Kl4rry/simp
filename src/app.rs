@@ -97,6 +97,11 @@ impl App {
                     }
                     self.stack.reset();
                 }
+                UserEvent::Save(path) => {
+                    if let Some(ref view) = self.image_view {
+                        save_image::save(self.proxy.clone(), path.clone(), view.frames.clone())
+                    }
+                }
                 UserEvent::ImageError(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
                     msgbox::create("Error", error, msgbox::IconType::Error).unwrap();
@@ -132,6 +137,11 @@ impl App {
                                 VirtualKeyCode::O if self.modifiers.ctrl() => {
                                     load_image::open(self.proxy.clone(), display)
                                 }
+                                VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
+                                    self.current_filename.clone(),
+                                    self.proxy.clone(),
+                                    display,
+                                ),
                                 VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
@@ -352,12 +362,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    save_image::open(
-                        &self.current_filename,
-                        &self.image_view.as_ref().unwrap().frames,
-                        self.proxy.clone(),
-                        display,
-                    );
+                    save_image::open(self.current_filename.clone(), self.proxy.clone(), display);
                 }
 
                 ui.separator();

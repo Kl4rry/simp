@@ -4,16 +4,16 @@ use glium::{
     glutin::{event_loop::EventLoopProxy, window::CursorIcon},
     Display,
 };
-use image_io::*;
+use image_io::load::*;
 use util::{extensions::*, UserEvent};
 
 pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display) {
-    let dialog = rfd::FileDialog::new()
-        .set_parent(display.gl_window().window())
-        .pick_file();
-    if let Some(file) = dialog {
-        load(proxy, file);
-    }
+    let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
+    thread::spawn(move || {
+        if let Some(file) = dialog.pick_file() {
+            load(proxy, file);
+        }
+    });
 }
 
 pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
