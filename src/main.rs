@@ -218,7 +218,7 @@ fn main() {
     panic::set_hook(Box::new(|panic_info| {
         let _ = msgbox::create(
             "Error",
-            &format!("panic occurred: {:?}", panic_info),
+            &format!("panic occurred: {}", panic_info),
             msgbox::IconType::Error,
         );
     }));

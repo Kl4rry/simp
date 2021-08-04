@@ -17,10 +17,7 @@ use glium::{
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
-use image::{
-    imageops::{crop_imm, rotate180_in_place},
-    DynamicImage, GenericImageView,
-};
+use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
 use rect::Rect;
 use util::{max, min, Image};
 use vec2::Vec2;

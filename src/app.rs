@@ -27,6 +27,8 @@ mod save_image;
 use crop::Crop;
 pub mod cursor;
 mod undo_stack;
+use std::thread;
+
 use undo_stack::{UndoFrame, UndoStack};
 
 const TOP_BAR_SIZE: f32 = 25.0;
@@ -111,7 +113,10 @@ impl App {
                 }
                 UserEvent::ImageError(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
-                    msgbox::create("Error", error, msgbox::IconType::Error).unwrap();
+                    let error = error.clone();
+                    thread::spawn(move || {
+                        msgbox::create("Error", &error, msgbox::IconType::Error).unwrap()
+                    });
                 }
                 UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             };
@@ -533,7 +538,9 @@ impl App {
                         &format!("Version: {}", env!("CARGO_PKG_VERSION")),
                         &format!("Commit: {}", env!("GIT_HASH")),
                     );
-                    msgbox::create("About", &about, msgbox::IconType::Info).unwrap();
+                    thread::spawn(move || {
+                        msgbox::create("About", &about, msgbox::IconType::Info).unwrap()
+                    });
                 }
             });
         });
