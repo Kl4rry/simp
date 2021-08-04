@@ -52,8 +52,8 @@ pub struct ImageView {
     pub frames: Vec<Image>,
     pub last_frame: Instant,
     pub index: usize,
-    horizontal_flip: bool,
-    vertical_flip: bool,
+    pub horizontal_flip: bool,
+    pub vertical_flip: bool,
     shader: Program,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -352,8 +352,7 @@ impl ImageView {
             match self.rotation {
                 0 => (),
                 1 => {
-                    let width = frame.buffer().width();
-                    let height = frame.buffer().height();
+                    let (width, height) = frame.buffer().dimensions();
                     let mut buffer = ImageBuffer::new(height, width);
                     rotate270_in(frame.buffer(), &mut buffer).unwrap();
                     *frame.buffer_mut() = buffer;
@@ -362,8 +361,7 @@ impl ImageView {
                     rotate180_in_place(frame.buffer_mut());
                 }
                 3 => {
-                    let width = frame.buffer().width();
-                    let height = frame.buffer().height();
+                    let (width, height) = frame.buffer().dimensions();
                     let mut buffer = ImageBuffer::new(height, width);
                     rotate90_in(frame.buffer(), &mut buffer).unwrap();
                     *frame.buffer_mut() = buffer;

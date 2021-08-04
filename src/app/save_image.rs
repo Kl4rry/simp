@@ -4,6 +4,11 @@ use glium::{glutin::event_loop::EventLoopProxy, Display};
 use image_io::save::{gif, ico, jpg, png, tiff, webp, webp_animation};
 use util::{Image, UserEvent};
 
+use image::{
+    imageops::{rotate180_in_place, rotate270_in, rotate90_in, flip_horizontal_in_place, flip_vertical_in_place},
+    ImageBuffer,
+};
+
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::FileDialog::new()
         .set_file_name(&name)
@@ -23,7 +28,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     });
 }
 
-pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, frames: Vec<Image>) {
+pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, mut frames: Vec<Image>, rotation: i32, horizontal_flip: bool, vertical_flip: bool) {
     let os_str = path.extension();
     let ext = match os_str {
         Some(ext) => ext.to_string_lossy().to_string().to_lowercase(),
@@ -32,6 +37,36 @@ pub fn save(proxy: EventLoopProxy<UserEvent>, mut path: PathBuf, frames: Vec<Ima
     path.set_extension(&ext);
 
     thread::spawn(move || {
+        for frame in &mut frames {
+            match rotation {
+                0 => (),
+                1 => {
+                    let (width, height) = frame.buffer().dimensions();
+                    let mut buffer = ImageBuffer::new(height, width);
+                    rotate270_in(frame.buffer(), &mut buffer).unwrap();
+                    *frame.buffer_mut() = buffer;
+                }
+                2 => {
+                    rotate180_in_place(frame.buffer_mut());
+                }
+                3 => {
+                    let (width, height) = frame.buffer().dimensions();
+                    let mut buffer = ImageBuffer::new(height, width);
+                    rotate90_in(frame.buffer(), &mut buffer).unwrap();
+                    *frame.buffer_mut() = buffer;
+                }
+                _ => unreachable!(),
+            }
+
+            if horizontal_flip {
+                flip_horizontal_in_place(frame.buffer_mut());
+            }
+
+            if vertical_flip {
+                flip_vertical_in_place(frame.buffer_mut());
+            }
+        }
+
         let res = match ext.as_str() {
             "png" => png(path, &frames[0]),
             "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => jpg(path, &frames[0]),
