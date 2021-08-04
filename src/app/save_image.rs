@@ -94,11 +94,8 @@ pub fn save(
             }
         };
 
-        match res {
-            Err(error) => {
-                let _ = proxy.send_event(UserEvent::ImageError(error.to_string()));
-            }
-            Ok(_) => (),
+        if let Err(error) = res {
+            let _ = proxy.send_event(UserEvent::ImageError(error.to_string()));
         }
     });
 }

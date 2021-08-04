@@ -364,7 +364,7 @@ impl ImageView {
 
         let old_rotation = self.rotation;
         self.rotation = 0;
-        return Some((old_frames, old_rotation));
+        Some((old_frames, old_rotation))
     }
 
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {

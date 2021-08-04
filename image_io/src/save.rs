@@ -7,6 +7,7 @@ use std::{
 use image::{
     codecs::{gif::GifEncoder, tiff::TiffEncoder},
     Frame, GenericImageView, ImageOutputFormat,
+    error::ImageResult
 };
 use libwebp::WebPEncodeLosslessRGBA;
 use util::Image;
@@ -32,15 +33,15 @@ pub fn save_with_format(
     path: impl AsRef<Path>,
     image: &Image,
     format: ImageOutputFormat,
-) -> Result<(), std::io::Error> {
+) -> ImageResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    image.buffer().write_to(&mut file, format).unwrap();
+    image.buffer().write_to(&mut file, format)?;
 
-    rename(temp_path, path)
+    Ok(rename(temp_path, path)?)
 }
 
-pub fn tiff(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
+pub fn tiff(path: impl AsRef<Path>, image: &Image) -> ImageResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
 
@@ -53,32 +54,30 @@ pub fn tiff(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error>
             buffer.width(),
             buffer.height(),
             buffer.color(),
-        )
-        .unwrap();
+        )?;
 
-    rename(temp_path, path)
+    Ok(rename(temp_path, path)?)
 }
 
-pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> Result<(), std::io::Error> {
+pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> ImageResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
 
     let frames: Vec<Frame> = images.into_iter().map(|image| image.into()).collect();
     let mut encoder = GifEncoder::new(file);
-    encoder.encode_frames(frames).unwrap();
+    encoder.encode_frames(frames)?;
 
-    rename(temp_path, path)
+    Ok(rename(temp_path, path)?)
 }
 
-pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> Result<(), std::io::Error> {
+pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> ImageResult<()> {
     let config = EncodingConfig {
         encoding_type: webp_animation::prelude::EncodingType::Lossless,
         quality: 100.0,
         method: 6,
     };
     let dimensions = images[0].buffer().dimensions();
-    let mut options = EncoderOptions::default();
-    options.encoding_config = Some(config);
+    let options = EncoderOptions { encoding_config: Some(config), ..Default::default() };
     let mut encoder = Encoder::new_with_options(dimensions, options).unwrap();
     let mut timestamp: i32 = 0;
     for image in images {
@@ -92,19 +91,19 @@ pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> Result<(), 
 
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    file.write(&*webp_data)?;
+    file.write_all(&*webp_data)?;
 
-    rename(temp_path, path)
+    Ok(rename(temp_path, path)?)
 }
 
-pub fn webp(path: impl AsRef<Path>, image: &Image) -> Result<(), std::io::Error> {
+pub fn webp(path: impl AsRef<Path>, image: &Image) -> ImageResult<()> {
     let (width, height) = image.buffer().dimensions();
     let webp_data =
         WebPEncodeLosslessRGBA(image.buffer().as_bytes(), width, height, width * 4).unwrap();
 
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    file.write(&*webp_data)?;
+    file.write_all(&*webp_data)?;
 
-    rename(temp_path, path)
+    Ok(rename(temp_path, path)?)
 }
