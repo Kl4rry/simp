@@ -6,8 +6,9 @@ use std::{
 };
 
 use image::{
-    codecs::{gif::GifEncoder, tiff::TiffEncoder},
-    Frame, GenericImageView, ImageError, ImageOutputFormat,
+    codecs::{farbfeld::FarbfeldEncoder, gif::GifEncoder, tiff::TiffEncoder},
+    EncodableLayout, Frame, GenericImageView, ImageError,
+    ImageOutputFormat,
 };
 use libwebp::WebPEncodeLosslessRGBA;
 use util::Image;
@@ -130,6 +131,20 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     let frames: Vec<Frame> = images.into_iter().map(|image| image.into()).collect();
     let mut encoder = GifEncoder::new(file);
     encoder.encode_frames(frames)?;
+
+    Ok(rename(temp_path, path)?)
+}
+
+#[inline]
+pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
+    let temp_path = get_temp_path(path.as_ref());
+    let file = open_file(&temp_path)?;
+    let encoder = FarbfeldEncoder::new(file);
+    encoder.encode(
+        image.buffer().to_rgba16().as_bytes(),
+        image.buffer().width(),
+        image.buffer().height(),
+    )?;
 
     Ok(rename(temp_path, path)?)
 }

@@ -5,7 +5,7 @@ use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place, rotate180_in_place},
     ImageOutputFormat,
 };
-use image_io::save::{gif, save_with_format, tiff, webp, webp_animation};
+use image_io::save::{gif, save_with_format, tiff, webp, webp_animation, farbfeld};
 use util::{Image, UserEvent};
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
@@ -78,7 +78,7 @@ pub fn save(
             }
             "ico" => save_with_format(path, &frames[0], ImageOutputFormat::Ico),
             "tga" => save_with_format(path, &frames[0], ImageOutputFormat::Tga),
-            "ff" | "farbfeld" => save_with_format(path, &frames[0], ImageOutputFormat::Farbfeld),
+            "ff" | "farbfeld" => farbfeld(path, &frames[0]),
             "tiff" | "tif" => tiff(path, &frames[0]),
             "gif" => gif(path, frames),
             "webp" => {
