@@ -352,7 +352,7 @@ impl ImageView {
             let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
             let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
 
-            let mut image = crop(frame.buffer(), real_x, real_y, real_width, real_height);
+            let mut image = frame.buffer().crop_imm(real_x, real_y, real_width, real_height);
 
             let delay = frame.delay;
             mem::swap(frame.buffer_mut(), &mut image);
@@ -428,51 +428,6 @@ fn get_rotation_matrix(rad: f32) -> Matrix4<f32> {
         0.0, 0.0, 0.0, 1.0,
     );
     matrix
-}
-
-fn crop(image: &DynamicImage, x: u32, y: u32, width: u32, height: u32) -> DynamicImage {
-    match image {
-        DynamicImage::ImageLuma8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageLuma8(sub_image.to_image())
-        }
-        DynamicImage::ImageLumaA8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageLumaA8(sub_image.to_image())
-        }
-        DynamicImage::ImageRgb8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageRgb8(sub_image.to_image())
-        }
-        DynamicImage::ImageRgba8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageRgba8(sub_image.to_image())
-        }
-        DynamicImage::ImageBgr8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageBgr8(sub_image.to_image())
-        }
-        DynamicImage::ImageBgra8(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageBgra8(sub_image.to_image())
-        }
-        DynamicImage::ImageLuma16(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageLuma16(sub_image.to_image())
-        }
-        DynamicImage::ImageLumaA16(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageLumaA16(sub_image.to_image())
-        }
-        DynamicImage::ImageRgb16(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageRgb16(sub_image.to_image())
-        }
-        DynamicImage::ImageRgba16(buffer) => {
-            let sub_image = crop_imm(buffer, x, y, width, height);
-            DynamicImage::ImageRgba16(sub_image.to_image())
-        }
-    }
 }
 
 fn get_texture(image: &DynamicImage, display: &Display) -> SrgbTexture2d {
