@@ -32,7 +32,7 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 | GIF    | ✅ | ✅ |
 | BMP    | ✅ | ✅ |
 | ICO    | ✅ | ✅ |
-| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits | ✅ Rgba8 only |
+| TIFF   | ✅ Baseline(no fax support) + LZW + PackBits | ✅ |
 | WebP   | ✅ Converted to Rgba8 | ✅ Lossless only |
 | AVIF   | ✅ Only 8-bit | ❌ |
 | PNM    | ✅ PBM, PGM, PPM, standard PAM | ❌ |
