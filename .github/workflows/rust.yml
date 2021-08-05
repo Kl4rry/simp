@@ -35,13 +35,19 @@ jobs:
 
       - name: Install system deps
         run: sudo apt-get install libcairo2-dev libpango1.0-dev libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
-        
+
       - name: Install Rust
         run: |
           rustup update ${{ matrix.rust }} --no-self-update 
           rustup default ${{ matrix.rust }}
       - name: Build
         run: cargo build --release
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-build-artifacts
+          path: target/release/simp
 
   build-win:
     runs-on: windows-latest
@@ -79,6 +85,12 @@ jobs:
           rustup default ${{ matrix.rust }}
       - name: Build
         run: cargo build --release
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-build-artifacts
+          path: target/release/simp.exe
 
   build-mac:
     runs-on: macos-latest
@@ -116,3 +128,9 @@ jobs:
           rustup default ${{ matrix.rust }}
       - name: Build
         run: cargo build --release
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ubuntu-build-artifacts
+          path: target/release/simp
