@@ -19,7 +19,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
         .add_filter("BMP", &["bmp"])
         .add_filter("TIFF", &["tiff", "tif"])
         .add_filter("WEBP", &["webp"])
-        .add_filter("Farbfeld", &["ff", "farbfeld"])
+        .add_filter("Targaformat", &["ff", "farbfeld"])
         .add_filter("TGA", &["tga"]);
 
     thread::spawn(move || {
