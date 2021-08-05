@@ -89,7 +89,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: ubuntu-build-artifacts
+          name: windows-build-artifacts
           path: target/release/simp.exe
 
   build-mac:
@@ -132,5 +132,5 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: ubuntu-build-artifacts
+          name: macos-build-artifacts
           path: target/release/simp
