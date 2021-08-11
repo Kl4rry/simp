@@ -99,7 +99,8 @@ cargo install simp
 cargo install --git https://github.com/Kl4rry/simp
 ```
 
-The latest bulid is very likely buggy and unfinished.
+The latest bulid is very likely buggy and unfinished.  
+You can always also just grab the latest binary from actions build artifacts.
 
 ### Manual
 
