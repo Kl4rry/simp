@@ -601,9 +601,6 @@ impl App {
                     ui.text(&format!("{} x {}", image.size.x(), image.size.y()));
                     ui.same_line_with_spacing(0.0, 20.0);
                     ui.text(&format!("Zoom: {}%", (image.scale * 100.0).round()));
-                    if ui.is_item_clicked(MouseButton::Left) {
-                        image.scale = 1.0;
-                    }
                 } else {
                     ui.same_line_with_spacing(0.0, 10.0);
                     ui.text("No File");
