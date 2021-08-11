@@ -1,4 +1,4 @@
-use std::{process::Command, time::Duration};
+use std::{path::Path, process::Command, time::Duration};
 
 use glium::{
     backend::glutin::Display,
@@ -13,7 +13,6 @@ use imgui_glium_renderer::Renderer;
 use rect::Rect;
 use util::{min, UserEvent};
 use vec2::Vec2;
-
 pub mod image_view;
 use image_view::ImageView;
 pub mod image_list;
@@ -81,7 +80,6 @@ impl App {
                     if replace {
                         self.image_view =
                             Some(ImageView::new(display, images, path.clone(), *instant));
-                        let view = self.image_view.as_mut().unwrap();
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
@@ -89,14 +87,8 @@ impl App {
                         } else {
                             String::new()
                         };
-
-                        let scaling = min!(
-                            self.size.x() / view.size.x(),
-                            (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
-                        );
-                        view.scale = scaling;
-                        view.position = self.size / 2.0;
                     }
+                    self.best_fit();
                     self.stack.reset();
                 }
                 UserEvent::Save(path) => {
@@ -111,7 +103,7 @@ impl App {
                         );
                     }
                 }
-                UserEvent::ImageError(error) => {
+                UserEvent::Error(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
                     let error = error.clone();
                     thread::spawn(move || {
@@ -129,15 +121,13 @@ impl App {
                     self.mouse_position.set_y(position.y as f32);
                 }
                 WindowEvent::MouseWheel { delta, .. } => {
-                    if let Some(ref mut image) = self.image_view {
-                        let scroll = match delta {
-                            MouseScrollDelta::LineDelta(_, y) => *y,
-                            MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
-                        };
+                    let scroll = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => *y,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                    };
 
-                        if self.crop.inner.is_none() {
-                            zoom(image, scroll, self.mouse_position);
-                        }
+                    if self.crop.inner.is_none() {
+                        self.zoom(scroll, self.mouse_position);
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -146,6 +136,14 @@ impl App {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
                             ElementState::Pressed => match key {
+                                VirtualKeyCode::Delete => {
+                                    if let Some(ref view) = self.image_view {
+                                        if let Some(ref path) = view.path {
+                                            delete(path, self.proxy.clone());
+                                        }
+                                    }
+                                }
+
                                 VirtualKeyCode::O if self.modifiers.ctrl() => {
                                     load_image::open(self.proxy.clone(), display)
                                 }
@@ -158,16 +156,23 @@ impl App {
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
                                 VirtualKeyCode::A => {
-                                    move_image(&mut self.image_view, Vec2::new(20.0, 0.0))
+                                    if let Some(ref mut image) = self.image_view {
+                                        self.stack.push(UndoFrame::Rotate(1));
+                                        image.rotate(1);
+                                    }
                                 }
                                 VirtualKeyCode::D => {
-                                    move_image(&mut self.image_view, Vec2::new(-20.0, 0.0))
+                                    if let Some(ref mut image) = self.image_view {
+                                        self.stack.push(UndoFrame::Rotate(-1));
+                                        image.rotate(-1);
+                                    }
                                 }
-                                VirtualKeyCode::W => {
-                                    move_image(&mut self.image_view, Vec2::new(0.0, 20.0))
+
+                                VirtualKeyCode::F => {
+                                    self.largest_fit();
                                 }
-                                VirtualKeyCode::S => {
-                                    move_image(&mut self.image_view, Vec2::new(0.0, -20.0))
+                                VirtualKeyCode::B => {
+                                    self.best_fit();
                                 }
 
                                 VirtualKeyCode::Q => {
@@ -251,18 +256,20 @@ impl App {
                     }
                 }
                 WindowEvent::ReceivedCharacter(c) => match c {
+                    '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
+                        if let Some(ref mut view) = self.image_view {
+                            let zoom = c.to_digit(10).unwrap() as f32;
+                            view.scale = zoom;
+                        }
+                    }
                     '+' => {
-                        if let Some(image) = self.image_view.as_mut() {
-                            if self.crop.inner.is_none() {
-                                zoom(image, 1.0, self.size / 2.0);
-                            }
+                        if self.crop.inner.is_none() {
+                            self.zoom(1.0, self.size / 2.0);
                         }
                     }
                     '-' => {
-                        if let Some(image) = self.image_view.as_mut() {
-                            if self.crop.inner.is_none() {
-                                zoom(image, -1.0, self.size / 2.0);
-                            }
+                        if self.crop.inner.is_none() {
+                            self.zoom(-1.0, self.size / 2.0);
                         }
                     }
                     _ => (),
@@ -344,7 +351,6 @@ impl App {
                         .set_y((window_size.y() - image_size.y() / 2.0) + TOP_BAR_SIZE);
                 }
             }
-            image.real_size();
         }
 
         let styles = ui.push_style_vars(&[
@@ -468,8 +474,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    let image = self.image_view.as_mut().unwrap();
-                    zoom(image, 1.0, self.size / 2.0);
+                    self.zoom(1.0, self.size / 2.0);
                 }
 
                 if MenuItem::new(im_str!("Zoom out"))
@@ -477,8 +482,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    let image = self.image_view.as_mut().unwrap();
-                    zoom(image, -1.0, image.size / 2.0);
+                    self.zoom(-1.0, self.size / 2.0);
                 }
 
                 ui.separator();
@@ -658,6 +662,46 @@ impl App {
         }
     }
 
+    fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {
+        if let Some(ref mut image) = self.image_view {
+            let old_scale = image.scale;
+            image.scale += image.scale * zoom as f32 / 10.0;
+
+            let new_size = image.scaled();
+            if (new_size.x() < 100.0 || new_size.y() < 100.0)
+                && old_scale >= image.scale
+                && image.scale < 1.0
+            {
+                image.scale = min!(old_scale, 1.0);
+            } else {
+                let mouse_to_center = image.position - mouse_position;
+                image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
+            }
+        }
+    }
+
+    pub fn best_fit(&mut self) {
+        if let Some(ref mut view) = self.image_view {
+            let scaling = min!(
+                self.size.x() / view.size.x(),
+                (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
+            );
+            view.scale = min!(scaling, 1.0);
+            view.position = self.size / 2.0;
+        }
+    }
+
+    pub fn largest_fit(&mut self) {
+        if let Some(ref mut view) = self.image_view {
+            let scaling = min!(
+                self.size.x() / view.size.x(),
+                (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
+            );
+            view.scale = scaling;
+            view.position = self.size / 2.0;
+        }
+    }
+
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
         App {
             image_view: None,
@@ -674,31 +718,28 @@ impl App {
     }
 }
 
-fn move_image(image_view: &mut Option<ImageView>, delta: Vec2<f32>) {
-    if let Some(image) = image_view.as_mut() {
-        image.position += delta;
-    }
+pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
+    let path = path.as_ref().to_path_buf();
+    thread::spawn(move || {
+        let dialog = rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Warning)
+            .set_title("Move to trash")
+            .set_description("Are you sure u want to move this to trash")
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .show();
+
+        if dialog {
+            if let Err(error) = trash::delete(path) {
+                let _ = proxy.send_event(UserEvent::Error(error.to_string()));
+            }
+        }
+    });
 }
 
 fn new_window() {
     Command::new(std::env::current_exe().unwrap())
         .spawn()
         .unwrap();
-}
-
-fn zoom(image: &mut ImageView, zoom: f32, mouse_position: Vec2<f32>) {
-    let old_scale = image.scale;
-    image.scale += image.scale * zoom as f32 / 10.0;
-
-    let new_size = image.scaled();
-    if new_size.x() < 100.0 || new_size.y() < 100.0 {
-        if image.size.x() > new_size.x() && image.size.y() > new_size.y() {
-            image.scale = min!(old_scale, 1.0);
-        }
-    } else {
-        let mouse_to_center = image.position - mouse_position;
-        image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
-    }
 }
 
 fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
@@ -710,17 +751,5 @@ fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
         }
     } else {
         *old = *new;
-    }
-}
-
-struct Range(f32, f32);
-
-impl internal::InclusiveRangeBounds<f32> for Range {
-    fn start_bound(&self) -> Option<&f32> {
-        Some(&self.0)
-    }
-
-    fn end_bound(&self) -> Option<&f32> {
-        Some(&self.1)
     }
 }

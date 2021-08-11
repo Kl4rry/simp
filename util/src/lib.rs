@@ -99,7 +99,7 @@ impl From<Image> for Frame {
 
 pub enum UserEvent {
     ImageLoaded(Option<Vec<Image>>, Option<PathBuf>, Instant),
-    ImageError(String),
+    Error(String),
     SetCursor(CursorIcon),
     Save(PathBuf),
 }

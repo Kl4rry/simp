@@ -95,7 +95,7 @@ pub fn save(
         };
 
         if let Err(error) = res {
-            let _ = proxy.send_event(UserEvent::ImageError(error.to_string()));
+            let _ = proxy.send_event(UserEvent::Error(error.to_string()));
         }
     });
 }

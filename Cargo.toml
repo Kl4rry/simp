@@ -22,8 +22,9 @@ imgui-winit-support = "0.7.0"
 lazy_static = "1.4.0"
 msgbox = "0.6.0"
 rect = { path = "./rect" }
-timing = "0.2.1"
 rfd = "0.4.0"
+timing = "0.2.1"
+trash = "2.0"
 util = { path = "./util" }
 vec2 = { path = "./vec2" }
 webbrowser = "0.5.5"

@@ -25,7 +25,7 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
         let bytes = match file {
             Ok(bytes) => bytes,
             Err(error) => {
-                let _ = proxy.send_event(UserEvent::ImageError(error.to_string()));
+                let _ = proxy.send_event(UserEvent::Error(error.to_string()));
                 return;
             }
         };
@@ -62,7 +62,7 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
             }
         }
 
-        let _ = proxy.send_event(UserEvent::ImageError(format!(
+        let _ = proxy.send_event(UserEvent::Error(format!(
             "Error decoding image: {:?}",
             path_buf.to_str().unwrap()
         )));
