@@ -469,24 +469,6 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Zoom in"))
-                    .shortcut(im_str!("+"))
-                    .enabled(self.image_view.is_some())
-                    .build(ui)
-                {
-                    self.zoom(1.0, self.size / 2.0);
-                }
-
-                if MenuItem::new(im_str!("Zoom out"))
-                    .shortcut(im_str!("-"))
-                    .enabled(self.image_view.is_some())
-                    .build(ui)
-                {
-                    self.zoom(-1.0, self.size / 2.0);
-                }
-
-                ui.separator();
-
                 if MenuItem::new(im_str!("Flip Horizontal"))
                     .enabled(self.image_view.is_some())
                     .build(ui)
@@ -507,6 +489,42 @@ impl App {
 
                 ui.separator();
 
+                if MenuItem::new(im_str!("Zoom in"))
+                    .shortcut(im_str!("+"))
+                    .enabled(self.image_view.is_some())
+                    .build(ui)
+                {
+                    self.zoom(1.0, self.size / 2.0);
+                }
+
+                if MenuItem::new(im_str!("Zoom out"))
+                    .shortcut(im_str!("-"))
+                    .enabled(self.image_view.is_some())
+                    .build(ui)
+                {
+                    self.zoom(-1.0, self.size / 2.0);
+                }
+
+                ui.separator();
+
+                if MenuItem::new(im_str!("Best fit"))
+                    .shortcut(im_str!("E"))
+                    .enabled(self.image_view.is_some())
+                    .build(ui)
+                {
+                    self.best_fit();
+                }
+
+                if MenuItem::new(im_str!("Largest fit"))
+                    .shortcut(im_str!("F"))
+                    .enabled(self.image_view.is_some())
+                    .build(ui)
+                {
+                    self.best_fit();
+                }
+
+                ui.separator();
+
                 if MenuItem::new(im_str!("Crop"))
                     .shortcut(im_str!("Ctrl + X"))
                     .enabled(self.image_view.is_some())
@@ -520,6 +538,20 @@ impl App {
                     .build(ui)
                 {
                     todo!();
+                }
+
+                ui.separator();
+
+                if MenuItem::new(im_str!("Delete"))
+                    .shortcut(im_str!("Delete"))
+                    .enabled(self.image_view.is_some())
+                    .build(ui)
+                {
+                    if let Some(ref view) = self.image_view {
+                        if let Some(ref path) = view.path {
+                            delete(path, self.proxy.clone());
+                        }
+                    }
                 }
             });
 
