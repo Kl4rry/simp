@@ -102,4 +102,5 @@ pub enum UserEvent {
     Error(String),
     SetCursor(CursorIcon),
     Save(PathBuf),
+    Exit,
 }

@@ -100,6 +100,11 @@ impl System {
         let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
         display.gl_window().window().set_visible(true);
 
+        let ctrl_proxy = proxy.clone();
+        ctrlc::set_handler(move || {
+            let _ = ctrl_proxy.send_event(UserEvent::Exit);
+        }).unwrap();
+
         let background = Background::new(&display);
 
         Self {

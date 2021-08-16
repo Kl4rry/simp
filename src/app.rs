@@ -111,6 +111,7 @@ impl App {
                     });
                 }
                 UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
+                UserEvent::Exit => exit = true,
             };
         }
 
