@@ -1,4 +1,8 @@
-use std::{path::Path, process::Command, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+    time::Duration,
+};
 
 use glium::{
     backend::glutin::Display,
@@ -10,6 +14,7 @@ use glium::{
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
+use lru::LruCache;
 use rect::Rect;
 use util::{min, UserEvent};
 use vec2::Vec2;
@@ -26,12 +31,17 @@ mod save_image;
 use crop::Crop;
 pub mod cursor;
 mod undo_stack;
-use std::thread;
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+};
 
 use undo_stack::{UndoFrame, UndoStack};
 
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
+
+pub type Cache = Arc<Mutex<LruCache<PathBuf, Vec<util::Image>>>>;
 
 pub struct App {
     pub image_view: Option<ImageView>,
@@ -44,6 +54,7 @@ pub struct App {
     arrows: Arrows,
     stack: UndoStack,
     pub crop: Crop,
+    pub cache: Cache,
 }
 
 impl App {
@@ -132,7 +143,9 @@ impl App {
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
-                WindowEvent::DroppedFile(path) => load_image::load(self.proxy.clone(), path),
+                WindowEvent::DroppedFile(path) => {
+                    load_image::load(self.proxy.clone(), path, self.cache.clone())
+                }
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
@@ -145,9 +158,11 @@ impl App {
                                     }
                                 }
 
-                                VirtualKeyCode::O if self.modifiers.ctrl() => {
-                                    load_image::open(self.proxy.clone(), display)
-                                }
+                                VirtualKeyCode::O if self.modifiers.ctrl() => load_image::open(
+                                    self.proxy.clone(),
+                                    display,
+                                    self.cache.clone(),
+                                ),
                                 VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
                                     self.current_filename.clone(),
                                     self.proxy.clone(),
@@ -179,7 +194,12 @@ impl App {
                                 VirtualKeyCode::R if self.modifiers.ctrl() => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         if let Some(path) = &image.path {
-                                            load_image::load(self.proxy.clone(), path);
+                                            self.cache.lock().unwrap().clear();
+                                            load_image::load(
+                                                self.proxy.clone(),
+                                                path,
+                                                self.cache.clone(),
+                                            );
                                         }
                                     }
                                 }
@@ -206,7 +226,11 @@ impl App {
                                 VirtualKeyCode::Left | VirtualKeyCode::D => {
                                     if let Some(path) = self.image_list.previous() {
                                         if self.crop.inner.is_none() {
-                                            load_image::load(self.proxy.clone(), path);
+                                            load_image::load(
+                                                self.proxy.clone(),
+                                                path,
+                                                self.cache.clone(),
+                                            );
                                         }
                                     }
                                 }
@@ -214,7 +238,11 @@ impl App {
                                 VirtualKeyCode::Right | VirtualKeyCode::A => {
                                     if let Some(path) = self.image_list.next() {
                                         if self.crop.inner.is_none() {
-                                            load_image::load(self.proxy.clone(), path);
+                                            load_image::load(
+                                                self.proxy.clone(),
+                                                path,
+                                                self.cache.clone(),
+                                            );
                                         }
                                     }
                                 }
@@ -360,7 +388,7 @@ impl App {
                     .shortcut(im_str!("Ctrl + O"))
                     .build(ui)
                 {
-                    load_image::open(self.proxy.clone(), display);
+                    load_image::open(self.proxy.clone(), display, self.cache.clone());
                 }
 
                 if MenuItem::new(im_str!("Save as"))
@@ -386,7 +414,7 @@ impl App {
                     .build(ui)
                 {
                     if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                        load_image::load(self.proxy.clone(), path);
+                        load_image::load(self.proxy.clone(), path, self.cache.clone());
                     }
                 }
 
@@ -597,12 +625,12 @@ impl App {
                     match action {
                         Action::Left => {
                             if let Some(path) = self.image_list.previous() {
-                                load_image::load(self.proxy.clone(), path);
+                                load_image::load(self.proxy.clone(), path, self.cache.clone());
                             }
                         }
                         Action::Right => {
                             if let Some(path) = self.image_list.next() {
-                                load_image::load(self.proxy.clone(), path);
+                                load_image::load(self.proxy.clone(), path, self.cache.clone());
                             }
                         }
                         Action::None => (),
@@ -731,6 +759,7 @@ impl App {
             arrows: Arrows::new(),
             stack: UndoStack::new(),
             crop: Crop::new(display),
+            cache: Arc::new(Mutex::new(LruCache::new(10))),
         }
     }
 }

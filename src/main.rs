@@ -1,4 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
@@ -41,7 +40,11 @@ pub struct System {
 impl System {
     pub fn new() -> Self {
         #[cfg(target_os = "windows")]
-        native_windows_gui::enable_visual_styles();
+        {
+            native_windows_gui::enable_visual_styles();
+            unsafe { winapi::um::wincon::FreeConsole() };
+        }
+
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new().with_vsync(true);
@@ -234,7 +237,7 @@ fn main() {
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         if let Some(arg) = args.pop() {
-            app::load_image::load(system.proxy.clone(), arg);
+            app::load_image::load(system.proxy.clone(), arg, system.app.cache.clone());
         }
     }
 

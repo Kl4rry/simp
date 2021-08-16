@@ -11,7 +11,6 @@ readme = "README.md"
 
 [dependencies]
 arboard = "1.2.1"
-cached = "0.25.0"
 cgmath = "0.18.0"
 clipboard = "0.5"
 ctrlc = "3.2.0"
@@ -22,6 +21,7 @@ imgui = "0.7.0"
 imgui-glium-renderer = "0.7.0"
 imgui-winit-support = "0.7.0"
 lazy_static = "1.4.0"
+lru = "0.6.6"
 msgbox = "0.6.0"
 rect = { path = "./rect" }
 rfd = "0.4.0"
@@ -33,6 +33,7 @@ webbrowser = "0.5.5"
 
 [target.'cfg(windows)'.dependencies]
 native-windows-gui = "1.0.12"
+winapi = { version = "0.3.9", features = ["wincon", "winuser"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.11"
