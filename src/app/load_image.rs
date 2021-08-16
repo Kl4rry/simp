@@ -1,11 +1,13 @@
-use std::{fs, path::Path, thread, time::Instant};
+use std::{fs, path::{Path, PathBuf}, thread, time::Instant};
 
+use cached::proc_macro::cached;
+use cached::SizedCache;
 use glium::{
     glutin::{event_loop::EventLoopProxy, window::CursorIcon},
     Display,
 };
 use image_io::load::*;
-use util::{extensions::*, UserEvent};
+use util::{extensions::*, UserEvent, Image};
 
 pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
@@ -21,12 +23,34 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
     let _ = proxy.send_event(UserEvent::SetCursor(CursorIcon::Progress));
     thread::spawn(move || {
         let start = Instant::now();
-        let file = fs::read(&path_buf);
+
+        if let Some(image) = load_cached(path_buf.clone(), proxy.clone()) {
+            let _ =
+                proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
+            return;
+        }
+
+        let _ = proxy.send_event(UserEvent::Error(format!(
+            "Error decoding image: {:?}",
+            path_buf.to_str().unwrap()
+        )));
+    });
+}
+
+#[cached(
+    type = "SizedCache<String, Vec<Image>>",
+    create = "{ SizedCache::with_size(10) }",
+    option = true,
+    convert = r#"{ format!("{}", path_buf.as_os_str().to_str().unwrap().to_string()) }"#
+)]
+fn load_cached(path_buf: PathBuf, proxy: EventLoopProxy<UserEvent>) -> Option<Vec<Image>> {
+    println!("load");
+    let file = fs::read(&path_buf);
         let bytes = match file {
             Ok(bytes) => bytes,
             Err(error) => {
                 let _ = proxy.send_event(UserEvent::Error(error.to_string()));
-                return;
+                return None;
             }
         };
 
@@ -56,15 +80,8 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>) {
 
         for loader in loaders {
             if let Some(image) = loader(&bytes) {
-                let _ =
-                    proxy.send_event(UserEvent::ImageLoaded(Some(image), Some(path_buf), start));
-                return;
+                return Some(image);
             }
         }
-
-        let _ = proxy.send_event(UserEvent::Error(format!(
-            "Error decoding image: {:?}",
-            path_buf.to_str().unwrap()
-        )));
-    });
+        None
 }

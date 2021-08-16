@@ -11,6 +11,7 @@ readme = "README.md"
 
 [dependencies]
 arboard = "1.2.1"
+cached = "0.25.0"
 cgmath = "0.18.0"
 clipboard = "0.5"
 ctrlc = "3.2.0"

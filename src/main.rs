@@ -103,7 +103,8 @@ impl System {
         let ctrl_proxy = proxy.clone();
         ctrlc::set_handler(move || {
             let _ = ctrl_proxy.send_event(UserEvent::Exit);
-        }).unwrap();
+        })
+        .unwrap();
 
         let background = Background::new(&display);
 
