@@ -155,19 +155,6 @@ impl App {
                                 VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
-                                VirtualKeyCode::A => {
-                                    if let Some(ref mut image) = self.image_view {
-                                        self.stack.push(UndoFrame::Rotate(1));
-                                        image.rotate(1);
-                                    }
-                                }
-                                VirtualKeyCode::D => {
-                                    if let Some(ref mut image) = self.image_view {
-                                        self.stack.push(UndoFrame::Rotate(-1));
-                                        image.rotate(-1);
-                                    }
-                                }
-
                                 VirtualKeyCode::F => {
                                     self.largest_fit();
                                 }
@@ -188,7 +175,7 @@ impl App {
                                     }
                                 }
 
-                                VirtualKeyCode::R => {
+                                VirtualKeyCode::R if self.modifiers.ctrl() => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         if let Some(path) = &image.path {
                                             load_image::load(self.proxy.clone(), path);
@@ -215,7 +202,7 @@ impl App {
                                     self.redo(display);
                                 }
 
-                                VirtualKeyCode::Left => {
+                                VirtualKeyCode::Left | VirtualKeyCode::D => {
                                     if let Some(path) = self.image_list.previous() {
                                         if self.crop.inner.is_none() {
                                             load_image::load(self.proxy.clone(), path);
@@ -223,7 +210,7 @@ impl App {
                                     }
                                 }
 
-                                VirtualKeyCode::Right => {
+                                VirtualKeyCode::Right | VirtualKeyCode::A => {
                                     if let Some(path) = self.image_list.next() {
                                         if self.crop.inner.is_none() {
                                             load_image::load(self.proxy.clone(), path);
