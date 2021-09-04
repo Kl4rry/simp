@@ -56,7 +56,7 @@ The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer f
 | ------------ | :------------------- |
 | Open image   | Ctrl + O             |
 | Save as      | Ctrl + S             |
-| Reload image | Ctrl + R             |
+| Reload image | F5             |
 | New window   | Ctrl + N             |
 | Undo         | Ctrl + Z             |
 | Redo         | Ctrl + Y             |

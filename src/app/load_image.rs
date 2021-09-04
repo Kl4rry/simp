@@ -64,9 +64,8 @@ pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>, cache: Cac
         // make sure lock is dropped after cache lookup
         {
             if let Some(images) = cache.lock().unwrap().get(&path_buf) {
-                let images = images.clone();
                 let _ =
-                    proxy.send_event(UserEvent::ImageLoaded(Some(images), Some(path_buf), start));
+                    proxy.send_event(UserEvent::ImageLoaded(Some(images.clone()), Some(path_buf), start));
                 return;
             }
         }

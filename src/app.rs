@@ -191,7 +191,7 @@ impl App {
                                     }
                                 }
 
-                                VirtualKeyCode::R if self.modifiers.ctrl() => {
+                                VirtualKeyCode::F5 => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         if let Some(path) = &image.path {
                                             self.cache.lock().unwrap().clear();
