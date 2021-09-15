@@ -1,6 +1,9 @@
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     process::Command,
+    sync::{Arc, Mutex, RwLock},
+    thread,
     time::Duration,
 };
 
@@ -18,33 +21,39 @@ use lru::LruCache;
 use rect::Rect;
 use util::{min, UserEvent};
 use vec2::Vec2;
+
 pub mod image_view;
 use image_view::ImageView;
+
 pub mod image_list;
 use image_list::ImageList;
+
 pub mod arrows;
 use arrows::{Action, Arrows};
+
 mod clipboard;
+
 pub mod crop;
+
 pub mod load_image;
+
 mod save_image;
 use crop::Crop;
-pub mod cursor;
-mod undo_stack;
-use std::{
-    sync::{Arc, Mutex},
-    thread,
-};
 
+pub mod cursor;
+
+mod undo_stack;
 use undo_stack::{UndoFrame, UndoStack};
 
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
 
-pub type Cache = Arc<Mutex<LruCache<PathBuf, Vec<util::Image>>>>;
+pub type Cache = Arc<Mutex<LruCache<PathBuf, Arc<RwLock<Vec<util::Image>>>>>>;
 
 pub struct App {
-    pub image_view: Option<ImageView>,
+    exit: bool,
+    delay: Option<Duration>,
+    pub image_view: Option<Box<ImageView>>,
     size: Vec2<f32>,
     proxy: EventLoopProxy<UserEvent>,
     modifiers: ModifiersState,
@@ -53,8 +62,9 @@ pub struct App {
     image_list: ImageList,
     arrows: Arrows,
     stack: UndoStack,
-    pub crop: Crop,
+    pub crop: Box<Crop>,
     pub cache: Cache,
+    pub loading: Arc<Mutex<HashSet<PathBuf>>>,
 }
 
 impl App {
@@ -66,15 +76,15 @@ impl App {
         window_event: Option<&WindowEvent<'_>>,
         user_event: Option<&mut UserEvent>,
     ) -> (bool, Option<Duration>) {
-        let mut exit = false;
-        let mut delay: Option<Duration> = None;
+        self.exit = false;
+        self.delay = None;
         {
             let dimensions = display.get_framebuffer_dimensions();
             self.size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32)
         }
 
         if let Some(ref mut image) = self.image_view {
-            update_delay(&mut delay, &image.animate(display));
+            update_delay(&mut self.delay, &image.animate(display));
         }
 
         if let Some(event) = user_event {
@@ -90,15 +100,26 @@ impl App {
                     let images = images.take().unwrap();
                     if replace {
                         self.image_view =
-                            Some(ImageView::new(display, images, path.clone(), *instant));
+                            Some(box ImageView::new(display, images, path.clone(), *instant));
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
+                            self.loading.lock().unwrap().remove(path);
                             path.file_name().unwrap().to_str().unwrap().to_string()
                         } else {
                             String::new()
                         };
                     }
+
+                    let window_context = display.gl_window();
+                    let window = window_context.window();
+
+                    if self.current_filename.is_empty() {
+                        window.set_title("Simp");
+                    } else {
+                        window.set_title(&self.current_filename.to_string());
+                    }
+
                     self.best_fit();
                     self.stack.reset();
                 }
@@ -114,7 +135,15 @@ impl App {
                         );
                     }
                 }
-                UserEvent::Error(error) => {
+                UserEvent::LoadError(error, path) => {
+                    self.loading.lock().unwrap().remove(path);
+                    cursor::set_cursor_icon(CursorIcon::default(), display);
+                    let error = error.clone();
+                    thread::spawn(move || {
+                        msgbox::create("Error", &error, msgbox::IconType::Error).unwrap()
+                    });
+                }
+                UserEvent::ErrorMessage(error) => {
                     cursor::set_cursor_icon(CursorIcon::default(), display);
                     let error = error.clone();
                     thread::spawn(move || {
@@ -122,7 +151,7 @@ impl App {
                     });
                 }
                 UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
-                UserEvent::Exit => exit = true,
+                UserEvent::Exit => self.exit = true,
             };
         }
 
@@ -143,9 +172,12 @@ impl App {
                     }
                 }
                 WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
-                WindowEvent::DroppedFile(path) => {
-                    load_image::load(self.proxy.clone(), path, self.cache.clone())
-                }
+                WindowEvent::DroppedFile(path) => load_image::load(
+                    self.proxy.clone(),
+                    path,
+                    self.cache.clone(),
+                    self.loading.clone(),
+                ),
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
@@ -162,13 +194,14 @@ impl App {
                                     self.proxy.clone(),
                                     display,
                                     self.cache.clone(),
+                                    self.loading.clone(),
                                 ),
                                 VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
                                     self.current_filename.clone(),
                                     self.proxy.clone(),
                                     display,
                                 ),
-                                VirtualKeyCode::W if self.modifiers.ctrl() => exit = true,
+                                VirtualKeyCode::W if self.modifiers.ctrl() => self.exit = true,
                                 VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
                                 VirtualKeyCode::F => {
@@ -199,6 +232,7 @@ impl App {
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
+                                                self.loading.clone(),
                                             );
                                         }
                                     }
@@ -230,6 +264,7 @@ impl App {
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
+                                                self.loading.clone(),
                                             );
                                         }
                                     }
@@ -242,6 +277,7 @@ impl App {
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
+                                                self.loading.clone(),
                                             );
                                         }
                                     }
@@ -300,7 +336,6 @@ impl App {
                     if let Some(ref mut inner) = self.crop.inner {
                         let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
                         inner.current += delta;
-                        ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                     } else {
                         let cursor_pos = self.mouse_position;
                         let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
@@ -308,13 +343,12 @@ impl App {
                             start: cursor_pos - delta,
                             current: cursor_pos,
                         });
-                        ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                     }
                 } else {
                     let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
                     image.position += delta;
-                    ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
                 }
+                ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
             } else if self.crop.cropping {
                 if let Some(ref inner) = self.crop.inner {
                     let mut size = inner.current - inner.start;
@@ -388,7 +422,12 @@ impl App {
                     .shortcut(im_str!("Ctrl + O"))
                     .build(ui)
                 {
-                    load_image::open(self.proxy.clone(), display, self.cache.clone());
+                    load_image::open(
+                        self.proxy.clone(),
+                        display,
+                        self.cache.clone(),
+                        self.loading.clone(),
+                    );
                 }
 
                 if MenuItem::new(im_str!("Save as"))
@@ -414,7 +453,12 @@ impl App {
                     .build(ui)
                 {
                     if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                        load_image::load(self.proxy.clone(), path, self.cache.clone());
+                        load_image::load(
+                            self.proxy.clone(),
+                            path,
+                            self.cache.clone(),
+                            self.loading.clone(),
+                        );
                     }
                 }
 
@@ -424,7 +468,7 @@ impl App {
                     .shortcut(im_str!("Ctrl + W"))
                     .build(ui)
                 {
-                    exit = true;
+                    self.exit = true;
                 }
             });
 
@@ -621,28 +665,29 @@ impl App {
             .build(ui, || {
                 if let Some(image) = self.image_view.as_mut() {
                     let (action, new_delay) = self.arrows.build(ui);
-                    update_delay(&mut delay, &new_delay);
+                    update_delay(&mut self.delay, &new_delay);
                     match action {
                         Action::Left => {
                             if let Some(path) = self.image_list.previous() {
-                                load_image::load(self.proxy.clone(), path, self.cache.clone());
+                                load_image::load(
+                                    self.proxy.clone(),
+                                    path,
+                                    self.cache.clone(),
+                                    self.loading.clone(),
+                                );
                             }
                         }
                         Action::Right => {
                             if let Some(path) = self.image_list.next() {
-                                load_image::load(self.proxy.clone(), path, self.cache.clone());
+                                load_image::load(
+                                    self.proxy.clone(),
+                                    path,
+                                    self.cache.clone(),
+                                    self.loading.clone(),
+                                );
                             }
                         }
                         Action::None => (),
-                    }
-
-                    ui.same_line_with_spacing(0.0, 10.0);
-                    if self.current_filename.len() > 20 {
-                        let mut text = self.current_filename.chars().take(20).collect::<String>();
-                        text.push_str("...");
-                        ui.text(&text);
-                    } else {
-                        ui.text(&self.current_filename);
                     }
 
                     ui.same_line_with_spacing(0.0, 20.0);
@@ -660,7 +705,7 @@ impl App {
 
         styles.pop(ui);
         colors.pop(ui);
-        (exit, delay)
+        (self.exit, self.delay)
     }
 
     pub fn undo(&mut self, display: &Display) {
@@ -749,6 +794,8 @@ impl App {
 
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
         App {
+            exit: false,
+            delay: None,
             image_view: None,
             size: Vec2::new(size[0], size[1]),
             proxy,
@@ -758,8 +805,9 @@ impl App {
             image_list: ImageList::new(),
             arrows: Arrows::new(),
             stack: UndoStack::new(),
-            crop: Crop::new(display),
+            crop: box Crop::new(display),
             cache: Arc::new(Mutex::new(LruCache::new(10))),
+            loading: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }
@@ -776,7 +824,7 @@ pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
 
         if dialog {
             if let Err(error) = trash::delete(path) {
-                let _ = proxy.send_event(UserEvent::Error(error.to_string()));
+                let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
             }
         }
     });

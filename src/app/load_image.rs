@@ -1,6 +1,8 @@
 use std::{
+    collections::HashSet,
     error, fmt, fs,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex, RwLock},
     thread,
     time::Instant,
 };
@@ -46,40 +48,62 @@ impl From<std::io::Error> for LoadError {
     }
 }
 
-pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display, cache: Cache) {
+pub fn open(
+    proxy: EventLoopProxy<UserEvent>,
+    display: &Display,
+    cache: Cache,
+    loading: Arc<Mutex<HashSet<PathBuf>>>,
+) {
     let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
     thread::spawn(move || {
         if let Some(file) = dialog.pick_file() {
-            load(proxy, file, cache);
+            load(proxy, file, cache, loading);
         }
     });
 }
 
-pub fn load(proxy: EventLoopProxy<UserEvent>, path: impl AsRef<Path>, cache: Cache) {
-    let path_buf = path.as_ref().to_path_buf();
+pub fn load(
+    proxy: EventLoopProxy<UserEvent>,
+    path: impl AsRef<Path>,
+    cache: Cache,
+    loading: Arc<Mutex<HashSet<PathBuf>>>,
+) {
     let _ = proxy.send_event(UserEvent::SetCursor(CursorIcon::Progress));
+
+    let path_buf = path.as_ref().to_path_buf();
+
+    {
+        let mut guard = loading.lock().unwrap();
+        if guard.contains(&path_buf) {
+            return;
+        } else {
+            guard.insert(path_buf.clone());
+        }
+    }
+
     thread::spawn(move || {
         let start = Instant::now();
 
-        // make sure lock is dropped after cache lookup
-        {
-            if let Some(images) = cache.lock().unwrap().get(&path_buf) {
-                let _ =
-                    proxy.send_event(UserEvent::ImageLoaded(Some(images.clone()), Some(path_buf), start));
-                return;
-            }
+        if let Some(images) = cache.lock().unwrap().get(&path_buf) {
+            let _ = proxy.send_event(UserEvent::ImageLoaded(
+                Some(images.clone()),
+                Some(path_buf),
+                start,
+            ));
+            return;
         }
 
         match load_uncached(&path_buf) {
             Ok(images) => {
+                let images = Arc::new(RwLock::new(images));
                 cache.lock().unwrap().put(path_buf.clone(), images.clone());
                 let _ =
                     proxy.send_event(UserEvent::ImageLoaded(Some(images), Some(path_buf), start));
             }
             Err(error) => {
-                let _ = proxy.send_event(UserEvent::Error(error.to_string()));
+                let _ = proxy.send_event(UserEvent::LoadError(error.to_string(), path_buf));
             }
-        }
+        };
     });
 }
 

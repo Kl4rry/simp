@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     mem,
     path::PathBuf,
+    sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
 
@@ -46,12 +47,12 @@ pub struct ImageView {
     pub rotation: i32,
     pub path: Option<PathBuf>,
     pub start: Instant,
-    pub frames: Vec<Image>,
+    pub frames: Arc<RwLock<Vec<Image>>>,
     pub last_frame: Instant,
     pub index: usize,
     pub horizontal_flip: bool,
     pub vertical_flip: bool,
-    shader: Program,
+    shader: Box<Program>,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
     texture: SrgbTexture2d,
@@ -62,11 +63,12 @@ pub struct ImageView {
 impl ImageView {
     pub fn new(
         display: &Display,
-        frames: Vec<Image>,
+        frames: Arc<RwLock<Vec<Image>>>,
         path: Option<PathBuf>,
         start: Instant,
     ) -> Self {
-        let image = frames[0].buffer();
+        let guard = frames.read().unwrap();
+        let image = guard[0].buffer();
         let (width, height) = image.dimensions();
         let texture_cords = (
             Vec2::new(0.0, 0.0),
@@ -89,6 +91,8 @@ impl ImageView {
 
         let texture = get_texture(image, display);
 
+        drop(guard);
+
         let sampler = SamplerBehavior {
             magnify_filter: MagnifySamplerFilter::Nearest,
             minify_filter: MinifySamplerFilter::LinearMipmapLinear,
@@ -107,7 +111,7 @@ impl ImageView {
             start,
             horizontal_flip: false,
             vertical_flip: false,
-            shader: Program::from_source(
+            shader: box Program::from_source(
                 display,
                 include_str!("../shader/image.vert"),
                 include_str!("../shader/image.frag"),
@@ -271,17 +275,19 @@ impl ImageView {
     }
 
     pub fn animate(&mut self, display: &Display) -> Option<Duration> {
-        if self.frames.len() > 1 {
+        let frames = self.frames.read().unwrap();
+        if frames.len() > 1 {
             let now = Instant::now();
             let time_passed = now.duration_since(self.last_frame);
-            let delay = self.frames[self.index].delay;
+            let delay = frames[self.index].delay;
 
             if time_passed > delay {
                 self.index += 1;
-                if self.index >= self.frames.len() {
+                if self.index >= frames.len() {
                     self.index = 0;
                 }
 
+                drop(frames);
                 self.update_image_data(display);
 
                 self.last_frame = now;
@@ -326,7 +332,8 @@ impl ImageView {
 
         let mut old_frames = Vec::new();
 
-        for frame in &mut self.frames {
+        let mut frames = self.frames.write().unwrap();
+        for frame in &mut *frames {
             match self.rotation {
                 0 => (),
                 1 => {
@@ -357,6 +364,7 @@ impl ImageView {
             mem::swap(frame.buffer_mut(), &mut image);
             old_frames.push(Image::with_delay(image, delay));
         }
+        drop(frames);
 
         self.update_image_data(display);
         self.update_vertex_data(display);
@@ -367,13 +375,16 @@ impl ImageView {
     }
 
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
-        mem::swap(&mut self.frames, frames);
+        let mut guard = self.frames.write().unwrap();
+        mem::swap(&mut *guard, frames);
+        drop(guard);
         self.update_image_data(display);
         self.update_vertex_data(display);
     }
 
     fn update_image_data(&mut self, display: &Display) {
-        let image = self.frames[self.index].buffer();
+        let frames = self.frames.read().unwrap();
+        let image = frames[self.index].buffer();
         self.size = Vec2::new(image.width() as f32, image.height() as f32);
         self.texture = get_texture(image, display);
     }

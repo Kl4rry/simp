@@ -1,8 +1,12 @@
-use std::{path::PathBuf, thread};
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+    thread,
+};
 
 use glium::{glutin::event_loop::EventLoopProxy, Display};
 use image::{
-    imageops::{flip_horizontal_in_place, flip_vertical_in_place, rotate180_in_place},
+    imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageOutputFormat,
 };
 use image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation};
@@ -32,7 +36,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
     mut path: PathBuf,
-    mut frames: Vec<Image>,
+    frames: Arc<RwLock<Vec<Image>>>,
     rotation: i32,
     horizontal_flip: bool,
     vertical_flip: bool,
@@ -45,23 +49,21 @@ pub fn save(
     path.set_extension(&ext);
 
     thread::spawn(move || {
-        for frame in &mut frames {
-            match rotation {
-                0 => (),
-                1 => {
-                    let buffer = frame.buffer().rotate270();
-                    *frame.buffer_mut() = buffer;
-                }
-                2 => {
-                    rotate180_in_place(frame.buffer_mut());
-                }
-                3 => {
-                    let buffer = frame.buffer().rotate90();
-                    *frame.buffer_mut() = buffer;
-                }
-                _ => unreachable!(),
-            }
+        let guard = frames.read().unwrap();
+        let old_frames = &*guard;
+        let mut frames = Vec::new();
+        for frame in old_frames {
+            let buffer = match rotation {
+                0 => frame.buffer().clone(),
+                1 => frame.buffer().rotate270(),
+                2 => frame.buffer().rotate180(),
+                3 => frame.buffer().rotate90(),
+                _ => unreachable!("image is rotated more then 360 degrees"),
+            };
+            frames.push(Image::with_delay(buffer, frame.delay));
+        }
 
+        for frame in frames.iter_mut() {
             if horizontal_flip {
                 flip_horizontal_in_place(frame.buffer_mut());
             }
@@ -95,7 +97,7 @@ pub fn save(
         };
 
         if let Err(error) = res {
-            let _ = proxy.send_event(UserEvent::Error(error.to_string()));
+            let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
         }
     });
 }

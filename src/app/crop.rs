@@ -22,7 +22,7 @@ pub struct Crop {
     pub cropping: bool,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
-    shader: Program,
+    shader: Box<Program>,
 }
 
 pub struct Inner {
@@ -32,7 +32,7 @@ pub struct Inner {
 
 impl Crop {
     pub fn new(display: &Display) -> Self {
-        let shader = Program::from_source(
+        let shader = box Program::from_source(
             display,
             include_str!("../shader/crop.vert"),
             include_str!("../shader/crop.frag"),
@@ -60,8 +60,6 @@ impl Crop {
             shader,
         }
     }
-
-    pub fn start() {}
 
     pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
         if let Some(ref inner) = self.inner {

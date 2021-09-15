@@ -87,6 +87,7 @@ System dependencies are only required at compile time.
 * libxcb-xfixes0-dev
 
 ## Installation
+The nighly version of the compiler is required to compile simp.
 
 ### Cargo
 

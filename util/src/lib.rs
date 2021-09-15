@@ -1,5 +1,6 @@
 use std::{
     path::PathBuf,
+    sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
 
@@ -98,8 +99,9 @@ impl From<Image> for Frame {
 }
 
 pub enum UserEvent {
-    ImageLoaded(Option<Vec<Image>>, Option<PathBuf>, Instant),
-    Error(String),
+    ImageLoaded(Option<Arc<RwLock<Vec<Image>>>>, Option<PathBuf>, Instant),
+    LoadError(String, PathBuf),
+    ErrorMessage(String),
     SetCursor(CursorIcon),
     Save(PathBuf),
     Exit,

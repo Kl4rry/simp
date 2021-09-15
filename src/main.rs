@@ -1,5 +1,6 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
+#![feature(box_syntax)]
 
 use std::{env, panic, time::Instant};
 
@@ -237,7 +238,12 @@ fn main() {
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         if let Some(arg) = args.pop() {
-            app::load_image::load(system.proxy.clone(), arg, system.app.cache.clone());
+            app::load_image::load(
+                system.proxy.clone(),
+                arg,
+                system.app.cache.clone(),
+                system.app.loading.clone(),
+            );
         }
     }
 
