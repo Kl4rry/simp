@@ -1,6 +1,6 @@
 # Simp  
 
-The (s)imple (i)mage (m)anipulation (p)rogram is a cross-platform image viewer focused on simplicity and speed.
+The simple image manipulation program is a simple cross-platform image manipulation program.
 
 ![Screenshot](images/screenshot.png)
 
