@@ -85,7 +85,8 @@ fn open_file(path: impl AsRef<Path>) -> Result<File, std::io::Error> {
 }
 
 fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
-    let uuid = Uuid::new_v4().to_string();
+    let mut uuid = String::from('.');
+    uuid.push_str(&Uuid::new_v4().to_string());
     let mut buf = path.as_ref().to_path_buf();
     buf.set_file_name(uuid);
     buf
