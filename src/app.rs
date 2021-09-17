@@ -100,11 +100,10 @@ impl App {
                         true
                     };
 
-                    let images = images.take().unwrap();
                     if replace {
                         self.image_view = Some(Box::new(ImageView::new(
                             display,
-                            images,
+                            images.clone(),
                             path.clone(),
                             *instant,
                         )));

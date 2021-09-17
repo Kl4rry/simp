@@ -34,7 +34,7 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
             let image =
                 ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
             let event = UserEvent::ImageLoaded(
-                Some(Arc::new(RwLock::new(vec![Image::from(image)]))),
+                Arc::new(RwLock::new(vec![Image::from(image)])),
                 None,
                 Instant::now(),
             );
