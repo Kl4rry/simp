@@ -46,13 +46,13 @@ impl Background {
         }
     }
 
-    pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
+    pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>, top_offset: f32) {
         target
             .draw(
                 &self.vertices,
                 &self.indices,
                 &self.shader,
-                &uniform! { size: *size },
+                &uniform! { size: *size, top_offset: top_offset },
                 &Default::default(),
             )
             .unwrap();

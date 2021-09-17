@@ -55,6 +55,9 @@ pub struct App {
     delay: Option<Duration>,
     pub image_view: Option<Box<ImageView>>,
     size: Vec2<f32>,
+    fullscreen: bool,
+    pub top_bar_size: f32,
+    pub bottom_bar_size: f32,
     proxy: EventLoopProxy<UserEvent>,
     modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
@@ -99,8 +102,12 @@ impl App {
 
                     let images = images.take().unwrap();
                     if replace {
-                        self.image_view =
-                            Some(Box::new(ImageView::new(display, images, path.clone(), *instant)));
+                        self.image_view = Some(Box::new(ImageView::new(
+                            display,
+                            images,
+                            path.clone(),
+                            *instant,
+                        )));
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
@@ -289,8 +296,14 @@ impl App {
                                     let fullscreen = window.fullscreen();
                                     if fullscreen.is_some() {
                                         window.set_fullscreen(None);
+                                        self.fullscreen = false;
+                                        self.top_bar_size = TOP_BAR_SIZE;
+                                        self.bottom_bar_size = BOTTOM_BAR_SIZE;
                                     } else {
                                         window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+                                        self.fullscreen = true;
+                                        self.top_bar_size = 0.0;
+                                        self.bottom_bar_size = 0.0;
                                     }
                                 }
                                 VirtualKeyCode::Escape => {
@@ -374,7 +387,7 @@ impl App {
         if let Some(ref mut image) = self.image_view {
             let image_size = image.real_size();
             let mut window_size = self.size;
-            window_size.set_y(window_size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE);
+            window_size.set_y(window_size.y() - self.top_bar_size - self.bottom_bar_size);
 
             if image_size.x() < window_size.x() {
                 image.position.set_x(self.size.x() / 2.0);
@@ -391,14 +404,14 @@ impl App {
             if image_size.y() < window_size.y() {
                 image.position.set_y(self.size.y() / 2.0);
             } else {
-                if image.position.y() - image_size.y() / 2.0 > TOP_BAR_SIZE {
-                    image.position.set_y(image_size.y() / 2.0 + TOP_BAR_SIZE);
+                if image.position.y() - image_size.y() / 2.0 > self.top_bar_size {
+                    image.position.set_y(image_size.y() / 2.0 + self.top_bar_size);
                 }
 
-                if image.position.y() + image_size.y() / 2.0 < window_size.y() + TOP_BAR_SIZE {
+                if image.position.y() + image_size.y() / 2.0 < window_size.y() + self.top_bar_size {
                     image
                         .position
-                        .set_y((window_size.y() - image_size.y() / 2.0) + TOP_BAR_SIZE);
+                        .set_y((window_size.y() - image_size.y() / 2.0) + self.top_bar_size);
                 }
             }
         }
@@ -416,6 +429,35 @@ impl App {
             (StyleColor::ButtonActive, [0.078, 0.078, 0.078, 1.0]),
         ]);
 
+        if !self.fullscreen {
+            self.menu_bar(display, ui);
+        }
+
+        let s = ui.push_style_vars(&[
+            StyleVar::WindowPadding([10.0, 4.0]),
+            StyleVar::FramePadding([0.0, 0.0]),
+            StyleVar::ItemSpacing([0.0, 0.0]),
+            StyleVar::ButtonTextAlign([0.0, 0.5]),
+        ]);
+
+        let c = ui.push_style_colors(&[
+            (StyleColor::WindowBg, [0.117, 0.117, 0.117, 1.0]),
+            (StyleColor::Button, [0.117, 0.117, 0.117, 1.0]),
+        ]);
+
+        if !self.fullscreen {
+            self.bottom_bar(ui);
+        }
+
+        c.pop(ui);
+        s.pop(ui);
+
+        styles.pop(ui);
+        colors.pop(ui);
+        (self.exit, self.delay)
+    }
+
+    pub fn menu_bar(&mut self, display: &Display, ui: &mut Ui<'_>) {
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), true, || {
                 if MenuItem::new(im_str!("Open"))
@@ -640,19 +682,9 @@ impl App {
                 }
             });
         });
+    }
 
-        let s = ui.push_style_vars(&[
-            StyleVar::WindowPadding([10.0, 4.0]),
-            StyleVar::FramePadding([0.0, 0.0]),
-            StyleVar::ItemSpacing([0.0, 0.0]),
-            StyleVar::ButtonTextAlign([0.0, 0.5]),
-        ]);
-
-        let c = ui.push_style_colors(&[
-            (StyleColor::WindowBg, [0.117, 0.117, 0.117, 1.0]),
-            (StyleColor::Button, [0.117, 0.117, 0.117, 1.0]),
-        ]);
-
+    fn bottom_bar(&mut self, ui: &mut Ui<'_>) {
         Window::new(im_str!("Bottom"))
             .position([0.0, self.size.y() - BOTTOM_BAR_SIZE], Condition::Always)
             .size([self.size.x(), BOTTOM_BAR_SIZE], Condition::Always)
@@ -699,13 +731,6 @@ impl App {
                     ui.text("No File");
                 }
             });
-
-        c.pop(ui);
-        s.pop(ui);
-
-        styles.pop(ui);
-        colors.pop(ui);
-        (self.exit, self.delay)
     }
 
     pub fn undo(&mut self, display: &Display) {
@@ -774,7 +799,7 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let scaling = min!(
                 self.size.x() / view.size.x(),
-                (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
+                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / view.size.y()
             );
             view.scale = min!(scaling, 1.0);
             view.position = self.size / 2.0;
@@ -785,7 +810,7 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let scaling = min!(
                 self.size.x() / view.size.x(),
-                (self.size.y() - TOP_BAR_SIZE - BOTTOM_BAR_SIZE) / view.size.y()
+                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / view.size.y()
             );
             view.scale = scaling;
             view.position = self.size / 2.0;
@@ -798,6 +823,9 @@ impl App {
             delay: None,
             image_view: None,
             size: Vec2::new(size[0], size[1]),
+            fullscreen: false,
+            top_bar_size: TOP_BAR_SIZE,
+            bottom_bar_size: BOTTOM_BAR_SIZE,
             proxy,
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
@@ -831,9 +859,7 @@ pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
 }
 
 fn new_window() {
-    Command::new(std::env::current_exe().unwrap())
-        .spawn()
-        .unwrap();
+    let _ = Command::new(std::env::current_exe().unwrap()).spawn();
 }
 
 fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {

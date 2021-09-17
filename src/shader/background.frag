@@ -2,8 +2,7 @@
 
 out vec4 color;
 uniform vec2 size;
-
-const float top_offset = 25.0;
+uniform float top_offset;
 
 void main() {
 	vec4 color1 = vec4(0.03, 0.03, 0.03, 1.0);

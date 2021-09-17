@@ -170,7 +170,7 @@ impl System {
 
                     let dimensions = display.get_framebuffer_dimensions();
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
-                    background.render(&mut target, size);
+                    background.render(&mut target, size, app.top_bar_size);
 
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);

@@ -32,13 +32,15 @@ pub struct Inner {
 
 impl Crop {
     pub fn new(display: &Display) -> Self {
-        let shader = Box::new(Program::from_source(
-            display,
-            include_str!("../shader/crop.vert"),
-            include_str!("../shader/crop.frag"),
-            None,
-        )
-        .unwrap());
+        let shader = Box::new(
+            Program::from_source(
+                display,
+                include_str!("../shader/crop.vert"),
+                include_str!("../shader/crop.frag"),
+                None,
+            )
+            .unwrap(),
+        );
 
         let shape = [
             Vertex::new(-1.0, 1.0),
