@@ -111,13 +111,13 @@ impl ImageView {
             start,
             horizontal_flip: false,
             vertical_flip: false,
-            shader: box Program::from_source(
+            shader: Box::new(Program::from_source(
                 display,
                 include_str!("../shader/image.vert"),
                 include_str!("../shader/image.frag"),
                 None,
             )
-            .unwrap(),
+            .unwrap()),
             vertices: VertexBuffer::new(display, &shape).unwrap(),
             indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer).unwrap(),
             texture,

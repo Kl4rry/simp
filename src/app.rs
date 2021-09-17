@@ -100,7 +100,7 @@ impl App {
                     let images = images.take().unwrap();
                     if replace {
                         self.image_view =
-                            Some(box ImageView::new(display, images, path.clone(), *instant));
+                            Some(Box::new(ImageView::new(display, images, path.clone(), *instant)));
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
@@ -805,7 +805,7 @@ impl App {
             image_list: ImageList::new(),
             arrows: Arrows::new(),
             stack: UndoStack::new(),
-            crop: box Crop::new(display),
+            crop: Box::new(Crop::new(display)),
             cache: Arc::new(Mutex::new(LruCache::new(10))),
             loading: Arc::new(Mutex::new(HashSet::new())),
         }

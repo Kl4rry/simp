@@ -1,6 +1,5 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
-#![feature(box_syntax)]
 
 use std::{env, panic, time::Instant};
 
