@@ -42,7 +42,10 @@ impl System {
         #[cfg(target_os = "windows")]
         {
             native_windows_gui::enable_visual_styles();
-            unsafe { winapi::um::wincon::FreeConsole() };
+            unsafe {
+                let hwnd = winapi::um::wincon::GetConsoleWindow();
+                winapi::um::winuser::ShowWindow(hwnd, 0);
+            };
         }
 
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();

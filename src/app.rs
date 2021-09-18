@@ -404,7 +404,9 @@ impl App {
                 image.position.set_y(self.size.y() / 2.0);
             } else {
                 if image.position.y() - image_size.y() / 2.0 > self.top_bar_size {
-                    image.position.set_y(image_size.y() / 2.0 + self.top_bar_size);
+                    image
+                        .position
+                        .set_y(image_size.y() / 2.0 + self.top_bar_size);
                 }
 
                 if image.position.y() + image_size.y() / 2.0 < window_size.y() + self.top_bar_size {

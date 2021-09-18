@@ -97,8 +97,7 @@ pub fn load(
             Ok(images) => {
                 let images = Arc::new(RwLock::new(images));
                 cache.lock().unwrap().put(path_buf.clone(), images.clone());
-                let _ =
-                    proxy.send_event(UserEvent::ImageLoaded(images, Some(path_buf), start));
+                let _ = proxy.send_event(UserEvent::ImageLoaded(images, Some(path_buf), start));
             }
             Err(error) => {
                 let _ = proxy.send_event(UserEvent::LoadError(error.to_string(), path_buf));
