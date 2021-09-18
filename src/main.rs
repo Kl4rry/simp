@@ -1,7 +1,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
-use std::{env, panic, time::Instant};
+use std::{env, panic, time::Instant, path::PathBuf, fs};
 
 use glium::{
     glutin,
@@ -15,6 +15,7 @@ use glium::{
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use serde_derive::{Deserialize, Serialize};
 use util::UserEvent;
 use vec2::Vec2;
 
@@ -24,6 +25,21 @@ use app::App;
 mod background;
 use background::Background;
 mod icon;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SaveData {
+    width: f64,
+    height: f64,
+}
+
+impl Default for SaveData {
+    fn default() -> Self {
+        Self {
+            width: 1100f64,
+            height: 720f64,
+        }
+    }
+}
 
 pub struct System {
     pub event_loop: EventLoop<UserEvent>,
@@ -48,6 +64,8 @@ impl System {
             };
         }
 
+        let save_data = get_save_data();
+
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new().with_vsync(true);
@@ -55,12 +73,21 @@ impl System {
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
-            .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64))
+            .with_inner_size(glutin::dpi::LogicalSize::new(save_data.width, save_data.height))
             .with_window_icon(Some(icon::get_icon()));
+
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
 
-        let app = App::new(proxy.clone(), [1100f32, 720f32], &display);
+        let app = {
+            let window_context = display.gl_window();
+            let window = window_context.window();
+
+            let pos = window.outer_position().unwrap();
+            let size = window.inner_size();
+
+            App::new(proxy.clone(), [size.width as f32, size.height as f32], [pos.x, pos.y], &display)
+        };
 
         let mut imgui = Context::create();
         imgui.set_ini_filename(None);
@@ -193,6 +220,13 @@ impl System {
                     event: WindowEvent::CloseRequested,
                     ..
                 } => *control_flow = ControlFlow::Exit,
+                Event::LoopDestroyed => {
+                    let data = SaveData {
+                        width: app.size.x() as f64,
+                        height: app.size.y() as f64,
+                    };
+                    save_data(&data);
+                }
                 mut event => {
                     {
                         let mut ui = imgui.frame();
@@ -224,6 +258,27 @@ impl System {
             }
         });
     }
+}
+
+fn get_save_data() -> SaveData {
+    if let Ok(data) = fs::read_to_string(get_data_path()) {
+        if let Ok(save) = ron::from_str::<SaveData>(&data) {
+            return save;
+        }
+    }
+    SaveData::default()
+}
+
+fn save_data(save_data: &SaveData) {
+    let data = ron::to_string(save_data).unwrap();
+    let _ = fs::write(get_data_path(), data);
+}
+
+fn get_data_path() -> PathBuf {
+    let dirs = directories::UserDirs::new().unwrap();
+    let mut home = dirs.home_dir().to_path_buf();
+    home.push(".simp.ron");
+    home
 }
 
 fn main() {

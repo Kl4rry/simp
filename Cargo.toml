@@ -14,6 +14,7 @@ arboard = "1.2.1"
 cgmath = "0.18.0"
 clipboard = "0.5"
 ctrlc = "3.2.0"
+directories = "4.0.1"
 glium = "0.29"
 image = "0.23.14"
 image_io = { path = "./image_io" }
@@ -25,6 +26,9 @@ lru = "0.6.6"
 msgbox = "0.6.0"
 rect = { path = "./rect" }
 rfd = "0.4.0"
+ron = "0.6.5"
+serde = "1.0.130"
+serde_derive = "1.0.130"
 timing = "0.2.1"
 trash = "2.0"
 util = { path = "./util" }
