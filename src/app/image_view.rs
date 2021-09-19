@@ -46,7 +46,6 @@ pub struct ImageView {
     pub scale: f32,
     pub rotation: i32,
     pub path: Option<PathBuf>,
-    pub start: Instant,
     pub frames: Arc<RwLock<Vec<Image>>>,
     pub last_frame: Instant,
     pub index: usize,
@@ -61,12 +60,7 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(
-        display: &Display,
-        frames: Arc<RwLock<Vec<Image>>>,
-        path: Option<PathBuf>,
-        start: Instant,
-    ) -> Self {
+    pub fn new(display: &Display, frames: Arc<RwLock<Vec<Image>>>, path: Option<PathBuf>) -> Self {
         let guard = frames.read().unwrap();
         let image = guard[0].buffer();
         let (width, height) = image.dimensions();
@@ -108,7 +102,6 @@ impl ImageView {
             frames,
             last_frame: Instant::now(),
             index: 0,
-            start,
             horizontal_flip: false,
             vertical_flip: false,
             shader: Box::new(

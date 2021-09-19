@@ -1,7 +1,6 @@
 use std::{
     borrow::Cow,
     sync::{Arc, RwLock},
-    time::Instant,
 };
 
 use glium::glutin::event_loop::EventLoopProxy;
@@ -33,11 +32,8 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
             data.extend_from_slice(&*image_data.bytes);
             let image =
                 ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data).unwrap();
-            let event = UserEvent::ImageLoaded(
-                Arc::new(RwLock::new(vec![Image::from(image)])),
-                None,
-                Instant::now(),
-            );
+            let event =
+                UserEvent::ImageLoaded(Arc::new(RwLock::new(vec![Image::from(image)])), None);
             let _ = proxy.send_event(event);
         }
     }

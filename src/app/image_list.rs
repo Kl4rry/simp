@@ -2,12 +2,15 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     thread,
 };
 
-use util::extensions::*;
+use glium::glutin::event_loop::EventLoopProxy;
+use util::{extensions::*, UserEvent};
+
+use crate::app::{image_loader::ImageLoader, load_image::prefetch, Cache};
 
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
 
@@ -15,14 +18,24 @@ pub struct ImageList {
     list: List,
     index: Arc<AtomicUsize>,
     path: Option<PathBuf>,
+    cache: Arc<Cache>,
+    proxy: EventLoopProxy<UserEvent>,
+    loader: Arc<RwLock<ImageLoader>>,
 }
 
 impl ImageList {
-    pub fn new() -> Self {
+    pub fn new(
+        cache: Arc<Cache>,
+        proxy: EventLoopProxy<UserEvent>,
+        loader: Arc<RwLock<ImageLoader>>,
+    ) -> Self {
         Self {
             list: Arc::new(Mutex::new(None)),
             index: Arc::new(AtomicUsize::new(0)),
             path: None,
+            proxy,
+            cache,
+            loader,
         }
     }
 
@@ -49,18 +62,18 @@ impl ImageList {
 
         let t_list = self.list.clone();
         let t_index = self.index.clone();
+        let proxy = self.proxy.clone();
+        let cache = self.cache.clone();
+        let loader = self.loader.clone();
         thread::spawn(move || {
             let mut list = Vec::new();
             let dirs = std::fs::read_dir(dir_path).unwrap();
 
-            for (index, result) in dirs.enumerate() {
+            for result in dirs {
                 if let Ok(dir) = result {
                     if let Ok(file_type) = dir.file_type() {
                         if file_type.is_file() {
                             let path = dir.path();
-                            if path == path_buf {
-                                t_index.store(index, Ordering::SeqCst);
-                            }
                             match dir.path().extension() {
                                 Some(ext)
                                     if EXTENSIONS
@@ -74,7 +87,21 @@ impl ImageList {
                     }
                 }
             }
+
             list.sort();
+
+            for (index, path) in list.iter().enumerate() {
+                if *path == path_buf {
+                    t_index.store(index, Ordering::SeqCst);
+                }
+            }
+
+            let next = list[next_index(t_index.load(Ordering::SeqCst), list.len())].clone();
+            prefetch(proxy.clone(), next, cache.clone(), loader.clone());
+
+            let prev = list[prev_index(t_index.load(Ordering::SeqCst), list.len())].clone();
+            prefetch(proxy.clone(), prev, cache.clone(), loader.clone());
+
             *t_list.lock().unwrap() = Some(list);
         });
     }
@@ -86,6 +113,12 @@ impl ImageList {
             if list.len() <= self.index.load(Ordering::SeqCst) {
                 self.index.store(0, Ordering::SeqCst);
             }
+            prefetch(
+                self.proxy.clone(),
+                list[next_index(self.index.load(Ordering::SeqCst), list.len())].clone(),
+                self.cache.clone(),
+                self.loader.clone(),
+            );
             Some(list[self.index.load(Ordering::SeqCst)].clone())
         } else {
             None
@@ -100,9 +133,33 @@ impl ImageList {
             } else {
                 self.index.fetch_sub(1, Ordering::SeqCst);
             }
+            prefetch(
+                self.proxy.clone(),
+                list[prev_index(self.index.load(Ordering::SeqCst), list.len())].clone(),
+                self.cache.clone(),
+                self.loader.clone(),
+            );
             Some(list[self.index.load(Ordering::SeqCst)].clone())
         } else {
             None
         }
+    }
+}
+
+fn next_index(index: usize, len: usize) -> usize {
+    let next = index + 1;
+    if len <= next {
+        0
+    } else {
+        next
+    }
+}
+
+fn prev_index(index: usize, len: usize) -> usize {
+    let current = index;
+    if current == 0 {
+        len - 1
+    } else {
+        current - 1
     }
 }

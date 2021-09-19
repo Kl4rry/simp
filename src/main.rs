@@ -1,7 +1,8 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
-use std::{env, panic, time::Instant, path::PathBuf, fs};
+use std::{env, fs, panic, path::PathBuf, time::Instant};
 
 use glium::{
     glutin,
@@ -58,10 +59,6 @@ impl System {
         #[cfg(target_os = "windows")]
         {
             native_windows_gui::enable_visual_styles();
-            unsafe {
-                let hwnd = winapi::um::wincon::GetConsoleWindow();
-                winapi::um::winuser::ShowWindow(hwnd, 0);
-            };
         }
 
         let save_data = get_save_data();
@@ -73,7 +70,10 @@ impl System {
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
-            .with_inner_size(glutin::dpi::LogicalSize::new(save_data.width, save_data.height))
+            .with_inner_size(glutin::dpi::LogicalSize::new(
+                save_data.width,
+                save_data.height,
+            ))
             .with_window_icon(Some(icon::get_icon()));
 
         let display =
@@ -86,7 +86,12 @@ impl System {
             let pos = window.outer_position().unwrap();
             let size = window.inner_size();
 
-            App::new(proxy.clone(), [size.width as f32, size.height as f32], [pos.x, pos.y], &display)
+            App::new(
+                proxy.clone(),
+                [size.width as f32, size.height as f32],
+                [pos.x, pos.y],
+                &display,
+            )
         };
 
         let mut imgui = Context::create();
@@ -299,7 +304,7 @@ fn main() {
                 system.proxy.clone(),
                 arg,
                 system.app.cache.clone(),
-                system.app.loading.clone(),
+                system.app.image_loader.clone(),
             );
         }
     }

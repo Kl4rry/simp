@@ -1,7 +1,7 @@
 use std::{
     path::PathBuf,
     sync::{Arc, RwLock},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use glium::glutin::window::CursorIcon;
@@ -99,7 +99,7 @@ impl From<Image> for Frame {
 }
 
 pub enum UserEvent {
-    ImageLoaded(Arc<RwLock<Vec<Image>>>, Option<PathBuf>, Instant),
+    ImageLoaded(Arc<RwLock<Vec<Image>>>, Option<PathBuf>),
     LoadError(String, PathBuf),
     ErrorMessage(String),
     SetCursor(CursorIcon),

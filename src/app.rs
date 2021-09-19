@@ -1,8 +1,7 @@
 use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
     thread,
     time::Duration,
 };
@@ -17,7 +16,6 @@ use glium::{
 };
 use imgui::*;
 use imgui_glium_renderer::Renderer;
-use lru::LruCache;
 use rect::Rect;
 use util::{min, UserEvent};
 use vec2::Vec2;
@@ -37,6 +35,9 @@ pub mod crop;
 
 pub mod load_image;
 
+pub mod image_loader;
+use image_loader::ImageLoader;
+
 mod save_image;
 use crop::Crop;
 
@@ -45,10 +46,11 @@ pub mod cursor;
 mod undo_stack;
 use undo_stack::{UndoFrame, UndoStack};
 
+mod cache;
+use cache::Cache;
+
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
-
-pub type Cache = Arc<Mutex<LruCache<PathBuf, Arc<RwLock<Vec<util::Image>>>>>>;
 
 pub struct App {
     exit: bool,
@@ -67,8 +69,8 @@ pub struct App {
     arrows: Arrows,
     stack: UndoStack,
     pub crop: Box<Crop>,
-    pub cache: Cache,
-    pub loading: Arc<Mutex<HashSet<PathBuf>>>,
+    pub cache: Arc<Cache>,
+    pub image_loader: Arc<RwLock<ImageLoader>>,
 }
 
 impl App {
@@ -93,42 +95,57 @@ impl App {
 
         if let Some(event) = user_event {
             match event {
-                UserEvent::ImageLoaded(images, path, instant) => {
-                    cursor::set_cursor_icon(CursorIcon::default(), display);
-                    let replace = if let Some(ref old) = self.image_view {
-                        old.start.saturating_duration_since(*instant) == Duration::from_secs(0)
-                    } else {
-                        true
-                    };
+                UserEvent::ImageLoaded(images, path) => {
+                    let mut replace = true;
+                    {
+                        let mut guard = self.image_loader.write().unwrap();
+                        match path {
+                            Some(path) => match guard.target_file {
+                                Some(ref mut target) => {
+                                    if path != target {
+                                        replace = false;
+                                    } else {
+                                        guard.target_file = None;
+                                    }
+                                }
+                                None => replace = false,
+                            },
+                            None => guard.target_file = None,
+                        }
+                    }
+
+                    if let Some(path) = path {
+                        self.image_loader.write().unwrap().loading.remove(path);
+                    }
 
                     if replace {
+                        cursor::set_cursor_icon(CursorIcon::default(), display);
+
                         self.image_view = Some(Box::new(ImageView::new(
                             display,
                             images.clone(),
                             path.clone(),
-                            *instant,
                         )));
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
-                            self.loading.lock().unwrap().remove(path);
                             path.file_name().unwrap().to_str().unwrap().to_string()
                         } else {
                             String::new()
                         };
+
+                        let window_context = display.gl_window();
+                        let window = window_context.window();
+
+                        if self.current_filename.is_empty() {
+                            window.set_title("Simp");
+                        } else {
+                            window.set_title(&self.current_filename.to_string());
+                        }
+
+                        self.best_fit();
+                        self.stack.reset();
                     }
-
-                    let window_context = display.gl_window();
-                    let window = window_context.window();
-
-                    if self.current_filename.is_empty() {
-                        window.set_title("Simp");
-                    } else {
-                        window.set_title(&self.current_filename.to_string());
-                    }
-
-                    self.best_fit();
-                    self.stack.reset();
                 }
                 UserEvent::Save(path) => {
                     if let Some(ref view) = self.image_view {
@@ -143,7 +160,7 @@ impl App {
                     }
                 }
                 UserEvent::LoadError(error, path) => {
-                    self.loading.lock().unwrap().remove(path);
+                    self.image_loader.write().unwrap().loading.remove(path);
                     cursor::set_cursor_icon(CursorIcon::default(), display);
                     let error = error.clone();
                     thread::spawn(move || {
@@ -187,7 +204,7 @@ impl App {
                     self.proxy.clone(),
                     path,
                     self.cache.clone(),
-                    self.loading.clone(),
+                    self.image_loader.clone(),
                 ),
                 WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key) = input.virtual_keycode {
@@ -205,7 +222,7 @@ impl App {
                                     self.proxy.clone(),
                                     display,
                                     self.cache.clone(),
-                                    self.loading.clone(),
+                                    self.image_loader.clone(),
                                 ),
                                 VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
                                     self.current_filename.clone(),
@@ -238,12 +255,12 @@ impl App {
                                 VirtualKeyCode::F5 => {
                                     if let Some(image) = self.image_view.as_ref() {
                                         if let Some(path) = &image.path {
-                                            self.cache.lock().unwrap().clear();
+                                            self.cache.clear();
                                             load_image::load(
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
-                                                self.loading.clone(),
+                                                self.image_loader.clone(),
                                             );
                                         }
                                     }
@@ -275,7 +292,7 @@ impl App {
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
-                                                self.loading.clone(),
+                                                self.image_loader.clone(),
                                             );
                                         }
                                     }
@@ -288,7 +305,7 @@ impl App {
                                                 self.proxy.clone(),
                                                 path,
                                                 self.cache.clone(),
-                                                self.loading.clone(),
+                                                self.image_loader.clone(),
                                             );
                                         }
                                     }
@@ -474,7 +491,7 @@ impl App {
                         self.proxy.clone(),
                         display,
                         self.cache.clone(),
-                        self.loading.clone(),
+                        self.image_loader.clone(),
                     );
                 }
 
@@ -505,7 +522,7 @@ impl App {
                             self.proxy.clone(),
                             path,
                             self.cache.clone(),
-                            self.loading.clone(),
+                            self.image_loader.clone(),
                         );
                     }
                 }
@@ -711,7 +728,7 @@ impl App {
                                     self.proxy.clone(),
                                     path,
                                     self.cache.clone(),
-                                    self.loading.clone(),
+                                    self.image_loader.clone(),
                                 );
                             }
                         }
@@ -721,7 +738,7 @@ impl App {
                                     self.proxy.clone(),
                                     path,
                                     self.cache.clone(),
-                                    self.loading.clone(),
+                                    self.image_loader.clone(),
                                 );
                             }
                         }
@@ -820,7 +837,15 @@ impl App {
         }
     }
 
-    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], position: [i32; 2], display: &Display) -> Self {
+    pub fn new(
+        proxy: EventLoopProxy<UserEvent>,
+        size: [f32; 2],
+        position: [i32; 2],
+        display: &Display,
+    ) -> Self {
+        const MAX_SIZE: usize = 1_000_000_000;
+        let cache = Arc::new(Cache::new(MAX_SIZE));
+        let image_loader = Arc::new(RwLock::new(ImageLoader::new()));
         App {
             exit: false,
             delay: None,
@@ -830,16 +855,16 @@ impl App {
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
+            image_list: ImageList::new(cache.clone(), proxy.clone(), image_loader.clone()),
             proxy,
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
             current_filename: String::new(),
-            image_list: ImageList::new(),
             arrows: Arrows::new(),
             stack: UndoStack::new(),
             crop: Box::new(Crop::new(display)),
-            cache: Arc::new(Mutex::new(LruCache::new(10))),
-            loading: Arc::new(Mutex::new(HashSet::new())),
+            cache,
+            image_loader,
         }
     }
 }
