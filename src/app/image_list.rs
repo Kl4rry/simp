@@ -88,7 +88,7 @@ impl ImageList {
                 }
             }
 
-            list.sort_by(|a, b| b.to.cmp(a));
+            list.sort_by(|a, b| b.cmp(a));
 
             for (index, path) in list.iter().enumerate() {
                 if *path == path_buf {
