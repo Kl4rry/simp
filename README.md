@@ -56,17 +56,17 @@ The simple image manipulation program is a simple cross-platform image manipulat
 | ------------ | :------------------- |
 | Open image   | Ctrl + O             |
 | Save as      | Ctrl + S             |
-| Reload image | F5             |
+| Reload image | F5                   |
 | New window   | Ctrl + N             |
 | Undo         | Ctrl + Z             |
 | Redo         | Ctrl + Y             |
 | Copy         | Ctrl + C             |
 | Paste        | Ctrl + V             |
-| Rotate left  | Ctrl + Q             |
-| Rotate right | Ctrl + E             |
+| Rotate left  | Q                    |
+| Rotate right | E                    |
 | Zoom in      | - or Mousewheel up   |
 | Zoom out     | + or Mousewheel down |
-| Best fit     | E                    |
+| Best fit     | B                    |
 | Largest fit  | F                    |
 | Crop         | Ctrl + X             |
 | F11          | Fullscreen           |

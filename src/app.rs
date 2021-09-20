@@ -633,7 +633,7 @@ impl App {
                 ui.separator();
 
                 if MenuItem::new(im_str!("Best fit"))
-                    .shortcut(im_str!("E"))
+                    .shortcut(im_str!("B"))
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
