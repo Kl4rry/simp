@@ -239,7 +239,7 @@ impl ImageView {
         }
 
         let mut size = Vec2::default();
-        for outer in vectors {
+        for outer in &vectors {
             for inner in vectors {
                 size.set_x(max!((inner.x - outer.x).abs(), size.x()));
                 size.set_y(max!((inner.y - outer.y).abs(), size.y()));
