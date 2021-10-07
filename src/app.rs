@@ -14,6 +14,7 @@ use glium::{
         window::{CursorIcon, Fullscreen},
     },
 };
+use image::imageops::FilterType;
 use imgui::*;
 use imgui_glium_renderer::Renderer;
 use rect::Rect;
@@ -71,6 +72,7 @@ pub struct App {
     pub crop: Box<Crop>,
     pub cache: Arc<Cache>,
     pub image_loader: Arc<RwLock<ImageLoader>>,
+    resize_visible: bool,
 }
 
 impl App {
@@ -368,18 +370,18 @@ impl App {
             if ui.is_mouse_dragging(imgui::MouseButton::Left) {
                 if self.crop.cropping {
                     if let Some(ref mut inner) = self.crop.inner {
-                        let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        let delta = Vec2::from(ui.mouse_drag_delta());
                         inner.current += delta;
                     } else {
                         let cursor_pos = self.mouse_position;
-                        let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                        let delta = Vec2::from(ui.mouse_drag_delta());
                         self.crop.inner = Some(crop::Inner {
                             start: cursor_pos - delta,
                             current: cursor_pos,
                         });
                     }
                 } else {
-                    let delta = Vec2::from(ui.mouse_drag_delta(imgui::MouseButton::Left));
+                    let delta = Vec2::from(ui.mouse_drag_delta());
                     image.position += delta;
                 }
                 ui.reset_mouse_drag_delta(imgui::MouseButton::Left);
@@ -439,6 +441,7 @@ impl App {
             }
         }
 
+        #[allow(deprecated)]
         let styles = ui.push_style_vars(&[
             StyleVar::WindowPadding([10.0, 10.0]),
             StyleVar::FramePadding([0.0, 6.0]),
@@ -446,6 +449,7 @@ impl App {
             StyleVar::WindowBorderSize(0.0),
         ]);
 
+        #[allow(deprecated)]
         let colors = ui.push_style_colors(&[
             (StyleColor::MenuBarBg, [0.117, 0.117, 0.117, 1.0]),
             (StyleColor::ButtonHovered, [0.078, 0.078, 0.078, 1.0]),
@@ -456,6 +460,9 @@ impl App {
             self.menu_bar(display, ui);
         }
 
+        self.resize_ui(display, ui);
+
+        #[allow(deprecated)]
         let s = ui.push_style_vars(&[
             StyleVar::WindowPadding([10.0, 4.0]),
             StyleVar::FramePadding([0.0, 0.0]),
@@ -463,6 +470,7 @@ impl App {
             StyleVar::ButtonTextAlign([0.0, 0.5]),
         ]);
 
+        #[allow(deprecated)]
         let c = ui.push_style_colors(&[
             (StyleColor::WindowBg, [0.117, 0.117, 0.117, 1.0]),
             (StyleColor::Button, [0.117, 0.117, 0.117, 1.0]),
@@ -480,11 +488,38 @@ impl App {
         (self.exit, self.delay)
     }
 
+    pub fn resize_ui(&mut self, _display: &Display, ui: &mut Ui<'_>) {
+        const FILTERS: &[(FilterType, &'static str)] = &[
+            (FilterType::Nearest, "Nearest Neighbor"),
+            (FilterType::Triangle, "Linear Filter"),
+            (FilterType::CatmullRom, "Cubic Filter"),
+            (FilterType::Gaussian, "Gaussian Filter"),
+            (FilterType::Lanczos3, "Lanczos"),
+        ];
+
+        if self.resize_visible {
+            Window::new("Resize")
+                .opened(&mut self.resize_visible)
+                .collapsed(false, Condition::Always)
+                .resizable(false)
+                .size([400.0, 300.0], Condition::Always)
+                .build(ui, || {
+                    ComboBox::new("Resample")
+                        .popup_align_left(true)
+                        .build(ui, || {
+                            for (filter, label) in FILTERS {
+                                //Selectable::new(label).build(ui);
+                            }
+                        });
+                });
+        }
+    }
+
     pub fn menu_bar(&mut self, display: &Display, ui: &mut Ui<'_>) {
         ui.main_menu_bar(|| {
-            ui.menu(im_str!("File"), true, || {
-                if MenuItem::new(im_str!("Open"))
-                    .shortcut(im_str!("Ctrl + O"))
+            ui.menu_with_enabled("File", true, || {
+                if MenuItem::new("Open")
+                    .shortcut("Ctrl + O")
                     .build(ui)
                 {
                     load_image::open(
@@ -495,8 +530,8 @@ impl App {
                     );
                 }
 
-                if MenuItem::new(im_str!("Save as"))
-                    .shortcut(im_str!("Ctrl + S"))
+                if MenuItem::new("Save as")
+                    .shortcut("Ctrl + S")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -505,15 +540,15 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("New Window"))
-                    .shortcut(im_str!("Ctrl + N"))
+                if MenuItem::new("New Window")
+                    .shortcut("Ctrl + N")
                     .build(ui)
                 {
                     new_window();
                 }
 
-                if MenuItem::new(im_str!("Refresh"))
-                    .shortcut(im_str!("R"))
+                if MenuItem::new("Refresh")
+                    .shortcut("R")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -529,25 +564,25 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Exit"))
-                    .shortcut(im_str!("Ctrl + W"))
+                if MenuItem::new("Exit")
+                    .shortcut("Ctrl + W")
                     .build(ui)
                 {
                     self.exit = true;
                 }
             });
 
-            ui.menu(im_str!("Edit"), true, || {
-                if MenuItem::new(im_str!("Undo"))
-                    .shortcut(im_str!("Ctrl + Z"))
+            ui.menu_with_enabled("Edit", true, || {
+                if MenuItem::new("Undo")
+                    .shortcut("Ctrl + Z")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
                     self.undo(display);
                 }
 
-                if MenuItem::new(im_str!("Redo"))
-                    .shortcut(im_str!("Ctrl + Y"))
+                if MenuItem::new("Redo")
+                    .shortcut("Ctrl + Y")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -556,8 +591,8 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Copy"))
-                    .shortcut(im_str!("Ctrl + C"))
+                if MenuItem::new("Copy")
+                    .shortcut("Ctrl + C")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -565,17 +600,17 @@ impl App {
                     clipboard::copy(image);
                 }
 
-                if MenuItem::new(im_str!("Paste"))
-                    .shortcut(im_str!("Ctrl + V"))
+                if MenuItem::new("Paste")
+                    .shortcut("Ctrl + V")
                     .build(ui)
                 {
                     clipboard::paste(&self.proxy);
                 }
             });
 
-            ui.menu(im_str!("Image"), true, || {
-                if MenuItem::new(im_str!("Rotate Left"))
-                    .shortcut(im_str!("Q"))
+            ui.menu_with_enabled("Image", true, || {
+                if MenuItem::new("Rotate Left")
+                    .shortcut("Q")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -583,8 +618,8 @@ impl App {
                     self.image_view.as_mut().unwrap().rotate(1);
                 }
 
-                if MenuItem::new(im_str!("Rotate Right"))
-                    .shortcut(im_str!("E"))
+                if MenuItem::new("Rotate Right")
+                    .shortcut("E")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -594,7 +629,7 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Flip Horizontal"))
+                if MenuItem::new("Flip Horizontal")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -603,7 +638,7 @@ impl App {
                     image.flip_horizontal(display);
                 }
 
-                if MenuItem::new(im_str!("Flip Vertical"))
+                if MenuItem::new("Flip Vertical")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -614,16 +649,16 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Zoom in"))
-                    .shortcut(im_str!("+"))
+                if MenuItem::new("Zoom in")
+                    .shortcut("+")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
                     self.zoom(1.0, self.size / 2.0);
                 }
 
-                if MenuItem::new(im_str!("Zoom out"))
-                    .shortcut(im_str!("-"))
+                if MenuItem::new("Zoom out")
+                    .shortcut("-")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -632,16 +667,16 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Best fit"))
-                    .shortcut(im_str!("B"))
+                if MenuItem::new("Best fit")
+                    .shortcut("B")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
                     self.best_fit();
                 }
 
-                if MenuItem::new(im_str!("Largest fit"))
-                    .shortcut(im_str!("F"))
+                if MenuItem::new("Largest fit")
+                    .shortcut("F")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -650,25 +685,25 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Crop"))
-                    .shortcut(im_str!("Ctrl + X"))
+                if MenuItem::new("Crop")
+                    .shortcut("Ctrl + X")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
                     self.crop.cropping = true;
                 }
 
-                if MenuItem::new(im_str!("Resize"))
+                if MenuItem::new("Resize")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    todo!();
+                    self.resize_visible = true;
                 }
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("Delete"))
-                    .shortcut(im_str!("Delete"))
+                if MenuItem::new("Delete")
+                    .shortcut("Delete")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
@@ -680,18 +715,18 @@ impl App {
                 }
             });
 
-            ui.menu(im_str!("Help"), true, || {
-                if MenuItem::new(im_str!("Repository")).build(ui) {
+            ui.menu_with_enabled("Help", true, || {
+                if MenuItem::new("Repository").build(ui) {
                     webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
                 }
 
-                if MenuItem::new(im_str!("Report Bug")).build(ui) {
+                if MenuItem::new("Report Bug").build(ui) {
                     webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
                 }
 
                 ui.separator();
 
-                if MenuItem::new(im_str!("About")).build(ui) {
+                if MenuItem::new("About").build(ui) {
                     let about = format!(
                         "{}\n{}\n{}\n{}",
                         env!("CARGO_PKG_NAME"),
@@ -708,7 +743,7 @@ impl App {
     }
 
     fn bottom_bar(&mut self, ui: &mut Ui<'_>) {
-        Window::new(im_str!("Bottom"))
+        Window::new("Bottom")
             .position([0.0, self.size.y() - BOTTOM_BAR_SIZE], Condition::Always)
             .size([self.size.x(), BOTTOM_BAR_SIZE], Condition::Always)
             .resizable(false)
@@ -865,6 +900,7 @@ impl App {
             crop: Box::new(Crop::new(display)),
             cache,
             image_loader,
+            resize_visible: false,
         }
     }
 }

@@ -1,6 +1,9 @@
 use std::{
     borrow::Cow,
-    sync::{atomic::{AtomicBool, Ordering}, Arc, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, RwLock,
+    },
     thread,
 };
 
@@ -25,7 +28,10 @@ pub fn copy(view: &ImageView) {
     let horizontal_flip = view.horizontal_flip;
     let vertical_flip = view.vertical_flip;
 
-    if COPYING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+    if COPYING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
         return;
     }
 
@@ -86,7 +92,10 @@ pub fn copy(view: &ImageView) {
 pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
     let proxy = proxy.clone();
 
-    if PASTING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+    if PASTING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
         return;
     }
 

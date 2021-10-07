@@ -15,12 +15,12 @@ cgmath = "0.18.0"
 clipboard = "0.5"
 ctrlc = "3.2.0"
 directories = "4.0.1"
-glium = "0.29"
+glium = "0.30.0"
 image = "0.23.14"
 image_io = { path = "./image_io" }
-imgui = "0.7.0"
-imgui-glium-renderer = "0.7.0"
-imgui-winit-support = "0.7.0"
+imgui = "0.8.0"
+imgui-glium-renderer = "0.8.0"
+imgui-winit-support = "0.8.0"
 lazy_static = "1.4.0"
 lru = "0.6.6"
 msgbox = "0.6.0"
@@ -34,6 +34,7 @@ trash = "2.0"
 util = { path = "./util" }
 vec2 = { path = "./vec2" }
 webbrowser = "0.5.5"
+winit = "0.24.0"
 
 [target.'cfg(windows)'.dependencies]
 native-windows-gui = "1.0.12"

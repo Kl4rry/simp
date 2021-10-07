@@ -6,6 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glium = "0.29"
+glium = "0.30.0"
 image = "0.23.14"
 lazy_static = "1.4.0"

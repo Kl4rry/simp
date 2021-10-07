@@ -101,7 +101,7 @@ impl System {
         imgui.style_mut().anti_aliased_lines = false;*/
 
         if let Some(backend) = clipboard::init() {
-            imgui.set_clipboard_backend(Box::new(backend));
+            imgui.set_clipboard_backend(backend);
         } else {
             eprintln!("Failed to initialize clipboard");
         }
@@ -136,6 +136,7 @@ impl System {
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
         let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+
         display.gl_window().window().set_visible(true);
 
         let ctrl_proxy = proxy.clone();
