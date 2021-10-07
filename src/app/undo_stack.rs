@@ -5,6 +5,7 @@ pub enum UndoFrame {
     FlipHorizontal,
     FlipVertical,
     Crop { frames: Vec<Image>, rotation: i32 },
+    Resize(Vec<Image>),
 }
 
 pub struct UndoStack {

@@ -69,20 +69,18 @@ impl ImageList {
             let mut list = Vec::new();
             let dirs = std::fs::read_dir(dir_path).unwrap();
 
-            for result in dirs {
-                if let Ok(dir) = result {
-                    if let Ok(file_type) = dir.file_type() {
-                        if file_type.is_file() {
-                            let path = dir.path();
-                            match dir.path().extension() {
-                                Some(ext)
-                                    if EXTENSIONS
-                                        .contains(&*ext.to_string_lossy().to_ascii_lowercase()) =>
-                                {
-                                    list.push(path)
-                                }
-                                _ => (),
+            for dir in dirs.flatten() {
+                if let Ok(file_type) = dir.file_type() {
+                    if file_type.is_file() {
+                        let path = dir.path();
+                        match dir.path().extension() {
+                            Some(ext)
+                                if EXTENSIONS
+                                    .contains(&*ext.to_string_lossy().to_ascii_lowercase()) =>
+                            {
+                                list.push(path)
                             }
+                            _ => (),
                         }
                     }
                 }

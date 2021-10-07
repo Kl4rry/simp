@@ -100,6 +100,7 @@ impl From<Image> for Frame {
 
 pub enum UserEvent {
     ImageLoaded(Arc<RwLock<Vec<Image>>>, Option<PathBuf>),
+    Resize(Option<Vec<Image>>),
     LoadError(String, PathBuf),
     ErrorMessage(String),
     SetCursor(CursorIcon),

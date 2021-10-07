@@ -1,7 +1,10 @@
 use std::{
     path::Path,
     process::Command,
-    sync::{Arc, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, RwLock,
+    },
     thread,
     time::Duration,
 };
@@ -14,9 +17,9 @@ use glium::{
         window::{CursorIcon, Fullscreen},
     },
 };
-use image::imageops::FilterType;
 use imgui::*;
 use imgui_glium_renderer::Renderer;
+use lazy_static::*;
 use rect::Rect;
 use util::{min, UserEvent};
 use vec2::Vec2;
@@ -50,8 +53,17 @@ use undo_stack::{UndoFrame, UndoStack};
 mod cache;
 use cache::Cache;
 
+mod resize;
+use resize::Resize;
+
+mod filters;
+
 const TOP_BAR_SIZE: f32 = 25.0;
 const BOTTOM_BAR_SIZE: f32 = 22.0;
+
+lazy_static! {
+    pub static ref RESIZING: AtomicBool = AtomicBool::new(false);
+}
 
 pub struct App {
     exit: bool,
@@ -72,7 +84,7 @@ pub struct App {
     pub crop: Box<Crop>,
     pub cache: Arc<Cache>,
     pub image_loader: Arc<RwLock<ImageLoader>>,
-    resize_visible: bool,
+    resize: Resize,
 }
 
 impl App {
@@ -123,11 +135,10 @@ impl App {
                     if replace {
                         cursor::set_cursor_icon(CursorIcon::default(), display);
 
-                        self.image_view = Some(Box::new(ImageView::new(
-                            display,
-                            images.clone(),
-                            path.clone(),
-                        )));
+                        let view = Box::new(ImageView::new(display, images.clone(), path.clone()));
+
+                        self.resize.size = Vec2::new(view.size.x() as i32, view.size.y() as i32);
+                        self.image_view = Some(view);
 
                         self.current_filename = if let Some(path) = path {
                             self.image_list.change_dir(&path);
@@ -148,6 +159,13 @@ impl App {
                         self.best_fit();
                         self.stack.reset();
                     }
+                }
+                UserEvent::Resize(images) => {
+                    if let Some(ref mut view) = self.image_view {
+                        view.swap_frames(images.as_mut().unwrap(), display);
+                        self.stack.push(UndoFrame::Resize(images.take().unwrap()));
+                    }
+                    RESIZING.store(false, Ordering::SeqCst);
                 }
                 UserEvent::Save(path) => {
                     if let Some(ref view) = self.image_view {
@@ -208,7 +226,7 @@ impl App {
                     self.cache.clone(),
                     self.image_loader.clone(),
                 ),
-                WindowEvent::KeyboardInput { input, .. } => {
+                WindowEvent::KeyboardInput { input, .. } if !self.resize.resize_visible => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
                             ElementState::Pressed => match key {
@@ -343,7 +361,7 @@ impl App {
                         }
                     }
                 }
-                WindowEvent::ReceivedCharacter(c) => match c {
+                WindowEvent::ReceivedCharacter(c) if !self.resize.resize_visible => match c {
                     '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                         if let Some(ref mut view) = self.image_view {
                             let zoom = c.to_digit(10).unwrap() as f32;
@@ -489,39 +507,99 @@ impl App {
     }
 
     pub fn resize_ui(&mut self, _display: &Display, ui: &mut Ui<'_>) {
-        const FILTERS: &[(FilterType, &'static str)] = &[
-            (FilterType::Nearest, "Nearest Neighbor"),
-            (FilterType::Triangle, "Linear Filter"),
-            (FilterType::CatmullRom, "Cubic Filter"),
-            (FilterType::Gaussian, "Gaussian Filter"),
-            (FilterType::Lanczos3, "Lanczos"),
-        ];
+        #[allow(deprecated)]
+        let s = ui.push_style_vars(&[
+            StyleVar::WindowPadding([8.0, 8.0]),
+            StyleVar::FramePadding([8.0, 8.0]),
+            StyleVar::ItemSpacing([10.0, 10.0]),
+            StyleVar::ButtonTextAlign([0.0, 0.5]),
+        ]);
 
-        if self.resize_visible {
+        if self.resize.resize_visible {
+            let mut open = self.image_view.is_some();
             Window::new("Resize")
-                .opened(&mut self.resize_visible)
+                .opened(&mut open)
                 .collapsed(false, Condition::Always)
                 .resizable(false)
-                .size([400.0, 300.0], Condition::Always)
+                .size([250.0, 200.0], Condition::Always)
                 .build(ui, || {
+                    ui.input_int("Width", &mut self.resize.size.mut_x()).build();
+                    ui.input_int("Height", &mut self.resize.size.mut_y())
+                        .build();
+
+                    if self.resize.size.x() < 1 {
+                        *self.resize.size.mut_x() = 0;
+                    }
+
+                    if self.resize.size.y() < 1 {
+                        *self.resize.size.mut_y() = 0;
+                    }
+
+                    const MAX_SIZE: i32 = 30000;
+                    if self.resize.size.x() >= MAX_SIZE {
+                        *self.resize.size.mut_x() = MAX_SIZE;
+                    }
+
+                    if self.resize.size.y() >= i16::MAX as i32 {
+                        *self.resize.size.mut_y() = MAX_SIZE;
+                    }
+
                     ComboBox::new("Resample")
                         .popup_align_left(true)
+                        .preview_mode(ComboBoxPreviewMode::Label)
+                        .preview_value(filters::FILTERS[self.resize.resample_select_index].1)
                         .build(ui, || {
-                            for (filter, label) in FILTERS {
-                                //Selectable::new(label).build(ui);
+                            for (index, (_, label)) in filters::FILTERS.iter().enumerate() {
+                                let mut select = Selectable::new(label);
+                                if index == self.resize.resample_select_index {
+                                    select = select.selected(true);
+                                }
+                                if select.build(ui) {
+                                    self.resize.resample_select_index = index;
+                                }
                             }
                         });
+
+                    if ui.button("Resize") {
+                        self.resize();
+                    }
                 });
+            self.resize.resize_visible = open;
         }
+        s.pop(ui);
+    }
+
+    fn resize(&self) {
+        if RESIZING
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+
+        let frames = self.image_view.as_ref().unwrap().frames.clone();
+        let resize = self.resize;
+        let proxy = self.proxy.clone();
+
+        thread::spawn(move || {
+            let guard = frames.read().unwrap();
+            let mut new = Vec::new();
+            for image in guard.iter() {
+                let buffer = image.buffer().resize_exact(
+                    resize.size.x() as u32,
+                    resize.size.y() as u32,
+                    filters::FILTERS[resize.resample_select_index].0,
+                );
+                new.push(util::Image::with_delay(buffer, image.delay));
+            }
+            let _ = proxy.send_event(UserEvent::Resize(Some(new)));
+        });
     }
 
     pub fn menu_bar(&mut self, display: &Display, ui: &mut Ui<'_>) {
         ui.main_menu_bar(|| {
             ui.menu_with_enabled("File", true, || {
-                if MenuItem::new("Open")
-                    .shortcut("Ctrl + O")
-                    .build(ui)
-                {
+                if MenuItem::new("Open").shortcut("Ctrl + O").build(ui) {
                     load_image::open(
                         self.proxy.clone(),
                         display,
@@ -540,10 +618,7 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new("New Window")
-                    .shortcut("Ctrl + N")
-                    .build(ui)
-                {
+                if MenuItem::new("New Window").shortcut("Ctrl + N").build(ui) {
                     new_window();
                 }
 
@@ -564,10 +639,7 @@ impl App {
 
                 ui.separator();
 
-                if MenuItem::new("Exit")
-                    .shortcut("Ctrl + W")
-                    .build(ui)
-                {
+                if MenuItem::new("Exit").shortcut("Ctrl + W").build(ui) {
                     self.exit = true;
                 }
             });
@@ -600,10 +672,7 @@ impl App {
                     clipboard::copy(image);
                 }
 
-                if MenuItem::new("Paste")
-                    .shortcut("Ctrl + V")
-                    .build(ui)
-                {
+                if MenuItem::new("Paste").shortcut("Ctrl + V").build(ui) {
                     clipboard::paste(&self.proxy);
                 }
             });
@@ -697,7 +766,7 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    self.resize_visible = true;
+                    self.resize.resize_visible = true;
                 }
 
                 ui.separator();
@@ -806,6 +875,10 @@ impl App {
                     view.swap_frames(frames, display);
                     std::mem::swap(&mut view.rotation, rotation);
                 }
+                UndoFrame::Resize(frames) => {
+                    let view = self.image_view.as_mut().unwrap();
+                    view.swap_frames(frames, display);
+                }
             }
         }
     }
@@ -827,6 +900,10 @@ impl App {
                     let view = self.image_view.as_mut().unwrap();
                     view.swap_frames(frames, display);
                     std::mem::swap(&mut view.rotation, rotation);
+                }
+                UndoFrame::Resize(frames) => {
+                    let view = self.image_view.as_mut().unwrap();
+                    view.swap_frames(frames, display);
                 }
             }
         }
@@ -900,7 +977,7 @@ impl App {
             crop: Box::new(Crop::new(display)),
             cache,
             image_loader,
-            resize_visible: false,
+            resize: Resize::default(),
         }
     }
 }

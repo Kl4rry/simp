@@ -56,16 +56,18 @@ impl Cache {
         guard.put(path, image);
     }
 
+    #[allow(clippy::ptr_arg)]
     pub fn get(&self, path: &PathBuf) -> Option<Arc<RwLock<Vec<Image>>>> {
-        self.lru.lock().unwrap().get(path).map(|arc| arc.clone())
+        self.lru.lock().unwrap().get(path).cloned()
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub fn contains(&self, path: &PathBuf) -> bool {
+        self.lru.lock().unwrap().contains(path)
     }
 
     pub fn clear(&self) {
         self.total_size.store(0, Ordering::SeqCst);
         self.lru.lock().unwrap().clear();
-    }
-
-    pub fn contains(&self, path: &PathBuf) -> bool {
-        self.lru.lock().unwrap().contains(path)
     }
 }

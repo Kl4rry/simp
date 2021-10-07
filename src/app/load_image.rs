@@ -114,7 +114,7 @@ pub fn load(
     }
 
     if let Some(images) = cache.get(&path_buf) {
-        let _ = proxy.send_event(UserEvent::ImageLoaded(images.clone(), Some(path_buf)));
+        let _ = proxy.send_event(UserEvent::ImageLoaded(images, Some(path_buf)));
         return;
     }
 
