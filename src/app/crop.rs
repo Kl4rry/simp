@@ -2,7 +2,8 @@ use glium::{
     backend::glutin::Display, draw_parameters::DrawParameters, implement_vertex,
     index::PrimitiveType, program::Program, uniform, Blend, IndexBuffer, Surface, VertexBuffer,
 };
-use vec2::Vec2;
+
+use crate::vec2::Vec2;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {

@@ -13,9 +13,9 @@ use image::{
     EncodableLayout, GenericImageView, ImageBuffer, Rgba,
 };
 use lazy_static::*;
-use util::{Image, UserEvent};
 
 use super::image_view::ImageView;
+use crate::util::{Image, UserEvent};
 
 lazy_static! {
     pub static ref COPYING: AtomicBool = AtomicBool::new(false);

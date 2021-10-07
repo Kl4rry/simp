@@ -19,9 +19,8 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
-use rect::Rect;
-use util::{max, min, Image};
-use vec2::Vec2;
+
+use crate::{max, min, rect::Rect, util::Image, vec2::Vec2};
 
 #[derive(Copy, Clone)]
 pub struct Vertex {

@@ -8,9 +8,11 @@ use std::{
 };
 
 use glium::glutin::event_loop::EventLoopProxy;
-use util::{extensions::*, UserEvent};
 
-use crate::app::{image_loader::ImageLoader, load_image::prefetch, Cache};
+use crate::{
+    app::{image_loader::ImageLoader, load_image::prefetch, Cache},
+    util::{extensions::*, UserEvent},
+};
 
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
 

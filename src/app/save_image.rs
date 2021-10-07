@@ -9,8 +9,11 @@ use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageOutputFormat,
 };
-use image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation};
-use util::{Image, UserEvent};
+
+use crate::{
+    image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation},
+    util::{Image, UserEvent},
+};
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::FileDialog::new()

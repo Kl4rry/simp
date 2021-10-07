@@ -7,7 +7,8 @@ use std::{
 };
 
 use lru::LruCache;
-use util::Image;
+
+use crate::util::Image;
 
 pub struct Cache {
     lru: Mutex<LruCache<PathBuf, Arc<RwLock<Vec<Image>>>>>,

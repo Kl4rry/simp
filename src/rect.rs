@@ -1,4 +1,4 @@
-use vec2::Vec2;
+use crate::vec2::Vec2;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Debug)]

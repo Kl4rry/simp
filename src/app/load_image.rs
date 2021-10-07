@@ -9,10 +9,12 @@ use glium::{
     glutin::{event_loop::EventLoopProxy, window::CursorIcon},
     Display,
 };
-use image_io::load::*;
-use util::{extensions::*, Image, UserEvent};
 
-use crate::app::{cache::Cache, image_loader::ImageLoader};
+use crate::{
+    app::{cache::Cache, image_loader::ImageLoader},
+    image_io::load::*,
+    util::{extensions::*, Image, UserEvent},
+};
 
 #[derive(Debug)]
 pub enum LoadError {

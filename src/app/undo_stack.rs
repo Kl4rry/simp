@@ -1,4 +1,4 @@
-use util::Image;
+use crate::util::Image;
 
 pub enum UndoFrame {
     Rotate(i32),

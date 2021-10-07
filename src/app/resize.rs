@@ -1,4 +1,4 @@
-use vec2::Vec2;
+use crate::vec2::Vec2;
 
 #[derive(Clone, Copy)]
 pub struct Resize {

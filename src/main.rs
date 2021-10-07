@@ -17,8 +17,6 @@ use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use serde_derive::{Deserialize, Serialize};
-use util::UserEvent;
-use vec2::Vec2;
 
 mod app;
 mod clipboard;
@@ -26,6 +24,12 @@ use app::App;
 mod background;
 use background::Background;
 mod icon;
+mod vec2;
+use vec2::Vec2;
+mod rect;
+mod util;
+use util::UserEvent;
+mod image_io;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct SaveData {

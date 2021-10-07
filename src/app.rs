@@ -20,9 +20,13 @@ use glium::{
 use imgui::*;
 use imgui_glium_renderer::Renderer;
 use lazy_static::*;
-use rect::Rect;
-use util::{min, UserEvent};
-use vec2::Vec2;
+
+use crate::{
+    min,
+    rect::Rect,
+    util::{Image, UserEvent},
+    vec2::Vec2,
+};
 
 pub mod image_view;
 use image_view::ImageView;
@@ -590,7 +594,7 @@ impl App {
                     resize.size.y() as u32,
                     filters::FILTERS[resize.resample_select_index].0,
                 );
-                new.push(util::Image::with_delay(buffer, image.delay));
+                new.push(Image::with_delay(buffer, image.delay));
             }
             let _ = proxy.send_event(UserEvent::Resize(Some(new)));
         });
