@@ -10,7 +10,7 @@ The simple image manipulation program is a simple cross-platform image manipulat
 * 60 Hz. Avoid blocking for more then 16ms.
 * Flicker free redrawing.
 * Desktop OS support.
-* Basic image manipulation (Not reached).
+* Basic image manipulation.
 
 ### Non Goals
 
