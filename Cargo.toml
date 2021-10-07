@@ -17,7 +17,7 @@ ctrlc = "3.2.0"
 directories = "4.0.1"
 glium = "0.30.0"
 image = "0.23.14"
-image_io = { path = "./image_io" }
+image_io = { path = "./image_io", version = "0.1.0" }
 imgui = "0.8.0"
 imgui-glium-renderer = "0.8.0"
 imgui-winit-support = "0.8.0"
@@ -31,8 +31,8 @@ serde = "1.0.130"
 serde_derive = "1.0.130"
 timing = "0.2.1"
 trash = "2.0"
-util = { path = "./util" }
-vec2 = { path = "./vec2" }
+util = { path = "./util", version = "0.1.0"  }
+vec2 = { path = "./vec2", version = "0.1.0"  }
 webbrowser = "0.5.5"
 winit = "0.24.0"
 
