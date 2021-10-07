@@ -169,6 +169,7 @@ impl App {
                         view.swap_frames(images.as_mut().unwrap(), display);
                         self.stack.push(UndoFrame::Resize(images.take().unwrap()));
                     }
+                    self.best_fit();
                     RESIZING.store(false, Ordering::SeqCst);
                 }
                 UserEvent::Save(path) => {
@@ -230,7 +231,7 @@ impl App {
                     self.cache.clone(),
                     self.image_loader.clone(),
                 ),
-                WindowEvent::KeyboardInput { input, .. } if !self.resize.resize_visible => {
+                WindowEvent::KeyboardInput { input, .. } if !self.resize.visible => {
                     if let Some(key) = input.virtual_keycode {
                         match input.state {
                             ElementState::Pressed => match key {
@@ -309,6 +310,10 @@ impl App {
                                     self.redo(display);
                                 }
 
+                                VirtualKeyCode::R if self.modifiers.ctrl() => {
+                                    self.resize.visible = true;
+                                }
+
                                 VirtualKeyCode::Left | VirtualKeyCode::D => {
                                     if let Some(path) = self.image_list.previous() {
                                         if self.crop.inner.is_none() {
@@ -365,7 +370,7 @@ impl App {
                         }
                     }
                 }
-                WindowEvent::ReceivedCharacter(c) if !self.resize.resize_visible => match c {
+                WindowEvent::ReceivedCharacter(c) if !self.resize.visible => match c {
                     '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                         if let Some(ref mut view) = self.image_view {
                             let zoom = c.to_digit(10).unwrap() as f32;
@@ -519,8 +524,9 @@ impl App {
             StyleVar::ButtonTextAlign([0.0, 0.5]),
         ]);
 
-        if self.resize.resize_visible {
+        if self.resize.visible {
             let mut open = self.image_view.is_some();
+            let mut open_resize = true;
             Window::new("Resize")
                 .opened(&mut open)
                 .collapsed(false, Condition::Always)
@@ -566,9 +572,10 @@ impl App {
 
                     if ui.button("Resize") {
                         self.resize();
+                        open_resize = false;
                     }
                 });
-            self.resize.resize_visible = open;
+            self.resize.visible = open && open_resize;
         }
         s.pop(ui);
     }
@@ -767,10 +774,11 @@ impl App {
                 }
 
                 if MenuItem::new("Resize")
+                    .shortcut("Ctrl + R")
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    self.resize.resize_visible = true;
+                    self.resize.visible = true;
                 }
 
                 ui.separator();

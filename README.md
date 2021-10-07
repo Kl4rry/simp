@@ -62,6 +62,7 @@ The simple image manipulation program is a simple cross-platform image manipulat
 | Redo         | Ctrl + Y             |
 | Copy         | Ctrl + C             |
 | Paste        | Ctrl + V             |
+| Resize       | Ctrl + R             |
 | Rotate left  | Q                    |
 | Rotate right | E                    |
 | Zoom in      | - or Mousewheel up   |
