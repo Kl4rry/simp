@@ -24,15 +24,15 @@ imgui-winit-support = "0.8.0"
 lazy_static = "1.4.0"
 lru = "0.6.6"
 msgbox = "0.6.0"
-rect = { path = "./rect" }
+rect = { path = "./rect", version = "0.1.0" }
 rfd = "0.4.0"
 ron = "0.6.5"
 serde = "1.0.130"
 serde_derive = "1.0.130"
 timing = "0.2.1"
 trash = "2.0"
-util = { path = "./util", version = "0.1.0"  }
-vec2 = { path = "./vec2", version = "0.1.0"  }
+util = { path = "./util", version = "0.1.0" }
+vec2 = { path = "./vec2", version = "0.1.0" }
 webbrowser = "0.5.5"
 winit = "0.24.0"
 
