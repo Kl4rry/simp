@@ -424,14 +424,7 @@ fn degrees_to_radians(deg: f32) -> f32 {
 }
 
 fn get_rotation_matrix(rad: f32) -> Matrix4<f32> {
-    #[rustfmt::skip]
-    let matrix = Matrix4::new(
-        rad.cos(), -(rad.sin()), 0.0, 0.0,
-        rad.sin(), rad.cos(), 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    );
-    matrix
+    Matrix4::from_angle_z(cgmath::Rad(rad))
 }
 
 fn get_texture(image: &DynamicImage, display: &Display) -> SrgbTexture2d {

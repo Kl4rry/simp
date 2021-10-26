@@ -266,14 +266,14 @@ impl App {
 
                                 VirtualKeyCode::Q => {
                                     if let Some(ref mut image) = self.image_view {
-                                        self.stack.push(UndoFrame::Rotate(1));
-                                        image.rotate(1);
+                                        self.stack.push(UndoFrame::Rotate(-1));
+                                        image.rotate(-1);
                                     }
                                 }
                                 VirtualKeyCode::E => {
                                     if let Some(ref mut image) = self.image_view {
-                                        self.stack.push(UndoFrame::Rotate(-1));
-                                        image.rotate(-1);
+                                        self.stack.push(UndoFrame::Rotate(1));
+                                        image.rotate(1);
                                     }
                                 }
 
@@ -694,8 +694,8 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    self.stack.push(UndoFrame::Rotate(1));
-                    self.image_view.as_mut().unwrap().rotate(1);
+                    self.stack.push(UndoFrame::Rotate(-1));
+                    self.image_view.as_mut().unwrap().rotate(-1);
                 }
 
                 if MenuItem::new("Rotate Right")
@@ -703,8 +703,8 @@ impl App {
                     .enabled(self.image_view.is_some())
                     .build(ui)
                 {
-                    self.stack.push(UndoFrame::Rotate(-1));
-                    self.image_view.as_mut().unwrap().rotate(-1);
+                    self.stack.push(UndoFrame::Rotate(1));
+                    self.image_view.as_mut().unwrap().rotate(1);
                 }
 
                 ui.separator();
