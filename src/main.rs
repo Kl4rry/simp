@@ -60,11 +60,6 @@ pub struct System {
 
 impl System {
     pub fn new() -> Self {
-        #[cfg(target_os = "windows")]
-        {
-            native_windows_gui::enable_visual_styles();
-        }
-
         let save_data = get_save_data();
 
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();

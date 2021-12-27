@@ -41,7 +41,6 @@ webbrowser = "0.5.5"
 webp-animation = { version = "0.2.2", features = ["image"] }
 
 [target.'cfg(windows)'.dependencies]
-native-windows-gui = "1.0.12"
 winapi = { version = "0.3.9", features = ["wincon", "winuser"] }
 
 [target.'cfg(windows)'.build-dependencies]
