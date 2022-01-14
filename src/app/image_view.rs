@@ -134,8 +134,7 @@ impl ImageView {
 
         let position = self.position - self.scaled() / 2.0;
         let scale = Matrix4::from_scale(self.scale);
-        let translation =
-            Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
+        let translation = Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
 
         let rotation = get_rotation_matrix(degrees_to_radians((self.rotation * 90) as f32));
 

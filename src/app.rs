@@ -89,6 +89,8 @@ pub struct App {
     pub cache: Arc<Cache>,
     pub image_loader: Arc<RwLock<ImageLoader>>,
     resize: Resize,
+    pub maximized: bool,
+    pub save_size: Vec2<f32>,
 }
 
 impl App {
@@ -102,9 +104,26 @@ impl App {
     ) -> (bool, Option<Duration>) {
         self.exit = false;
         self.delay = None;
+
         {
-            let dimensions = display.get_framebuffer_dimensions();
-            self.size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32)
+            let window_context = display.gl_window();
+            let window = window_context.window();
+
+            let (width, height) = display.get_framebuffer_dimensions();
+            self.size = Vec2::new(width as f32, height as f32);
+
+            self.maximized = {
+                let max = window.is_maximized();
+                // this is a cringe hack to save the non maximized size
+                // currently it will never save the size of a window that is the maximum size of the mointor
+                if let Some(monitor) = window.current_monitor() {
+                    let mon_size = monitor.size();
+                    if !(width >= mon_size.width || height >= mon_size.height) {
+                        self.save_size = Vec2::new(width as f32, height as f32);
+                    }
+                }
+                max
+            };
         }
 
         if let Some(ref mut image) = self.image_view {
@@ -990,6 +1009,8 @@ impl App {
             cache,
             image_loader,
             resize: Resize::default(),
+            maximized: true,
+            save_size: Vec2::from(size),
         }
     }
 }

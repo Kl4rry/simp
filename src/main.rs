@@ -5,8 +5,9 @@
 use std::{env, fs, panic, path::PathBuf, time::Instant};
 
 use glium::{
-    glutin,
     glutin::{
+        self,
+        dpi::PhysicalPosition,
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop, EventLoopProxy},
         window::WindowBuilder,
@@ -35,6 +36,8 @@ mod image_io;
 struct SaveData {
     width: f64,
     height: f64,
+    maximized: bool,
+    position: Option<(i32, i32)>,
 }
 
 impl Default for SaveData {
@@ -42,6 +45,8 @@ impl Default for SaveData {
         Self {
             width: 1100f64,
             height: 720f64,
+            maximized: false,
+            position: None,
         }
     }
 }
@@ -65,7 +70,7 @@ impl System {
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new().with_vsync(true);
-        let builder = WindowBuilder::new()
+        let mut builder = WindowBuilder::new()
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
@@ -73,7 +78,12 @@ impl System {
                 save_data.width,
                 save_data.height,
             ))
+            .with_maximized(save_data.maximized)
             .with_window_icon(Some(icon::get_icon()));
+
+        if let Some((x, y)) = save_data.position {
+            builder = builder.with_position(PhysicalPosition::new(x, y));
+        }
 
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
@@ -227,8 +237,10 @@ impl System {
                 } => *control_flow = ControlFlow::Exit,
                 Event::LoopDestroyed => {
                     let data = SaveData {
-                        width: app.size.x() as f64,
-                        height: app.size.y() as f64,
+                        width: app.save_size.x() as f64,
+                        height: app.save_size.y() as f64,
+                        maximized: app.maximized,
+                        position: Some((app.position.x(), app.position.y())),
                     };
                     save_data(&data);
                 }

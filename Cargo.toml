@@ -54,7 +54,7 @@ LegalCopyright = "Copyright © 2021 Axel Kappel"
 ProductName = "Simp"
 
 [profile.release]
-lto = true
+lto = "thin"
 
 [profile.dev]
 opt-level = 3

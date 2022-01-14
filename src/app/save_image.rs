@@ -6,7 +6,7 @@ use std::{
 
 use glium::{glutin::event_loop::EventLoopProxy, Display};
 use image::{
-    imageops::{flip_horizontal_in_place, flip_vertical_in_place, /*colorops::huerotate_in_place*/},
+    imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageOutputFormat,
 };
 
