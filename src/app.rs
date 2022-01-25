@@ -552,9 +552,8 @@ impl App {
                 .resizable(false)
                 .size([250.0, 200.0], Condition::Always)
                 .build(ui, || {
-                    ui.input_int("Width", &mut self.resize.size.mut_x()).build();
-                    ui.input_int("Height", &mut self.resize.size.mut_y())
-                        .build();
+                    ui.input_int("Width", self.resize.size.mut_x()).build();
+                    ui.input_int("Height", self.resize.size.mut_y()).build();
 
                     if self.resize.size.x() < 1 {
                         *self.resize.size.mut_x() = 0;

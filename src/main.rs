@@ -2,7 +2,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
-use std::{env, fs, panic, path::PathBuf, time::Instant};
+use std::{env, panic, time::Instant};
 
 use glium::{
     glutin::{
@@ -17,7 +17,7 @@ use glium::{
 use imgui::{Context, FontConfig, FontSource};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 mod app;
 mod clipboard;
@@ -33,14 +33,14 @@ use util::UserEvent;
 mod image_io;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct SaveData {
+struct Config {
     width: f64,
     height: f64,
     maximized: bool,
     position: Option<(i32, i32)>,
 }
 
-impl Default for SaveData {
+impl Default for Config {
     fn default() -> Self {
         Self {
             width: 1100f64,
@@ -65,7 +65,7 @@ pub struct System {
 
 impl System {
     pub fn new() -> Self {
-        let save_data = get_save_data();
+        let config: Config = confy::load("simp").unwrap();
 
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
@@ -74,14 +74,11 @@ impl System {
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
-            .with_inner_size(glutin::dpi::LogicalSize::new(
-                save_data.width,
-                save_data.height,
-            ))
-            .with_maximized(save_data.maximized)
+            .with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height))
+            .with_maximized(config.maximized)
             .with_window_icon(Some(icon::get_icon()));
 
-        if let Some((x, y)) = save_data.position {
+        if let Some((x, y)) = config.position {
             builder = builder.with_position(PhysicalPosition::new(x, y));
         }
 
@@ -236,13 +233,13 @@ impl System {
                     ..
                 } => *control_flow = ControlFlow::Exit,
                 Event::LoopDestroyed => {
-                    let data = SaveData {
+                    let data = Config {
                         width: app.save_size.x() as f64,
                         height: app.save_size.y() as f64,
                         maximized: app.maximized,
                         position: Some((app.position.x(), app.position.y())),
                     };
-                    save_data(&data);
+                    confy::store("simp", data).unwrap();
                 }
                 mut event => {
                     {
@@ -275,27 +272,6 @@ impl System {
             }
         });
     }
-}
-
-fn get_save_data() -> SaveData {
-    if let Ok(data) = fs::read_to_string(get_data_path()) {
-        if let Ok(save) = ron::from_str::<SaveData>(&data) {
-            return save;
-        }
-    }
-    SaveData::default()
-}
-
-fn save_data(save_data: &SaveData) {
-    let data = ron::to_string(save_data).unwrap();
-    let _ = fs::write(get_data_path(), data);
-}
-
-fn get_data_path() -> PathBuf {
-    let dirs = directories::UserDirs::new().unwrap();
-    let mut home = dirs.home_dir().to_path_buf();
-    home.push(".simp.ron");
-    home
 }
 
 fn main() {
