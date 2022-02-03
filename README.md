@@ -17,6 +17,10 @@ The simple image manipulation program is a simple cross-platform image manipulat
 * Powerful image manipulation (I am not making the next photoshop)
 * Web/Mobile platform support.
 
+## Future plans
+Currently Simp uses imgui for ui. It is very nice because it is feature complete and is very easy to integrate into a existing rendering pipeline.
+However in the future I would like to switch to another nicer looking and preferably native rust UI framework. I am currently waiting for egui to become more mature before i switch to it.
+
 ## Supported Platforms
 
 | OS      | Support |
