@@ -156,7 +156,7 @@ impl ImageView {
                 &self.vertices,
                 &self.indices,
                 &self.shader,
-                &uniform! { matrix: raw, tex: Sampler(&self.texture, self.sampler) },
+                &uniform! { matrix: raw, tex: Sampler(&self.texture, self.sampler), size: size },
                 &DrawParameters {
                     blend: Blend::alpha_blending(),
                     ..DrawParameters::default()

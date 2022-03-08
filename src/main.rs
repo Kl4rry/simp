@@ -2,28 +2,25 @@
 #![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
-use std::{env, panic, time::Instant};
+use std::{
+    env, panic,
+    time::{Duration, Instant},
+};
 
+use egui_glium::EguiGlium;
 use glium::{
     glutin::{
         self,
-        dpi::PhysicalPosition,
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop, EventLoopProxy},
         window::WindowBuilder,
     },
     Display, Surface,
 };
-use imgui::{Context, FontConfig, FontSource};
-use imgui_glium_renderer::Renderer;
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use serde::{Deserialize, Serialize};
 
 mod app;
-mod clipboard;
 use app::App;
-mod background;
-use background::Background;
 mod icon;
 mod vec2;
 use vec2::Vec2;
@@ -36,8 +33,6 @@ mod image_io;
 struct Config {
     width: f64,
     height: f64,
-    maximized: bool,
-    position: Option<(i32, i32)>,
 }
 
 impl Default for Config {
@@ -45,8 +40,6 @@ impl Default for Config {
         Self {
             width: 1100f64,
             height: 720f64,
-            maximized: false,
-            position: None,
         }
     }
 }
@@ -55,32 +48,28 @@ pub struct System {
     pub event_loop: EventLoop<UserEvent>,
     pub proxy: EventLoopProxy<UserEvent>,
     pub display: glium::Display,
-    pub imgui: Context,
-    pub platform: WinitPlatform,
-    pub renderer: Renderer,
-    pub font_size: f32,
+    pub egui: EguiGlium,
     pub app: App,
-    pub background: Background,
 }
 
 impl System {
     pub fn new() -> Self {
-        let config: Config = confy::load("simp").unwrap();
+        let config: Config = confy::load("simp").unwrap_or_default();
 
         let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
         let proxy = event_loop.create_proxy();
-        let context = glutin::ContextBuilder::new().with_vsync(true);
-        let mut builder = WindowBuilder::new()
+        let context = glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .with_depth_buffer(0)
+            .with_srgb(true)
+            .with_stencil_buffer(0)
+            .with_multisampling(0);
+        let builder = WindowBuilder::new()
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
             .with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height))
-            .with_maximized(config.maximized)
             .with_window_icon(Some(icon::get_icon()));
-
-        if let Some((x, y)) = config.position {
-            builder = builder.with_position(PhysicalPosition::new(x, y));
-        }
 
         let display =
             Display::new(builder, context, &event_loop).expect("Failed to initialize display");
@@ -100,48 +89,7 @@ impl System {
             )
         };
 
-        let mut imgui = Context::create();
-        imgui.set_ini_filename(None);
-        /*imgui.style_mut().anti_aliased_fill = false;
-        imgui.style_mut().anti_aliased_lines_use_tex = false;
-        imgui.style_mut().anti_aliased_lines = false;*/
-
-        if let Some(backend) = clipboard::init() {
-            imgui.set_clipboard_backend(backend);
-        } else {
-            eprintln!("Failed to initialize clipboard");
-        }
-
-        let mut platform = WinitPlatform::init(&mut imgui);
-        {
-            let gl_window = display.gl_window();
-            let window = gl_window.window();
-            platform.attach_window(imgui.io_mut(), window, HiDpiMode::Rounded);
-        }
-
-        let hidpi_factor = platform.hidpi_factor();
-        let font_size = (13.0 * hidpi_factor) as f32;
-        //let font_size = (18.0 * hidpi_factor) as f32;
-        imgui.fonts().add_font(&[
-            /*FontSource::TtfData {
-                data: include_bytes!("../fonts/segoeui.ttf"),
-                size_pixels: font_size,
-                config: Some(FontConfig {
-                    rasterizer_multiply: 1.0,
-                    glyph_ranges: imgui::FontGlyphRanges::default(),
-                    ..FontConfig::default()
-                }),
-            },*/
-            FontSource::DefaultFontData {
-                config: Some(FontConfig {
-                    size_pixels: font_size,
-                    ..FontConfig::default()
-                }),
-            },
-        ]);
-        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-
-        let renderer = Renderer::init(&mut imgui, &display).expect("Failed to initialize renderer");
+        let egui = egui_glium::EguiGlium::new(&display);
 
         display.gl_window().window().set_visible(true);
 
@@ -151,18 +99,12 @@ impl System {
         })
         .unwrap();
 
-        let background = Background::new(&display);
-
         Self {
             event_loop,
             proxy,
             display,
-            imgui,
-            platform,
-            renderer,
-            font_size,
+            egui,
             app,
-            background,
         }
     }
 }
@@ -178,97 +120,74 @@ impl System {
         let System {
             event_loop,
             display,
-            mut imgui,
-            mut platform,
-            mut renderer,
+            mut egui,
             mut app,
-            background,
             ..
         } = self;
-        let mut last_frame = Instant::now();
 
         event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            let mut redraw = || {
+                let needs_repaint = egui.run(&display, |egui_ctx| {
+                    app.handle_ui(&display, egui_ctx);
+                });
 
-            match event {
-                Event::NewEvents(_) => {
-                    let now = Instant::now();
-                    imgui.io_mut().update_delta_time(now - last_frame);
-                    last_frame = now;
-                }
-                Event::RedrawRequested(_) => {
-                    let mut ui = imgui.frame();
+                let (exit, delay) = app.update(&display);
+                *control_flow = if exit {
+                    ControlFlow::Exit
+                } else if needs_repaint {
+                    display.gl_window().window().request_redraw();
+                    glutin::event_loop::ControlFlow::Poll
+                } else if let Some(delay) = delay {
+                    ControlFlow::WaitUntil(Instant::now() + delay)
+                } else {
+                    ControlFlow::WaitUntil(Instant::now() + Duration::from_secs(1))
+                };
 
-                    let (exit, delay) = app.update(&mut ui, &display, &mut renderer, None, None);
-                    if exit {
-                        *control_flow = ControlFlow::Exit;
-                    } else if let Some(delay) = delay {
-                        *control_flow = ControlFlow::WaitUntil(Instant::now() + delay);
-                    }
-
-                    let gl_window = display.gl_window();
+                {
                     let mut target = display.draw();
-                    target.clear_color_srgb(0.156, 0.156, 0.156, 1.0);
 
+                    target.clear_color_srgb(0.172, 0.172, 0.172, 1.0);
+
+                    // draw things behind egui here
                     let dimensions = display.get_framebuffer_dimensions();
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
-                    background.render(&mut target, size, app.top_bar_size);
+                    //background.render(&mut target, size, app.top_bar_size);
 
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);
                     }
 
-                    platform.prepare_render(&ui, gl_window.window());
-                    let draw_data = ui.render();
-                    renderer
-                        .render(&mut target, draw_data)
-                        .expect("Rendering failed");
+                    egui.paint(&display, &mut target);
 
+                    // draw things on top of egui here
                     app.crop.render(&mut target, size);
 
-                    target.finish().expect("Failed to swap buffers");
+                    target.finish().unwrap();
                 }
+            };
+
+            match event {
+                Event::RedrawEventsCleared if cfg!(windows) => redraw(),
+                Event::RedrawRequested(_) if !cfg!(windows) => redraw(),
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..
                 } => *control_flow = ControlFlow::Exit,
                 Event::LoopDestroyed => {
                     let data = Config {
-                        width: app.save_size.x() as f64,
-                        height: app.save_size.y() as f64,
-                        maximized: app.maximized,
-                        position: Some((app.position.x(), app.position.y())),
+                        width: app.size.x() as f64,
+                        height: app.size.y() as f64,
                     };
                     confy::store("simp", data).unwrap();
                 }
-                mut event => {
-                    {
-                        let mut ui = imgui.frame();
-
-                        let (exit, delay) = match &mut event {
-                            Event::WindowEvent { event, .. } => {
-                                app.update(&mut ui, &display, &mut renderer, Some(event), None)
-                            }
-                            Event::UserEvent(event) => {
-                                app.update(&mut ui, &display, &mut renderer, None, Some(event))
-                            }
-                            _ => app.update(&mut ui, &display, &mut renderer, None, None),
-                        };
-
-                        if exit {
-                            *control_flow = ControlFlow::Exit;
-                        } else if let Some(delay) = delay {
-                            *control_flow = ControlFlow::WaitUntil(Instant::now() + delay);
-                        }
+                Event::WindowEvent { event, .. } => {
+                    if !egui.on_event(&event) || matches!(event, WindowEvent::MouseWheel { .. }) {
+                        app.handle_window_event(&display, &event);
                     }
-
-                    let gl_window = display.gl_window();
-                    platform.handle_event(imgui.io_mut(), gl_window.window(), &event);
-                    platform
-                        .prepare_frame(imgui.io_mut(), gl_window.window())
-                        .expect("Failed to prepare frame");
-                    gl_window.window().request_redraw();
+                    display.gl_window().window().request_redraw();
                 }
+                Event::UserEvent(mut event) => app.handle_user_event(&display, &mut event),
+                _ => display.gl_window().window().request_redraw(),
             }
         });
     }

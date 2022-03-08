@@ -1,6 +1,6 @@
 # Simp  
 
-The simple image manipulation program is a simple cross-platform image manipulation program.
+Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ![Screenshot](images/screenshot.png)
 
@@ -73,6 +73,11 @@ The simple image manipulation program is a simple cross-platform image manipulat
 | F11          | Fullscreen           |
 | Delete image | Delete               |
 | 1 - 9        | 100% - 900% Zoom     |
+
+## 3.0 Roadmap
+- [x] Switch from imgui to egui.
+- [x] Redo the checkered background.
+- [ ] Add support for exif metadata. [exif-rs](https://github.com/kamadak/exif-rs)
 
 ## System dependencies
 

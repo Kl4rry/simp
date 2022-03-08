@@ -57,6 +57,7 @@ pub fn open(
     let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
     thread::spawn(move || {
         if let Some(file) = dialog.pick_file() {
+            cache.clear();
             load(proxy, file, cache, loading);
         }
     });

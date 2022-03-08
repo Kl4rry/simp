@@ -4,6 +4,8 @@ use std::{
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
 };
 
+use glium::uniforms::{AsUniformValue, UniformValue};
+
 #[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Debug)]
 pub struct Vec2<T> {
@@ -155,5 +157,11 @@ impl<T> DerefMut for Vec2<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
+    }
+}
+
+impl AsUniformValue for Vec2<f32> {
+    fn as_uniform_value(&self) -> UniformValue<'_> {
+        UniformValue::Vec2(self.inner.clone())
     }
 }

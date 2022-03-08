@@ -45,14 +45,14 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                         let timestamp = frame.timestamp();
                         let difference = timestamp - time;
 
-                        match frame.into_image() {
-                            Ok(image) => {
-                                time = timestamp;
-                                let delay = Duration::from_millis(difference as u64);
-                                Some(Image::with_delay(DynamicImage::ImageRgba8(image), delay))
-                            }
-                            Err(_) => None,
-                        }
+                        let (width, height) = frame.dimensions();
+                        let data = frame.data().to_vec();
+
+                        ImageBuffer::from_raw(width, height, data).map(|image| {
+                            time = timestamp;
+                            let delay = Duration::from_millis(difference as u64);
+                            Image::with_delay(DynamicImage::ImageRgba8(image), delay)
+                        })
                     })
                     .collect();
 
@@ -89,7 +89,7 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
         ..Options::default()
     };
 
-    let tree = match Tree::from_data(bytes, &options) {
+    let tree = match Tree::from_data(bytes, &options.to_ref()) {
         Ok(tree) => tree,
         Err(_) => return None,
     };
@@ -98,7 +98,12 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let mut pix_map =
         tiny_skia::Pixmap::new((*svg).size.width() as u32, (*svg).size.height() as u32).unwrap();
 
-    resvg::render(&tree, FitTo::Original, pix_map.as_mut())?;
+    resvg::render(
+        &tree,
+        FitTo::Original,
+        tiny_skia::Transform::identity(),
+        pix_map.as_mut(),
+    )?;
 
     let width = pix_map.width();
     let height = pix_map.height();

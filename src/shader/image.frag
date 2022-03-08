@@ -4,6 +4,7 @@ in vec2 v_tex_coords;
 out vec4 color;
 
 uniform sampler2D tex;
+uniform vec2 size;
 uniform float hue = 0.0;
 uniform float contrast = 0.0;
 
@@ -61,13 +62,30 @@ vec3 adjustContrast(vec3 p, float contrast) {
     return vec3(new_r, new_g, new_b);
 }
 
+vec3 get_check_color() {
+    //vec3 color1 = vec3(39, 39, 39) / 255;
+    vec3 color1 = vec3(64, 64, 64) / 255;
+	vec3 color2 = vec3(48, 48, 48) / 255;
+
+	float checkSize = 12.0;
+	float x = floor(gl_FragCoord[0] / checkSize);
+	float y = floor((gl_FragCoord[1] - size.y) / checkSize);
+	
+	if(mod(x + y, 2) == 0) {
+		return color1;
+	} else {
+		return color2;
+	}
+}
+
 void main() {
     vec4 p = texture(tex, v_tex_coords);
     p.rgb = gammaCorrection(p.rgb, 2.2);
 
     p.rgb = rotateHue(p.rgb, hue);
     //p.rgb = adjustContrast(p.rgb, contrast);
-
-    color.rgb = inverseGamma(p.rgb, 2.2);
-    color.a = p.a;
+    vec3 check_color = get_check_color();
+    color.rgb = check_color * (1 - p.a) + p.a * p.rgb; 
+    color.rgb = inverseGamma(color.rgb, 2.2);
+    color.a = 1;
 }
