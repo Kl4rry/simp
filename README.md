@@ -84,13 +84,9 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 System dependencies are only required at compile time.
 
 ### Linux
-
-* libcairo2-dev
-* libpango1.0-dev
-* libgtk-3-dev
-* libxcb-render0-dev
-* libxcb-shape0-dev
-* libxcb-xfixes0-dev
+```shell
+sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
+```
 
 ## Installation
 
