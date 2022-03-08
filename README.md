@@ -25,6 +25,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 - [ ] Contrast adjustment
 - [ ] Brightness adjustment
 - [ ] Hue rotate
+- [ ] Blur
 - [ ] Add support for exif metadata. [exif-rs](https://github.com/kamadak/exif-rs)
 
 ## Supported Platforms
