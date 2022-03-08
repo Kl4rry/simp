@@ -17,9 +17,10 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 * Powerful image manipulation (I am not making the next photoshop)
 * Web/Mobile platform support.
 
-## Future plans
-Currently Simp uses imgui for ui. It is very nice because it is feature complete and is very easy to integrate into a existing rendering pipeline.
-However in the future I would like to switch to another nicer looking and preferably native rust UI framework. I am currently waiting for egui to become more mature before I switch to it.
+## 3.0 Roadmap
+- [x] Switch from imgui to egui.
+- [x] Redo the checkered background.
+- [ ] Add support for exif metadata. [exif-rs](https://github.com/kamadak/exif-rs)
 
 ## Supported Platforms
 
@@ -77,11 +78,6 @@ However in the future I would like to switch to another nicer looking and prefer
 | F11          | Fullscreen           |
 | Delete image | Delete               |
 | 1 - 9        | 100% - 900% Zoom     |
-
-## 3.0 Roadmap
-- [x] Switch from imgui to egui.
-- [x] Redo the checkered background.
-- [ ] Add support for exif metadata. [exif-rs](https://github.com/kamadak/exif-rs)
 
 ## System dependencies
 
