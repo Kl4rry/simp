@@ -11,7 +11,7 @@ use std::{
 
 use egui::{
     menu::{self},
-    Button, Style, TopBottomPanel,
+    Button, RichText, Style, TopBottomPanel,
 };
 use glium::{
     backend::glutin::Display,
@@ -216,7 +216,7 @@ impl App {
                     self.cache.clone(),
                     self.image_loader.clone(),
                 )
-            },
+            }
             WindowEvent::KeyboardInput { input, .. } if !self.resize.visible => {
                 if let Some(key) = input.virtual_keycode {
                     match input.state {
@@ -391,6 +391,12 @@ impl App {
     pub fn main_area(&mut self, display: &Display, ctx: &egui::Context) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+            if self.image_view.is_none() {
+                ui.centered_and_justified(|ui| {
+                    ui.label(RichText::new("Open File: Ctrl + O").size(20.0))
+                });
+            }
+
             let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
 
             if let Some(ref mut image) = self.image_view {
