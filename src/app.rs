@@ -411,6 +411,7 @@ impl App {
                 .show(ctx, |ui| {
                     egui::Grid::new("some_unique_id")
                         .striped(true)
+                        .min_col_width(180.0)
                         .show(ui, |ui| {
                             const HELP: &[(&str, &str)] = &[
                                 ("Open image", "Ctrl + O"),
@@ -435,6 +436,9 @@ impl App {
                                 ("1 - 9", "100% - 900% Zoom"),
                             ];
 
+                            ui.label(RichText::new("Action").strong());
+                            ui.label(RichText::new("Hotkey").strong());
+                            ui.end_row();
                             for (action, hotkey) in HELP {
                                 ui.label(*action);
                                 ui.label(*hotkey);
