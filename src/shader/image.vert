@@ -1,4 +1,4 @@
-#version 140
+#version 420
 
 in vec2 position;
 in vec2 tex_coords;
