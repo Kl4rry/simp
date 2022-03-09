@@ -86,6 +86,7 @@ pub struct App {
     pub cache: Arc<Cache>,
     pub image_loader: Arc<RwLock<ImageLoader>>,
     resize: Resize,
+    help_visible: bool,
 }
 
 impl App {
@@ -229,6 +230,7 @@ impl App {
                                 }
                             }
 
+                            VirtualKeyCode::H if self.modifiers.ctrl() => self.help_visible = true,
                             VirtualKeyCode::O if self.modifiers.ctrl() => load_image::open(
                                 self.proxy.clone(),
                                 display,
@@ -326,6 +328,14 @@ impl App {
                                 }
                             }
 
+                            VirtualKeyCode::F4 if self.modifiers.ctrl() => {
+                                self.image_view = None;
+                                self.cache.clear();
+                                self.image_list.clear();
+                                self.stack.reset();
+                                self.crop.cropping = false;
+                            }
+
                             VirtualKeyCode::F11 => {
                                 let window_context = display.gl_window();
                                 let window = window_context.window();
@@ -348,6 +358,7 @@ impl App {
                                 let fullscreen = window.fullscreen();
                                 if fullscreen.is_some() {
                                     window.set_fullscreen(None);
+                                    self.fullscreen = false;
                                 }
                             }
                             _ => (),
@@ -386,6 +397,53 @@ impl App {
         }
         self.main_area(display, ctx);
         self.resize_ui(ctx);
+        self.help_ui(ctx);
+    }
+
+    fn help_ui(&mut self, ctx: &egui::Context) {
+        if self.help_visible {
+            let mut open = true;
+            egui::Window::new("Help")
+                .id(egui::Id::new("help window"))
+                .collapsible(false)
+                .resizable(false)
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    egui::Grid::new("some_unique_id")
+                        .striped(true)
+                        .show(ui, |ui| {
+                            const HELP: &[(&str, &str)] = &[
+                                ("Open image", "Ctrl + O"),
+                                ("Save as", "Ctrl + S"),
+                                ("Reload image", "F5"),
+                                ("Close image", "Ctrl + F4"),
+                                ("New window", "Ctrl + N"),
+                                ("Undo", "Ctrl + Z"),
+                                ("Redo", "Ctrl + Y"),
+                                ("Copy", "Ctrl + C"),
+                                ("Paste", "Ctrl + V"),
+                                ("Resize", "Ctrl + R"),
+                                ("Rotate left", "Q"),
+                                ("Rotate right", "E"),
+                                ("Zoom in", "- or Mousewheel up"),
+                                ("Zoom out", "+ or Mousewheel down"),
+                                ("Best fit", "B"),
+                                ("Largest fit", "F"),
+                                ("Crop", "Ctrl + X"),
+                                ("F11", "Fullscreen"),
+                                ("Delete image", "Delete"),
+                                ("1 - 9", "100% - 900% Zoom"),
+                            ];
+
+                            for (action, hotkey) in HELP {
+                                ui.label(*action);
+                                ui.label(*hotkey);
+                                ui.end_row();
+                            }
+                        });
+                });
+            self.help_visible = open;
+        }
     }
 
     pub fn main_area(&mut self, display: &Display, ctx: &egui::Context) {
@@ -393,7 +451,10 @@ impl App {
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             if self.image_view.is_none() {
                 ui.centered_and_justified(|ui| {
-                    ui.label(RichText::new("Open File: Ctrl + O").size(20.0))
+                    ui.label(
+                        RichText::new("Open File: Ctrl + O\n\nPaste: Ctrl + V\n\nHelp: Ctrl + H")
+                            .size(20.0),
+                    );
                 });
             }
 
@@ -651,6 +712,10 @@ impl App {
 
                     ui.separator();
 
+                    if ui.button("Help").clicked() {
+                        self.help_visible = true;
+                    }
+
                     if ui.button("About").clicked() {
                         let about = format!(
                             "{}\n{}\n{}\n{}",
@@ -754,6 +819,7 @@ impl App {
             egui::Window::new("Resize")
                 .id(egui::Id::new("resize window"))
                 .collapsible(false)
+                .resizable(false)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     ui.label("Width");
@@ -958,6 +1024,7 @@ impl App {
             cache,
             image_loader,
             resize: Resize::default(),
+            help_visible: false,
         }
     }
 }

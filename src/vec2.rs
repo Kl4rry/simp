@@ -162,6 +162,6 @@ impl<T> DerefMut for Vec2<T> {
 
 impl AsUniformValue for Vec2<f32> {
     fn as_uniform_value(&self) -> UniformValue<'_> {
-        UniformValue::Vec2(self.inner.clone())
+        UniformValue::Vec2(self.inner)
     }
 }

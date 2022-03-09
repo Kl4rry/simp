@@ -41,6 +41,12 @@ impl ImageList {
         }
     }
 
+    pub fn clear(&mut self) {
+        *self.list.lock().unwrap() = None;
+        self.path = None;
+        self.index.store(0, Ordering::SeqCst)
+    }
+
     pub fn change_dir(&mut self, path: impl AsRef<Path>) {
         let path_buf = path.as_ref().to_path_buf();
         let mut dir_path = path_buf.clone();
