@@ -50,6 +50,10 @@ pub struct ImageView {
     pub index: usize,
     pub horizontal_flip: bool,
     pub vertical_flip: bool,
+    pub hue: f32,
+    pub contrast: f32,
+    pub lightness: f32,
+    pub saturation: f32,
     shader: Box<Program>,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -118,6 +122,10 @@ impl ImageView {
             texture_cords,
             sampler,
             path,
+            hue: 0.0,
+            contrast: 0.0,
+            lightness: 0.0,
+            saturation: 0.0,
         }
     }
 
@@ -156,7 +164,7 @@ impl ImageView {
                 &self.vertices,
                 &self.indices,
                 &self.shader,
-                &uniform! { matrix: raw, tex: Sampler(&self.texture, self.sampler), size: size },
+                &uniform! { matrix: raw, tex: Sampler(&self.texture, self.sampler), size: size, hue: self.hue, contrast: self.contrast, lightness: self.lightness, saturation: self.saturation },
                 &DrawParameters {
                     blend: Blend::alpha_blending(),
                     ..DrawParameters::default()

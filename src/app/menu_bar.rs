@@ -1,0 +1,251 @@
+use std::thread;
+
+use egui::{menu, Button, TopBottomPanel};
+use glium::Display;
+
+use super::{clipboard, delete, load_image, new_window, save_image, undo_stack::UndoFrame, App};
+
+impl App {
+    pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
+        TopBottomPanel::top("top").show(ctx, |ui| {
+            menu::bar(ui, |ui| {
+                menu::menu_button(ui, "File", |ui| {
+                    if ui.button("Open").clicked() {
+                        load_image::open(
+                            self.proxy.clone(),
+                            display,
+                            self.cache.clone(),
+                            self.image_loader.clone(),
+                        );
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Save as"))
+                        .clicked()
+                    {
+                        save_image::open(
+                            self.current_filename.clone(),
+                            self.proxy.clone(),
+                            display,
+                        );
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("New Window").clicked() {
+                        new_window();
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Refresh"))
+                        .clicked()
+                    {
+                        if let Some(ref path) = self.image_view.as_ref().unwrap().path {
+                            load_image::load(
+                                self.proxy.clone(),
+                                path,
+                                self.cache.clone(),
+                                self.image_loader.clone(),
+                            );
+                        }
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("Exit").clicked() {
+                        self.exit = true;
+                    }
+                });
+
+                menu::menu_button(ui, "Edit", |ui| {
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Undo"))
+                        .clicked()
+                    {
+                        self.undo(display);
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Redo"))
+                        .clicked()
+                    {
+                        self.redo(display);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Copy"))
+                        .clicked()
+                    {
+                        let image = self.image_view.as_ref().unwrap();
+                        clipboard::copy(image);
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Paste").clicked() {
+                        clipboard::paste(&self.proxy);
+                    }
+                });
+
+                menu::menu_button(ui, "Image", |ui| {
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Color"))
+                        .clicked()
+                    {
+                        self.color_visible = true;
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Left"))
+                        .clicked()
+                    {
+                        self.stack.push(UndoFrame::Rotate(-1));
+                        self.image_view.as_mut().unwrap().rotate(-1);
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Right"))
+                        .clicked()
+                    {
+                        self.stack.push(UndoFrame::Rotate(1));
+                        self.image_view.as_mut().unwrap().rotate(1);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Flip Horizontal"))
+                        .clicked()
+                    {
+                        self.stack.push(UndoFrame::FlipHorizontal);
+                        let image = self.image_view.as_mut().unwrap();
+                        image.flip_horizontal(display);
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Flip Vertical"))
+                        .clicked()
+                    {
+                        self.stack.push(UndoFrame::FlipVertical);
+                        let image = self.image_view.as_mut().unwrap();
+                        image.flip_vertical(display);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Zoom in"))
+                        .clicked()
+                    {
+                        self.zoom(1.0, self.size / 2.0);
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Zoom out"))
+                        .clicked()
+                    {
+                        self.zoom(-1.0, self.size / 2.0);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Best fit"))
+                        .clicked()
+                    {
+                        self.best_fit();
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Largest fit"))
+                        .clicked()
+                    {
+                        self.largest_fit();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Crop"))
+                        .clicked()
+                    {
+                        self.crop.cropping = true;
+                        ui.close_menu();
+                    }
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Resize"))
+                        .clicked()
+                    {
+                        self.resize.visible = true;
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Delete"))
+                        .clicked()
+                    {
+                        if let Some(ref view) = self.image_view {
+                            if let Some(ref path) = view.path {
+                                delete(path, self.proxy.clone());
+                            }
+                        }
+                        ui.close_menu();
+                    }
+                });
+
+                menu::menu_button(ui, "Help", |ui| {
+                    if ui.button("Repository").clicked() {
+                        webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Report Bug").clicked() {
+                        webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("Help").clicked() {
+                        self.help_visible = true;
+                    }
+
+                    if ui.button("About").clicked() {
+                        let about = format!(
+                            "{}\n{}\n{}\n{}",
+                            env!("CARGO_PKG_NAME"),
+                            env!("CARGO_PKG_DESCRIPTION"),
+                            &format!("Version: {}", env!("CARGO_PKG_VERSION")),
+                            &format!("Commit: {}", env!("GIT_HASH")),
+                        );
+                        thread::spawn(move || {
+                            msgbox::create("About", &about, msgbox::IconType::Info).unwrap()
+                        });
+                        ui.close_menu();
+                    }
+                });
+            })
+        });
+    }
+}

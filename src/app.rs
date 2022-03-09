@@ -9,10 +9,7 @@ use std::{
     time::Duration,
 };
 
-use egui::{
-    menu::{self},
-    Button, RichText, Style, TopBottomPanel,
-};
+use egui::{Button, RichText, Style, TopBottomPanel};
 use glium::{
     backend::glutin::Display,
     glutin::{
@@ -38,6 +35,10 @@ pub mod image_list;
 use image_list::ImageList;
 
 mod clipboard;
+
+mod color;
+mod help;
+mod menu_bar;
 
 pub mod crop;
 
@@ -87,6 +88,7 @@ pub struct App {
     pub image_loader: Arc<RwLock<ImageLoader>>,
     resize: Resize,
     help_visible: bool,
+    color_visible: bool,
 }
 
 impl App {
@@ -398,56 +400,7 @@ impl App {
         self.main_area(display, ctx);
         self.resize_ui(ctx);
         self.help_ui(ctx);
-    }
-
-    fn help_ui(&mut self, ctx: &egui::Context) {
-        if self.help_visible {
-            let mut open = true;
-            egui::Window::new("Help")
-                .id(egui::Id::new("help window"))
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut open)
-                .show(ctx, |ui| {
-                    egui::Grid::new("some_unique_id")
-                        .striped(true)
-                        .min_col_width(180.0)
-                        .show(ui, |ui| {
-                            const HELP: &[(&str, &str)] = &[
-                                ("Open image", "Ctrl + O"),
-                                ("Save as", "Ctrl + S"),
-                                ("Reload image", "F5"),
-                                ("Close image", "Ctrl + F4"),
-                                ("New window", "Ctrl + N"),
-                                ("Undo", "Ctrl + Z"),
-                                ("Redo", "Ctrl + Y"),
-                                ("Copy", "Ctrl + C"),
-                                ("Paste", "Ctrl + V"),
-                                ("Resize", "Ctrl + R"),
-                                ("Rotate left", "Q"),
-                                ("Rotate right", "E"),
-                                ("Zoom in", "- or Mousewheel up"),
-                                ("Zoom out", "+ or Mousewheel down"),
-                                ("Best fit", "B"),
-                                ("Largest fit", "F"),
-                                ("Crop", "Ctrl + X"),
-                                ("F11", "Fullscreen"),
-                                ("Delete image", "Delete"),
-                                ("1 - 9", "100% - 900% Zoom"),
-                            ];
-
-                            ui.label(RichText::new("Action").strong());
-                            ui.label(RichText::new("Hotkey").strong());
-                            ui.end_row();
-                            for (action, hotkey) in HELP {
-                                ui.label(*action);
-                                ui.label(*hotkey);
-                                ui.end_row();
-                            }
-                        });
-                });
-            self.help_visible = open;
-        }
+        self.color_ui(ctx);
     }
 
     pub fn main_area(&mut self, display: &Display, ctx: &egui::Context) {
@@ -502,239 +455,6 @@ impl App {
                     }
                 }
             }
-        });
-    }
-
-    fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
-        TopBottomPanel::top("top").show(ctx, |ui| {
-            menu::bar(ui, |ui| {
-                menu::menu_button(ui, "File", |ui| {
-                    if ui.button("Open").clicked() {
-                        load_image::open(
-                            self.proxy.clone(),
-                            display,
-                            self.cache.clone(),
-                            self.image_loader.clone(),
-                        );
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Save as"))
-                        .clicked()
-                    {
-                        save_image::open(
-                            self.current_filename.clone(),
-                            self.proxy.clone(),
-                            display,
-                        );
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui.button("New Window").clicked() {
-                        new_window();
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Refresh"))
-                        .clicked()
-                    {
-                        if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                            load_image::load(
-                                self.proxy.clone(),
-                                path,
-                                self.cache.clone(),
-                                self.image_loader.clone(),
-                            );
-                        }
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui.button("Exit").clicked() {
-                        self.exit = true;
-                    }
-                });
-
-                menu::menu_button(ui, "Edit", |ui| {
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Undo"))
-                        .clicked()
-                    {
-                        self.undo(display);
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Redo"))
-                        .clicked()
-                    {
-                        self.redo(display);
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Copy"))
-                        .clicked()
-                    {
-                        let image = self.image_view.as_ref().unwrap();
-                        clipboard::copy(image);
-                        ui.close_menu();
-                    }
-
-                    if ui.button("Paste").clicked() {
-                        clipboard::paste(&self.proxy);
-                    }
-                });
-
-                menu::menu_button(ui, "Image", |ui| {
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Left"))
-                        .clicked()
-                    {
-                        self.stack.push(UndoFrame::Rotate(-1));
-                        self.image_view.as_mut().unwrap().rotate(-1);
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Right"))
-                        .clicked()
-                    {
-                        self.stack.push(UndoFrame::Rotate(1));
-                        self.image_view.as_mut().unwrap().rotate(1);
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Flip Horizontal"))
-                        .clicked()
-                    {
-                        self.stack.push(UndoFrame::FlipHorizontal);
-                        let image = self.image_view.as_mut().unwrap();
-                        image.flip_horizontal(display);
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Flip Vertical"))
-                        .clicked()
-                    {
-                        self.stack.push(UndoFrame::FlipVertical);
-                        let image = self.image_view.as_mut().unwrap();
-                        image.flip_vertical(display);
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Zoom in"))
-                        .clicked()
-                    {
-                        self.zoom(1.0, self.size / 2.0);
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Zoom out"))
-                        .clicked()
-                    {
-                        self.zoom(-1.0, self.size / 2.0);
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Best fit"))
-                        .clicked()
-                    {
-                        self.best_fit();
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Largest fit"))
-                        .clicked()
-                    {
-                        self.largest_fit();
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Crop"))
-                        .clicked()
-                    {
-                        self.crop.cropping = true;
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Resize"))
-                        .clicked()
-                    {
-                        self.resize.visible = true;
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Delete"))
-                        .clicked()
-                    {
-                        if let Some(ref view) = self.image_view {
-                            if let Some(ref path) = view.path {
-                                delete(path, self.proxy.clone());
-                            }
-                        }
-                        ui.close_menu();
-                    }
-                });
-
-                menu::menu_button(ui, "Help", |ui| {
-                    if ui.button("Repository").clicked() {
-                        webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
-                        ui.close_menu();
-                    }
-
-                    if ui.button("Report Bug").clicked() {
-                        webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui.button("Help").clicked() {
-                        self.help_visible = true;
-                    }
-
-                    if ui.button("About").clicked() {
-                        let about = format!(
-                            "{}\n{}\n{}\n{}",
-                            env!("CARGO_PKG_NAME"),
-                            env!("CARGO_PKG_DESCRIPTION"),
-                            &format!("Version: {}", env!("CARGO_PKG_VERSION")),
-                            &format!("Commit: {}", env!("GIT_HASH")),
-                        );
-                        thread::spawn(move || {
-                            msgbox::create("About", &about, msgbox::IconType::Info).unwrap()
-                        });
-                        ui.close_menu();
-                    }
-                });
-            })
         });
     }
 
@@ -1029,6 +749,7 @@ impl App {
             image_loader,
             resize: Resize::default(),
             help_visible: false,
+            color_visible: false,
         }
     }
 }
