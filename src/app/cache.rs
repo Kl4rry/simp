@@ -8,10 +8,10 @@ use std::{
 
 use lru::LruCache;
 
-use crate::util::Image;
+use crate::util::ImageData;
 
 pub struct Cache {
-    lru: Mutex<LruCache<PathBuf, Arc<RwLock<Vec<Image>>>>>,
+    lru: Mutex<LruCache<PathBuf, Arc<RwLock<ImageData>>>>,
     total_size: AtomicUsize,
     max_size: usize,
 }
@@ -25,10 +25,11 @@ impl Cache {
         }
     }
 
-    pub fn put(&self, path: PathBuf, image: Arc<RwLock<Vec<Image>>>) {
+    pub fn put(&self, path: PathBuf, image: Arc<RwLock<ImageData>>) {
         let size: usize = image
             .read()
             .unwrap()
+            .frames
             .iter()
             .map(|image| image.buffer().as_bytes().len())
             .sum();
@@ -44,6 +45,7 @@ impl Cache {
                     let removed: usize = value
                         .read()
                         .unwrap()
+                        .frames
                         .iter()
                         .map(|image| image.buffer().as_bytes().len())
                         .sum();
@@ -58,7 +60,7 @@ impl Cache {
     }
 
     #[allow(clippy::ptr_arg)]
-    pub fn get(&self, path: &PathBuf) -> Option<Arc<RwLock<Vec<Image>>>> {
+    pub fn get(&self, path: &PathBuf) -> Option<Arc<RwLock<ImageData>>> {
         self.lru.lock().unwrap().get(path).cloned()
     }
 

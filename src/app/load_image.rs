@@ -9,11 +9,12 @@ use glium::{
     glutin::{event_loop::EventLoopProxy, window::CursorIcon},
     Display,
 };
+use rexif::ExifTag;
 
 use crate::{
     app::{cache::Cache, image_loader::ImageLoader},
     image_io::load::*,
-    util::{extensions::*, Image, UserEvent},
+    util::{extensions::*, ImageData, UserEvent},
 };
 
 #[derive(Debug)]
@@ -137,7 +138,7 @@ pub fn load(
     });
 }
 
-pub fn load_uncached(path: impl AsRef<Path>) -> Result<Vec<Image>, LoadError> {
+pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
     let path_buf = path.as_ref().to_path_buf();
     let bytes = fs::read(&path_buf)?;
 
@@ -165,9 +166,22 @@ pub fn load_uncached(path: impl AsRef<Path>) -> Result<Vec<Image>, LoadError> {
         loaders.swap(0, 4);
     }
 
+    let mut metadata = Vec::new();
+    if let Ok(exif) = rexif::parse_buffer_quiet(&bytes).0 {
+        for entry in exif.entries {
+            use ExifTag::*;
+            const HIDDEN_TAGS: &[ExifTag] = &[MakerNote];
+            if ExifTag::UnknownToMe != entry.tag && !HIDDEN_TAGS.contains(&entry.tag) {
+                let text = entry.value_more_readable;
+                let short = if text.len() > 20 { &text[..20] } else { &text };
+                metadata.push((entry.tag.to_string(), short.to_string()));
+            }
+        }
+    }
+
     for loader in loaders {
         if let Some(image) = loader(&bytes) {
-            return Ok(image);
+            return Ok(ImageData::new(image, metadata));
         }
     }
     Err(LoadError::Decoding(path_buf))

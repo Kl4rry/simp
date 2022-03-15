@@ -15,7 +15,7 @@ use image::{
 use lazy_static::*;
 
 use super::image_view::ImageView;
-use crate::util::{Image, UserEvent};
+use crate::util::{Image, ImageData, UserEvent};
 
 lazy_static! {
     pub static ref COPYING: AtomicBool = AtomicBool::new(false);
@@ -23,7 +23,7 @@ lazy_static! {
 }
 
 pub fn copy(view: &ImageView) {
-    let frames = view.frames.clone();
+    let image_data = view.image_data.clone();
     let rotation = view.rotation;
     let horizontal_flip = view.horizontal_flip;
     let vertical_flip = view.vertical_flip;
@@ -36,8 +36,8 @@ pub fn copy(view: &ImageView) {
     }
 
     thread::spawn(move || {
-        let guard = frames.read().unwrap();
-        let frame = guard.first().unwrap();
+        let guard = image_data.read().unwrap();
+        let frame = guard.frames.first().unwrap();
         let buffer = match rotation {
             0 => Cow::Borrowed(frame.buffer()),
             1 => Cow::Owned(frame.buffer().rotate270()),
@@ -108,8 +108,10 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
                 data.extend_from_slice(&*image_data.bytes);
                 let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data)
                     .unwrap();
-                let event =
-                    UserEvent::ImageLoaded(Arc::new(RwLock::new(vec![Image::from(image)])), None);
+                let event = UserEvent::ImageLoaded(
+                    Arc::new(RwLock::new(ImageData::from(vec![Image::from(image)]))),
+                    None,
+                );
                 let _ = proxy.send_event(event);
             }
         }

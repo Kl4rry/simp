@@ -39,6 +39,7 @@ mod clipboard;
 mod color;
 mod help;
 mod menu_bar;
+mod metadata;
 
 pub mod crop;
 
@@ -89,6 +90,7 @@ pub struct App {
     resize: Resize,
     help_visible: bool,
     color_visible: bool,
+    metadata_visible: bool,
 }
 
 impl App {
@@ -159,7 +161,7 @@ impl App {
                     save_image::save(
                         self.proxy.clone(),
                         path.clone(),
-                        view.frames.clone(),
+                        view.image_data.clone(),
                         view.rotation,
                         view.horizontal_flip,
                         view.vertical_flip,
@@ -201,13 +203,15 @@ impl App {
                 self.mouse_position.set_y(position.y as f32);
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let scroll = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => *y,
-                    MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
-                };
+                if !self.metadata_visible {
+                    let scroll = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => *y,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                    };
 
-                if self.crop.inner.is_none() {
-                    self.zoom(scroll, self.mouse_position);
+                    if self.crop.inner.is_none() {
+                        self.zoom(scroll, self.mouse_position);
+                    }
                 }
             }
             WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -401,6 +405,7 @@ impl App {
         self.resize_ui(ctx);
         self.help_ui(ctx);
         self.color_ui(ctx);
+        self.metadata_ui(ctx);
     }
 
     pub fn main_area(&mut self, display: &Display, ctx: &egui::Context) {
@@ -613,14 +618,14 @@ impl App {
             return;
         }
 
-        let frames = self.image_view.as_ref().unwrap().frames.clone();
+        let image_data = self.image_view.as_ref().unwrap().image_data.clone();
         let resample = self.resize.resample;
         let proxy = self.proxy.clone();
 
         thread::spawn(move || {
-            let guard = frames.read().unwrap();
+            let guard = image_data.read().unwrap();
             let mut new = Vec::new();
-            for image in guard.iter() {
+            for image in guard.frames.iter() {
                 let buffer = image.buffer().resize_exact(size.x(), size.y(), resample);
                 new.push(Image::with_delay(buffer, image.delay));
             }
@@ -750,6 +755,7 @@ impl App {
             resize: Resize::default(),
             help_visible: false,
             color_visible: false,
+            metadata_visible: false,
         }
     }
 }

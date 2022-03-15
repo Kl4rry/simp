@@ -212,6 +212,28 @@ impl App {
                         }
                         ui.close_menu();
                     }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            self.image_view.is_some()
+                                && !self
+                                    .image_view
+                                    .as_ref()
+                                    .unwrap()
+                                    .image_data
+                                    .read()
+                                    .unwrap()
+                                    .metadata
+                                    .is_empty(),
+                            Button::new("Metadata"),
+                        )
+                        .clicked()
+                    {
+                        self.metadata_visible = true;
+                        ui.close_menu();
+                    }
                 });
 
                 menu::menu_button(ui, "Help", |ui| {

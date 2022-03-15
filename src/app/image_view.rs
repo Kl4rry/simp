@@ -20,7 +20,12 @@ use glium::{
 };
 use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
 
-use crate::{max, min, rect::Rect, util::Image, vec2::Vec2};
+use crate::{
+    max, min,
+    rect::Rect,
+    util::{Image, ImageData},
+    vec2::Vec2,
+};
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -45,7 +50,7 @@ pub struct ImageView {
     pub scale: f32,
     pub rotation: i32,
     pub path: Option<PathBuf>,
-    pub frames: Arc<RwLock<Vec<Image>>>,
+    pub image_data: Arc<RwLock<ImageData>>,
     pub last_frame: Instant,
     pub index: usize,
     pub horizontal_flip: bool,
@@ -63,9 +68,14 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(display: &Display, frames: Arc<RwLock<Vec<Image>>>, path: Option<PathBuf>) -> Self {
-        let guard = frames.read().unwrap();
-        let image = guard[0].buffer();
+    pub fn new(
+        display: &Display,
+        image_data: Arc<RwLock<ImageData>>,
+        path: Option<PathBuf>,
+    ) -> Self {
+        let guard = image_data.read().unwrap();
+        let frames = &guard.frames;
+        let image = frames[0].buffer();
         let (width, height) = image.dimensions();
         let texture_cords = (
             Vec2::new(0.0, 0.0),
@@ -102,7 +112,7 @@ impl ImageView {
             position: Vec2::default(),
             scale: 1.0,
             rotation: 0,
-            frames,
+            image_data,
             last_frame: Instant::now(),
             index: 0,
             horizontal_flip: false,
@@ -276,7 +286,8 @@ impl ImageView {
     }
 
     pub fn animate(&mut self, display: &Display) -> Option<Duration> {
-        let frames = self.frames.read().unwrap();
+        let guard = self.image_data.read().unwrap();
+        let frames = &guard.frames;
         if frames.len() > 1 {
             let now = Instant::now();
             let time_passed = now.duration_since(self.last_frame);
@@ -288,7 +299,7 @@ impl ImageView {
                     self.index = 0;
                 }
 
-                drop(frames);
+                drop(guard);
                 self.update_image_data(display);
 
                 self.last_frame = now;
@@ -333,7 +344,8 @@ impl ImageView {
 
         let mut old_frames = Vec::new();
 
-        let mut frames = self.frames.write().unwrap();
+        let mut guard = self.image_data.write().unwrap();
+        let frames = &mut guard.frames;
         for frame in &mut *frames {
             match self.rotation {
                 0 => (),
@@ -365,7 +377,7 @@ impl ImageView {
             mem::swap(frame.buffer_mut(), &mut image);
             old_frames.push(Image::with_delay(image, delay));
         }
-        drop(frames);
+        drop(guard);
 
         self.update_image_data(display);
         self.update_vertex_data(display);
@@ -376,15 +388,16 @@ impl ImageView {
     }
 
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
-        let mut guard = self.frames.write().unwrap();
-        mem::swap(&mut *guard, frames);
+        let mut guard = self.image_data.write().unwrap();
+        mem::swap(&mut guard.frames, frames);
         drop(guard);
         self.update_image_data(display);
         self.update_vertex_data(display);
     }
 
     fn update_image_data(&mut self, display: &Display) {
-        let frames = self.frames.read().unwrap();
+        let guard = self.image_data.read().unwrap();
+        let frames = &guard.frames;
         let image = frames[self.index].buffer();
         self.size = Vec2::new(image.width() as f32, image.height() as f32);
         self.texture = get_texture(image, display);

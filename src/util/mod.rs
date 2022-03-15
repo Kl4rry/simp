@@ -99,11 +99,31 @@ impl From<Image> for Frame {
 }
 
 pub enum UserEvent {
-    ImageLoaded(Arc<RwLock<Vec<Image>>>, Option<PathBuf>),
+    ImageLoaded(Arc<RwLock<ImageData>>, Option<PathBuf>),
     Resize(Option<Vec<Image>>),
     LoadError(String, PathBuf),
     ErrorMessage(String),
     SetCursor(CursorIcon),
     Save(PathBuf),
     Exit,
+}
+
+pub struct ImageData {
+    pub frames: Vec<Image>,
+    pub metadata: Vec<(String, String)>,
+}
+
+impl ImageData {
+    pub fn new(frames: Vec<Image>, metadata: Vec<(String, String)>) -> Self {
+        Self { frames, metadata }
+    }
+}
+
+impl From<Vec<Image>> for ImageData {
+    fn from(frames: Vec<Image>) -> Self {
+        Self {
+            frames,
+            metadata: Vec::new(),
+        }
+    }
 }

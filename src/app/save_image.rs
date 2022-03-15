@@ -12,7 +12,7 @@ use image::{
 
 use crate::{
     image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation},
-    util::{Image, UserEvent},
+    util::{Image, ImageData, UserEvent},
 };
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
@@ -39,7 +39,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
     mut path: PathBuf,
-    frames: Arc<RwLock<Vec<Image>>>,
+    frames: Arc<RwLock<ImageData>>,
     rotation: i32,
     horizontal_flip: bool,
     vertical_flip: bool,
@@ -53,7 +53,7 @@ pub fn save(
 
     thread::spawn(move || {
         let guard = frames.read().unwrap();
-        let old_frames = &*guard;
+        let old_frames = &guard.frames;
         let mut frames = Vec::new();
         for frame in old_frames {
             let buffer = match rotation {
