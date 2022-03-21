@@ -163,9 +163,15 @@ impl OpQueue {
                         .crop(rect, self.proxy.clone(), self.sender.clone());
                 }
                 Op::Copy => {
+                    let _ = self
+                        .proxy
+                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     clipboard::copy(view.unwrap(), self.proxy.clone(), self.sender.clone());
                 }
                 Op::Paste => {
+                    let _ = self
+                        .proxy
+                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     clipboard::paste(self.proxy.clone(), self.sender.clone());
                 }
             }
