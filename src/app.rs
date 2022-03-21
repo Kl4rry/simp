@@ -613,7 +613,8 @@ impl App {
     }
 
     pub fn queue(&mut self, op: Op) {
-        self.op_queue.queue(op, self.image_view.as_ref())
+        self.op_queue
+            .queue(op, self.image_view.as_ref().map(|v| v.as_ref()))
     }
 
     fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {

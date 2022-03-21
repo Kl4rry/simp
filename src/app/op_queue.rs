@@ -87,7 +87,7 @@ impl OpQueue {
         }
     }
 
-    pub fn queue(&mut self, op: Op, view: Option<&Box<ImageView>>) {
+    pub fn queue(&mut self, op: Op, view: Option<&ImageView>) {
         if !self.working {
             self.working = true;
             match op {
@@ -177,7 +177,7 @@ impl OpQueue {
             Ok(output) => {
                 self.working = false;
                 cursor::set_cursor_icon(CursorIcon::default(), display);
-                return Some((output, &mut self.stack));
+                Some((output, &mut self.stack))
             }
             Err(_) => None,
         }

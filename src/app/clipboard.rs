@@ -76,7 +76,6 @@ pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>, sender: Sender<O
 }
 
 pub fn paste(proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
-    println!("tetes");
     thread::spawn(move || {
         if let Ok(mut clipboard) = arboard::Clipboard::new() {
             if let Ok(image_data) = clipboard.get_image() {
