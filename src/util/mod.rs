@@ -1,8 +1,4 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{path::PathBuf, time::Duration};
 
 use glium::glutin::window::CursorIcon;
 use image::{Delay, DynamicImage, Frame, ImageBuffer, Rgba};
@@ -42,7 +38,6 @@ pub struct Image {
 }
 
 impl Image {
-    #[inline]
     pub fn new(image: DynamicImage) -> Self {
         Image {
             image,
@@ -50,24 +45,20 @@ impl Image {
         }
     }
 
-    #[inline]
     pub fn with_delay(image: DynamicImage, delay: Duration) -> Self {
         Image { image, delay }
     }
 
-    #[inline]
     pub fn buffer(&self) -> &DynamicImage {
         &self.image
     }
 
-    #[inline]
     pub fn buffer_mut(&mut self) -> &mut DynamicImage {
         &mut self.image
     }
 }
 
 impl From<ImageBuffer<Rgba<u8>, Vec<u8>>> for Image {
-    #[inline]
     fn from(buffer: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Self {
         Image {
             image: DynamicImage::ImageRgba8(buffer),
@@ -77,7 +68,6 @@ impl From<ImageBuffer<Rgba<u8>, Vec<u8>>> for Image {
 }
 
 impl From<Frame> for Image {
-    #[inline]
     fn from(frame: Frame) -> Self {
         let (num, deno) = frame.delay().numer_denom_ms();
         let delay = Duration::from_millis((num / deno) as u64);
@@ -90,7 +80,6 @@ impl From<Frame> for Image {
 }
 
 impl From<Image> for Frame {
-    #[inline]
     fn from(image: Image) -> Frame {
         let duration = image.delay;
         let frame = image.image.to_rgba8();
@@ -99,12 +88,11 @@ impl From<Image> for Frame {
 }
 
 pub enum UserEvent {
-    ImageLoaded(Arc<RwLock<ImageData>>, Option<PathBuf>),
-    Resize(Option<Vec<Image>>),
-    LoadError(String, PathBuf),
     ErrorMessage(String),
     SetCursor(CursorIcon),
-    Save(PathBuf),
+    QueueLoad(PathBuf),
+    QueueSave(PathBuf),
+    Wake,
     Exit,
 }
 

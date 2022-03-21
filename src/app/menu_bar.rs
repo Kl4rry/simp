@@ -3,7 +3,7 @@ use std::thread;
 use egui::{menu, Button, TopBottomPanel};
 use glium::Display;
 
-use super::{clipboard, delete, load_image, new_window, save_image, undo_stack::UndoFrame, App};
+use super::{delete, load_image, new_window, op_queue::Op, save_image, App};
 
 impl App {
     pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
@@ -11,12 +11,7 @@ impl App {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
                     if ui.button("Open").clicked() {
-                        load_image::open(
-                            self.proxy.clone(),
-                            display,
-                            self.cache.clone(),
-                            self.image_loader.clone(),
-                        );
+                        load_image::open(self.proxy.clone(), display);
                         ui.close_menu();
                     }
 
@@ -44,12 +39,8 @@ impl App {
                         .clicked()
                     {
                         if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                            load_image::load(
-                                self.proxy.clone(),
-                                path,
-                                self.cache.clone(),
-                                self.image_loader.clone(),
-                            );
+                            let buf = path.to_path_buf();
+                            self.queue(Op::LoadPath(buf, false));
                         }
                         ui.close_menu();
                     }
@@ -63,34 +54,37 @@ impl App {
 
                 menu::menu_button(ui, "Edit", |ui| {
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Undo"))
+                        .add_enabled(self.view_available(), Button::new("Undo"))
                         .clicked()
                     {
-                        self.undo(display);
+                        self.queue(Op::Undo);
                         ui.close_menu();
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Redo"))
+                        .add_enabled(self.view_available(), Button::new("Redo"))
                         .clicked()
                     {
-                        self.redo(display);
+                        self.queue(Op::Redo);
                         ui.close_menu();
                     }
 
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Copy"))
+                        .add_enabled(self.view_available(), Button::new("Copy"))
                         .clicked()
                     {
-                        let image = self.image_view.as_ref().unwrap();
-                        clipboard::copy(image);
+                        self.queue(Op::Copy);
                         ui.close_menu();
                     }
 
-                    if ui.button("Paste").clicked() {
-                        clipboard::paste(&self.proxy);
+                    if ui
+                        .add_enabled(!self.op_queue.working(), Button::new("Paste"))
+                        .clicked()
+                    {
+                        self.queue(Op::Paste);
+                        ui.close_menu();
                     }
                 });
 
@@ -106,42 +100,36 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Left"))
+                        .add_enabled(self.view_available(), Button::new("Rotate Left"))
                         .clicked()
                     {
-                        self.stack.push(UndoFrame::Rotate(-1));
-                        self.image_view.as_mut().unwrap().rotate(-1);
+                        self.queue(Op::Rotate(-1));
                         ui.close_menu();
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Rotate Right"))
+                        .add_enabled(self.view_available(), Button::new("Rotate Right"))
                         .clicked()
                     {
-                        self.stack.push(UndoFrame::Rotate(1));
-                        self.image_view.as_mut().unwrap().rotate(1);
+                        self.queue(Op::Rotate(1));
                         ui.close_menu();
                     }
 
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Flip Horizontal"))
+                        .add_enabled(self.view_available(), Button::new("Flip Horizontal"))
                         .clicked()
                     {
-                        self.stack.push(UndoFrame::FlipHorizontal);
-                        let image = self.image_view.as_mut().unwrap();
-                        image.flip_horizontal(display);
+                        self.queue(Op::FlipHorizontal);
                         ui.close_menu();
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Flip Vertical"))
+                        .add_enabled(self.view_available(), Button::new("Flip Vertical"))
                         .clicked()
                     {
-                        self.stack.push(UndoFrame::FlipVertical);
-                        let image = self.image_view.as_mut().unwrap();
-                        image.flip_vertical(display);
+                        self.queue(Op::FlipVertical);
                         ui.close_menu();
                     }
 
@@ -184,7 +172,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Crop"))
+                        .add_enabled(self.view_available(), Button::new("Crop"))
                         .clicked()
                     {
                         self.crop.cropping = true;

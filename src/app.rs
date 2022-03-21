@@ -1,13 +1,4 @@
-use std::{
-    path::Path,
-    process::Command,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
-    },
-    thread,
-    time::Duration,
-};
+use std::{path::Path, process::Command, thread, time::Duration};
 
 use egui::{Button, RichText, Style, TopBottomPanel};
 use glium::{
@@ -15,24 +6,18 @@ use glium::{
     glutin::{
         event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
         event_loop::EventLoopProxy,
-        window::{CursorIcon, Fullscreen},
+        window::Fullscreen,
     },
 };
 use image::imageops::FilterType;
-use lazy_static::*;
 
-use crate::{
-    min,
-    rect::Rect,
-    util::{Image, UserEvent},
-    vec2::Vec2,
-};
+use crate::{min, rect::Rect, util::UserEvent, vec2::Vec2};
 
 pub mod image_view;
 use image_view::ImageView;
 
 pub mod image_list;
-use image_list::ImageList;
+//use image_list::ImageList;
 
 mod clipboard;
 
@@ -41,12 +26,12 @@ mod help;
 mod menu_bar;
 mod metadata;
 
+pub mod op_queue;
+use op_queue::{Op, OpQueue, Output};
+
 pub mod crop;
 
 pub mod load_image;
-
-pub mod image_loader;
-use image_loader::ImageLoader;
 
 mod save_image;
 use crop::Crop;
@@ -54,20 +39,16 @@ use crop::Crop;
 pub mod cursor;
 
 mod undo_stack;
-use undo_stack::{UndoFrame, UndoStack};
 
 mod cache;
-use cache::Cache;
 
 mod resize;
 use resize::Resize;
 
+use self::undo_stack::UndoFrame;
+
 const TOP_BAR_SIZE: f32 = 26.0;
 const BOTTOM_BAR_SIZE: f32 = 27.0;
-
-lazy_static! {
-    pub static ref RESIZING: AtomicBool = AtomicBool::new(false);
-}
 
 pub struct App {
     exit: bool,
@@ -82,11 +63,9 @@ pub struct App {
     modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
     current_filename: String,
-    image_list: ImageList,
-    stack: UndoStack,
+    //image_list: ImageList,
+    op_queue: OpQueue,
     pub crop: Box<Crop>,
-    pub cache: Arc<Cache>,
-    pub image_loader: Arc<RwLock<ImageLoader>>,
     resize: Resize,
     help_visible: bool,
     color_visible: bool,
@@ -94,46 +73,25 @@ pub struct App {
 }
 
 impl App {
+    pub fn view_available(&self) -> bool {
+        !self.op_queue.working() && self.image_view.is_some()
+    }
+
     pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
-        match event {
-            UserEvent::ImageLoaded(images, path) => {
-                let mut replace = true;
-                {
-                    let mut guard = self.image_loader.write().unwrap();
-                    match path {
-                        Some(path) => match guard.target_file {
-                            Some(ref mut target) => {
-                                if path != target {
-                                    replace = false;
-                                } else {
-                                    guard.target_file = None;
-                                }
-                            }
-                            None => replace = false,
-                        },
-                        None => guard.target_file = None,
-                    }
-                }
-
-                if let Some(path) = path {
-                    self.image_loader.write().unwrap().loading.remove(path);
-                }
-
-                if replace {
-                    cursor::set_cursor_icon(CursorIcon::default(), display);
-
-                    let view = Box::new(ImageView::new(display, images.clone(), path.clone()));
-
-                    self.resize
-                        .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
-                    self.image_view = Some(view);
-
-                    self.current_filename = if let Some(path) = path {
-                        self.image_list.change_dir(&path);
+        while let Some((output, stack)) = self.op_queue.poll(display) {
+            match output {
+                Output::ImageLoaded(image_data, path) => {
+                    self.current_filename = if let Some(path) = &path {
+                        //self.image_list.change_dir(&path);
                         path.file_name().unwrap().to_str().unwrap().to_string()
                     } else {
                         String::new()
                     };
+
+                    let view = Box::new(ImageView::new(display, image_data, path));
+                    self.resize
+                        .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
+                    self.image_view = Some(view);
 
                     let window_context = display.gl_window();
                     let window = window_context.window();
@@ -144,40 +102,105 @@ impl App {
                         window.set_title(&self.current_filename.to_string());
                     }
 
+                    stack.clear();
                     self.best_fit();
-                    self.stack.reset();
                 }
-            }
-            UserEvent::Resize(images) => {
-                if let Some(ref mut view) = self.image_view {
-                    view.swap_frames(images.as_mut().unwrap(), display);
-                    self.stack.push(UndoFrame::Resize(images.take().unwrap()));
+                Output::FlipHorizontal => {
+                    self.image_view.as_mut().unwrap().flip_horizontal(display);
+                    stack.push(UndoFrame::FlipHorizontal);
                 }
-                self.best_fit();
-                RESIZING.store(false, Ordering::SeqCst);
-            }
-            UserEvent::Save(path) => {
-                if let Some(ref view) = self.image_view {
-                    save_image::save(
-                        self.proxy.clone(),
-                        path.clone(),
-                        view.image_data.clone(),
-                        view.rotation,
-                        view.horizontal_flip,
-                        view.vertical_flip,
-                    );
+                Output::FlipVertical => {
+                    self.image_view.as_mut().unwrap().flip_vertical(display);
+                    stack.push(UndoFrame::FlipVertical);
                 }
+                Output::Rotate(dir) => {
+                    self.image_view.as_mut().unwrap().rotate(dir);
+                    stack.push(UndoFrame::Rotate(dir));
+                }
+                Output::Resize(mut images) => {
+                    if let Some(ref mut view) = self.image_view {
+                        view.swap_frames(&mut images, display);
+                        stack.push(UndoFrame::Resize(images));
+                    }
+                    self.best_fit();
+                }
+                Output::Crop(mut frames, rotation) => {
+                    if let Some(ref mut view) = self.image_view {
+                        view.rotation = 0;
+                        view.swap_frames(&mut frames, display);
+                        stack.push(UndoFrame::Crop { frames, rotation })
+                    }
+                }
+                Output::Undo => {
+                    let frame = stack.undo();
+                    if let Some(frame) = frame {
+                        match frame {
+                            UndoFrame::Rotate(rot) => {
+                                self.image_view.as_mut().unwrap().rotate(-*rot);
+                            }
+                            UndoFrame::FlipHorizontal => {
+                                self.image_view.as_mut().unwrap().flip_horizontal(display);
+                            }
+                            UndoFrame::FlipVertical => {
+                                self.image_view.as_mut().unwrap().flip_vertical(display);
+                            }
+                            UndoFrame::Crop { frames, rotation } => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                                std::mem::swap(&mut view.rotation, rotation);
+                            }
+                            UndoFrame::Resize(frames) => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                            }
+                        }
+                    }
+                }
+                Output::Redo => {
+                    let frame = stack.redo();
+                    if let Some(frame) = frame {
+                        match frame {
+                            UndoFrame::Rotate(rot) => {
+                                self.image_view.as_mut().unwrap().rotate(*rot);
+                            }
+                            UndoFrame::FlipHorizontal => {
+                                self.image_view.as_mut().unwrap().flip_horizontal(display);
+                            }
+                            UndoFrame::FlipVertical => {
+                                self.image_view.as_mut().unwrap().flip_vertical(display);
+                            }
+                            UndoFrame::Crop { frames, rotation } => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                                std::mem::swap(&mut view.rotation, rotation);
+                            }
+                            UndoFrame::Resize(frames) => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                            }
+                        }
+                    }
+                }
+                Output::Close => {
+                    self.image_view = None;
+                    //self.image_list.clear();
+                    stack.clear();
+                    self.crop.cropping = false;
+                    self.op_queue.cache.clear();
+                }
+                // indicates that the operation is done with no output
+                Output::Done => (),
             }
-            UserEvent::LoadError(error, path) => {
-                self.image_loader.write().unwrap().loading.remove(path);
-                cursor::set_cursor_icon(CursorIcon::default(), display);
-                let error = error.clone();
-                thread::spawn(move || {
-                    msgbox::create("Error", &error, msgbox::IconType::Error).unwrap()
-                });
+        }
+
+        match event {
+            UserEvent::QueueLoad(path) => {
+                self.queue(Op::LoadPath(path.to_path_buf(), false));
+            }
+            UserEvent::QueueSave(path) => {
+                self.queue(Op::Save(path.to_path_buf()));
             }
             UserEvent::ErrorMessage(error) => {
-                cursor::set_cursor_icon(CursorIcon::default(), display);
                 let error = error.clone();
                 thread::spawn(move || {
                     msgbox::create("Error", &error, msgbox::IconType::Error).unwrap()
@@ -185,6 +208,7 @@ impl App {
             }
             UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             UserEvent::Exit => self.exit = true,
+            UserEvent::Wake => (),
         };
     }
 
@@ -216,13 +240,8 @@ impl App {
             }
             WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
             WindowEvent::DroppedFile(path) => {
-                self.cache.clear();
-                load_image::load(
-                    self.proxy.clone(),
-                    path,
-                    self.cache.clone(),
-                    self.image_loader.clone(),
-                )
+                self.op_queue.cache.clear();
+                self.queue(Op::LoadPath(path.to_path_buf(), true));
             }
             WindowEvent::KeyboardInput { input, .. } if !self.resize.visible => {
                 if let Some(key) = input.virtual_keycode {
@@ -237,12 +256,9 @@ impl App {
                             }
 
                             VirtualKeyCode::H if self.modifiers.ctrl() => self.help_visible = true,
-                            VirtualKeyCode::O if self.modifiers.ctrl() => load_image::open(
-                                self.proxy.clone(),
-                                display,
-                                self.cache.clone(),
-                                self.image_loader.clone(),
-                            ),
+                            VirtualKeyCode::O if self.modifiers.ctrl() => {
+                                load_image::open(self.proxy.clone(), display)
+                            }
                             VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
                                 self.current_filename.clone(),
                                 self.proxy.clone(),
@@ -259,87 +275,77 @@ impl App {
                             }
 
                             VirtualKeyCode::Q => {
-                                if let Some(ref mut image) = self.image_view {
-                                    self.stack.push(UndoFrame::Rotate(-1));
-                                    image.rotate(-1);
+                                if self.image_view.is_some() {
+                                    self.queue(Op::Rotate(-1))
                                 }
                             }
                             VirtualKeyCode::E => {
-                                if let Some(ref mut image) = self.image_view {
-                                    self.stack.push(UndoFrame::Rotate(1));
-                                    image.rotate(1);
+                                if self.image_view.is_some() {
+                                    self.queue(Op::Rotate(1))
                                 }
                             }
 
                             VirtualKeyCode::F5 => {
                                 if let Some(image) = self.image_view.as_ref() {
                                     if let Some(path) = &image.path {
-                                        self.cache.clear();
-                                        load_image::load(
-                                            self.proxy.clone(),
-                                            path,
-                                            self.cache.clone(),
-                                            self.image_loader.clone(),
-                                        );
+                                        let buf = path.to_path_buf();
+                                        self.queue(Op::LoadPath(buf, false));
                                     }
                                 }
                             }
 
                             VirtualKeyCode::C if self.modifiers.ctrl() => {
-                                if let Some(ref view) = self.image_view {
-                                    clipboard::copy(view);
+                                if self.view_available() {
+                                    self.queue(Op::Copy);
                                 }
                             }
                             VirtualKeyCode::V if self.modifiers.ctrl() => {
-                                clipboard::paste(&self.proxy);
+                                if !self.op_queue.working() {
+                                    self.queue(Op::Paste);
+                                }
                             }
                             VirtualKeyCode::X if self.modifiers.ctrl() => {
                                 self.crop.cropping = true;
                             }
 
                             VirtualKeyCode::Z if self.modifiers.ctrl() => {
-                                self.undo(display);
+                                self.queue(Op::Undo);
                             }
                             VirtualKeyCode::Y if self.modifiers.ctrl() => {
-                                self.redo(display);
+                                self.queue(Op::Redo);
                             }
 
                             VirtualKeyCode::R if self.modifiers.ctrl() => {
                                 self.resize.visible = true;
                             }
 
-                            VirtualKeyCode::Left | VirtualKeyCode::D => {
-                                if let Some(path) = self.image_list.previous() {
-                                    if self.crop.inner.is_none() {
-                                        load_image::load(
-                                            self.proxy.clone(),
-                                            path,
-                                            self.cache.clone(),
-                                            self.image_loader.clone(),
-                                        );
-                                    }
-                                }
-                            }
+                            // VirtualKeyCode::Left | VirtualKeyCode::D => {
+                            //     if let Some(path) = self.image_list.previous() {
+                            //         if self.crop.inner.is_none() {
+                            //             load_image::load(
+                            //                 self.proxy.clone(),
+                            //                 path,
+                            //                 self.cache.clone(),
+                            //                 self.image_loader.clone(),
+                            //             );
+                            //         }
+                            //     }
+                            // }
 
-                            VirtualKeyCode::Right | VirtualKeyCode::A => {
-                                if let Some(path) = self.image_list.next() {
-                                    if self.crop.inner.is_none() {
-                                        load_image::load(
-                                            self.proxy.clone(),
-                                            path,
-                                            self.cache.clone(),
-                                            self.image_loader.clone(),
-                                        );
-                                    }
-                                }
-                            }
-
+                            // VirtualKeyCode::Right | VirtualKeyCode::A => {
+                            //     if let Some(path) = self.image_list.next() {
+                            //         if self.crop.inner.is_none() {
+                            //             load_image::load(
+                            //                 self.proxy.clone(),
+                            //                 path,
+                            //                 self.cache.clone(),
+                            //                 self.image_loader.clone(),
+                            //             );
+                            //         }
+                            //     }
+                            // }
                             VirtualKeyCode::F4 if self.modifiers.ctrl() => {
-                                self.image_view = None;
-                                self.cache.clear();
-                                self.image_list.clear();
-                                self.stack.reset();
-                                self.crop.cropping = false;
+                                self.queue(Op::Close);
                             }
 
                             VirtualKeyCode::F11 => {
@@ -408,7 +414,7 @@ impl App {
         self.metadata_ui(ctx);
     }
 
-    pub fn main_area(&mut self, display: &Display, ctx: &egui::Context) {
+    pub fn main_area(&mut self, _display: &Display, ctx: &egui::Context) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             if self.image_view.is_none() {
@@ -450,11 +456,7 @@ impl App {
                             min!(inner.start.y(), inner.current.y()),
                         );
 
-                        let frames = image.crop(Rect::new(start, size), display);
-                        if let Some((frames, rotation)) = frames {
-                            self.stack.push(UndoFrame::Crop { frames, rotation })
-                        }
-
+                        self.queue(Op::Crop(Rect::new(start, size)));
                         self.crop.inner = None;
                         self.crop.cropping = false;
                     }
@@ -467,25 +469,25 @@ impl App {
         TopBottomPanel::bottom("bottom").show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(), |ui| {
                 if let Some(image) = self.image_view.as_mut() {
-                    if ui.small_button("Prev").clicked() {
-                        if let Some(path) = self.image_list.previous() {
-                            load_image::load(
-                                self.proxy.clone(),
-                                path,
-                                self.cache.clone(),
-                                self.image_loader.clone(),
-                            );
-                        }
+                    if ui.small_button("⬅").clicked() {
+                        // if let Some(path) = self.image_list.previous() {
+                        //     load_image::load(
+                        //         self.proxy.clone(),
+                        //         path,
+                        //         self.cache.clone(),
+                        //         self.image_loader.clone(),
+                        //     );
+                        // }
                     }
-                    if ui.small_button("Next").clicked() {
-                        if let Some(path) = self.image_list.next() {
-                            load_image::load(
-                                self.proxy.clone(),
-                                path,
-                                self.cache.clone(),
-                                self.image_loader.clone(),
-                            );
-                        }
+                    if ui.small_button("➡").clicked() {
+                        // if let Some(path) = self.image_list.next() {
+                        //     load_image::load(
+                        //         self.proxy.clone(),
+                        //         path,
+                        //         self.cache.clone(),
+                        //         self.image_loader.clone(),
+                        //     );
+                        // }
                     }
 
                     ui.label(format!("{} x {}", image.size.x(), image.size.y()));
@@ -595,14 +597,14 @@ impl App {
 
                     if ui
                         .add_enabled(
-                            width.is_ok() && height.is_ok() && !RESIZING.load(Ordering::SeqCst),
+                            width.is_ok() && height.is_ok() && self.view_available(),
                             Button::new("Resize"),
                         )
                         .clicked()
                     {
                         let width = width.unwrap();
                         let height = height.unwrap();
-                        self.resize(Vec2::new(width, height));
+                        self.queue(Op::Resize(Vec2::new(width, height), self.resize.resample));
                         resized = true;
                     }
                 });
@@ -610,79 +612,8 @@ impl App {
         }
     }
 
-    fn resize(&self, size: Vec2<u32>) {
-        if RESIZING
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_err()
-        {
-            return;
-        }
-
-        let image_data = self.image_view.as_ref().unwrap().image_data.clone();
-        let resample = self.resize.resample;
-        let proxy = self.proxy.clone();
-
-        thread::spawn(move || {
-            let guard = image_data.read().unwrap();
-            let mut new = Vec::new();
-            for image in guard.frames.iter() {
-                let buffer = image.buffer().resize_exact(size.x(), size.y(), resample);
-                new.push(Image::with_delay(buffer, image.delay));
-            }
-            let _ = proxy.send_event(UserEvent::Resize(Some(new)));
-        });
-    }
-
-    pub fn undo(&mut self, display: &Display) {
-        let frame = self.stack.undo();
-        if let Some(frame) = frame {
-            match frame {
-                UndoFrame::Rotate(rot) => {
-                    self.image_view.as_mut().unwrap().rotate(-*rot);
-                }
-                UndoFrame::FlipHorizontal => {
-                    self.image_view.as_mut().unwrap().flip_horizontal(display);
-                }
-                UndoFrame::FlipVertical => {
-                    self.image_view.as_mut().unwrap().flip_vertical(display);
-                }
-                UndoFrame::Crop { frames, rotation } => {
-                    let view = self.image_view.as_mut().unwrap();
-                    view.swap_frames(frames, display);
-                    std::mem::swap(&mut view.rotation, rotation);
-                }
-                UndoFrame::Resize(frames) => {
-                    let view = self.image_view.as_mut().unwrap();
-                    view.swap_frames(frames, display);
-                }
-            }
-        }
-    }
-
-    pub fn redo(&mut self, display: &Display) {
-        let frame = self.stack.redo();
-        if let Some(frame) = frame {
-            match frame {
-                UndoFrame::Rotate(rot) => {
-                    self.image_view.as_mut().unwrap().rotate(*rot);
-                }
-                UndoFrame::FlipHorizontal => {
-                    self.image_view.as_mut().unwrap().flip_horizontal(display);
-                }
-                UndoFrame::FlipVertical => {
-                    self.image_view.as_mut().unwrap().flip_vertical(display);
-                }
-                UndoFrame::Crop { frames, rotation } => {
-                    let view = self.image_view.as_mut().unwrap();
-                    view.swap_frames(frames, display);
-                    std::mem::swap(&mut view.rotation, rotation);
-                }
-                UndoFrame::Resize(frames) => {
-                    let view = self.image_view.as_mut().unwrap();
-                    view.swap_frames(frames, display);
-                }
-            }
-        }
+    pub fn queue(&mut self, op: Op) {
+        self.op_queue.queue(op, self.image_view.as_ref())
     }
 
     fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {
@@ -731,9 +662,6 @@ impl App {
         position: [i32; 2],
         display: &Display,
     ) -> Self {
-        const MAX_SIZE: usize = 1_000_000_000;
-        let cache = Arc::new(Cache::new(MAX_SIZE));
-        let image_loader = Arc::new(RwLock::new(ImageLoader::new()));
         App {
             exit: false,
             delay: None,
@@ -743,15 +671,13 @@ impl App {
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
-            image_list: ImageList::new(cache.clone(), proxy.clone(), image_loader.clone()),
+            //image_list: ImageList::new(cache.clone(), proxy.clone(), image_loader.clone()),
+            op_queue: OpQueue::new(proxy.clone()),
             proxy,
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
             current_filename: String::new(),
-            stack: UndoStack::new(),
             crop: Box::new(Crop::new(display)),
-            cache,
-            image_loader,
             resize: Resize::default(),
             help_visible: false,
             color_visible: false,

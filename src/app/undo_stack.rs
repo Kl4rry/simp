@@ -21,7 +21,7 @@ impl UndoStack {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn clear(&mut self) {
         self.stack.clear();
         self.index = 0;
     }

@@ -60,6 +60,11 @@ impl Cache {
     }
 
     #[allow(clippy::ptr_arg)]
+    pub fn pop(&self, path: &PathBuf) {
+        self.lru.lock().unwrap().pop(path);
+    }
+
+    #[allow(clippy::ptr_arg)]
     pub fn get(&self, path: &PathBuf) -> Option<Arc<RwLock<ImageData>>> {
         self.lru.lock().unwrap().get(path).cloned()
     }

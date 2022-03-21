@@ -4,6 +4,7 @@
 
 use std::{
     env, panic,
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -20,7 +21,7 @@ use glium::{
 use serde::{Deserialize, Serialize};
 
 mod app;
-use app::App;
+use app::{op_queue::Op, App};
 mod icon;
 mod vec2;
 use vec2::Vec2;
@@ -202,17 +203,12 @@ fn main() {
         );
     }));
 
-    let system = System::new();
+    let mut system = System::new();
 
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
         if let Some(arg) = args.pop() {
-            app::load_image::load(
-                system.proxy.clone(),
-                arg,
-                system.app.cache.clone(),
-                system.app.image_loader.clone(),
-            );
+            system.app.queue(Op::LoadPath(PathBuf::from(arg), true))
         }
     }
 

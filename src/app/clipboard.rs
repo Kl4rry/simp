@@ -1,9 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
-    },
+    sync::{mpsc::Sender, Arc, RwLock},
     thread,
 };
 
@@ -12,28 +9,15 @@ use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     EncodableLayout, GenericImageView, ImageBuffer, Rgba,
 };
-use lazy_static::*;
 
-use super::image_view::ImageView;
+use super::{image_view::ImageView, op_queue::Output};
 use crate::util::{Image, ImageData, UserEvent};
 
-lazy_static! {
-    pub static ref COPYING: AtomicBool = AtomicBool::new(false);
-    pub static ref PASTING: AtomicBool = AtomicBool::new(false);
-}
-
-pub fn copy(view: &ImageView) {
+pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
     let image_data = view.image_data.clone();
     let rotation = view.rotation;
     let horizontal_flip = view.horizontal_flip;
     let vertical_flip = view.vertical_flip;
-
-    if COPYING
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_err()
-    {
-        return;
-    }
 
     thread::spawn(move || {
         let guard = image_data.read().unwrap();
@@ -85,20 +69,14 @@ pub fn copy(view: &ImageView) {
         if let Ok(mut clipboard) = arboard::Clipboard::new() {
             let _ = clipboard.set_image(image_data);
         }
-        COPYING.store(false, Ordering::SeqCst);
+
+        let _ = sender.send(Output::Done);
+        let _ = proxy.send_event(UserEvent::Wake);
     });
 }
 
-pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
-    let proxy = proxy.clone();
-
-    if PASTING
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_err()
-    {
-        return;
-    }
-
+pub fn paste(proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
+    println!("tetes");
     thread::spawn(move || {
         if let Ok(mut clipboard) = arboard::Clipboard::new() {
             if let Ok(image_data) = clipboard.get_image() {
@@ -108,13 +86,16 @@ pub fn paste(proxy: &EventLoopProxy<UserEvent>) {
                 data.extend_from_slice(&*image_data.bytes);
                 let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data)
                     .unwrap();
-                let event = UserEvent::ImageLoaded(
+                let _ = sender.send(Output::ImageLoaded(
                     Arc::new(RwLock::new(ImageData::from(vec![Image::from(image)]))),
                     None,
-                );
-                let _ = proxy.send_event(event);
+                ));
+                let _ = proxy.send_event(UserEvent::Wake);
+                return;
             }
         }
-        PASTING.store(false, Ordering::SeqCst);
+        // if it fails we must still notify the main thread that we are not doing work
+        let _ = sender.send(Output::Done);
+        let _ = proxy.send_event(UserEvent::Wake);
     });
 }

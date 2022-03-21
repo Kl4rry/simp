@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::{mpsc::Sender, Arc, RwLock},
     thread,
 };
 
@@ -10,6 +10,7 @@ use image::{
     ImageOutputFormat,
 };
 
+use super::op_queue::Output;
 use crate::{
     image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
@@ -31,15 +32,16 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 
     thread::spawn(move || {
         if let Some(path) = dialog.save_file() {
-            let _ = proxy.send_event(UserEvent::Save(path));
+            let _ = proxy.send_event(UserEvent::QueueSave(path));
         }
     });
 }
 
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
+    sender: Sender<Output>,
     mut path: PathBuf,
-    frames: Arc<RwLock<ImageData>>,
+    image_data: Arc<RwLock<ImageData>>,
     rotation: i32,
     horizontal_flip: bool,
     vertical_flip: bool,
@@ -52,7 +54,7 @@ pub fn save(
     path.set_extension(&ext);
 
     thread::spawn(move || {
-        let guard = frames.read().unwrap();
+        let guard = image_data.read().unwrap();
         let old_frames = &guard.frames;
         let mut frames = Vec::new();
         for frame in old_frames {
@@ -75,10 +77,6 @@ pub fn save(
                 flip_vertical_in_place(frame.buffer_mut());
             }
         }
-
-        /*for frame in frames.iter_mut() {
-            huerotate_in_place(frame.buffer_mut(), 90);
-        }*/
 
         let res = match ext.as_str() {
             "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
@@ -103,8 +101,10 @@ pub fn save(
             }
         };
 
-        if let Err(error) = res {
-            let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
-        }
+        let _ = sender.send(Output::Done);
+        let _ = match res {
+            Ok(_) => proxy.send_event(UserEvent::Wake),
+            Err(error) => proxy.send_event(UserEvent::ErrorMessage(error.to_string())),
+        };
     });
 }

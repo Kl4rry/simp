@@ -2,7 +2,8 @@ use std::{
     borrow::Cow,
     mem,
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::{mpsc::Sender, Arc, RwLock},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -10,6 +11,7 @@ use cgmath::{Matrix4, Ortho, Vector3, Vector4};
 use glium::{
     backend::glutin::Display,
     draw_parameters::DrawParameters,
+    glutin::event_loop::EventLoopProxy,
     implement_vertex,
     index::PrimitiveType,
     program::Program,
@@ -20,10 +22,11 @@ use glium::{
 };
 use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
 
+use super::op_queue::Output;
 use crate::{
     max, min,
     rect::Rect,
-    util::{Image, ImageData},
+    util::{Image, ImageData, UserEvent},
     vec2::Vec2,
 };
 
@@ -313,10 +316,12 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&mut self, cut: Rect, display: &Display) -> Option<(Vec<Image>, i32)> {
+    pub fn crop(&self, cut: Rect, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
         let bounds = self.bounds();
         if !bounds.intersects(&cut) {
-            return None;
+            let _ = sender.send(Output::Done);
+            let _ = proxy.send_event(UserEvent::Wake);
+            return;
         }
 
         let left = max!(cut.left(), bounds.left()) - bounds.x();
@@ -342,49 +347,46 @@ impl ImageView {
             normalized_y = 1.0 - normalized_y - normalized_height;
         }
 
-        let mut old_frames = Vec::new();
+        let rotation = self.rotation;
+        let image_data = self.image_data.clone();
+        let old_rotation = self.rotation;
+        thread::spawn(move || {
+            let mut new_frames = Vec::new();
+            let mut guard = image_data.write().unwrap();
+            let frames = &mut guard.frames;
+            for frame in &mut *frames {
+                match rotation {
+                    0 => (),
+                    1 => {
+                        let buffer = frame.buffer().rotate270();
+                        *frame.buffer_mut() = buffer;
+                    }
+                    2 => {
+                        rotate180_in_place(frame.buffer_mut());
+                    }
+                    3 => {
+                        let buffer = frame.buffer().rotate90();
+                        *frame.buffer_mut() = buffer;
+                    }
+                    _ => unreachable!(),
+                }
 
-        let mut guard = self.image_data.write().unwrap();
-        let frames = &mut guard.frames;
-        for frame in &mut *frames {
-            match self.rotation {
-                0 => (),
-                1 => {
-                    let buffer = frame.buffer().rotate270();
-                    *frame.buffer_mut() = buffer;
-                }
-                2 => {
-                    rotate180_in_place(frame.buffer_mut());
-                }
-                3 => {
-                    let buffer = frame.buffer().rotate90();
-                    *frame.buffer_mut() = buffer;
-                }
-                _ => unreachable!(),
+                let real_width = (normalized_width * frame.buffer().width() as f32) as u32;
+                let real_height = (normalized_height * frame.buffer().height() as f32) as u32;
+
+                let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
+                let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
+
+                let image = frame
+                    .buffer()
+                    .crop_imm(real_x, real_y, real_width, real_height);
+
+                new_frames.push(Image::with_delay(image, frame.delay));
             }
 
-            let real_width = (normalized_width * frame.buffer().width() as f32) as u32;
-            let real_height = (normalized_height * frame.buffer().height() as f32) as u32;
-
-            let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
-            let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
-
-            let mut image = frame
-                .buffer()
-                .crop_imm(real_x, real_y, real_width, real_height);
-
-            let delay = frame.delay;
-            mem::swap(frame.buffer_mut(), &mut image);
-            old_frames.push(Image::with_delay(image, delay));
-        }
-        drop(guard);
-
-        self.update_image_data(display);
-        self.update_vertex_data(display);
-
-        let old_rotation = self.rotation;
-        self.rotation = 0;
-        Some((old_frames, old_rotation))
+            let _ = sender.send(Output::Crop(new_frames, old_rotation));
+            let _ = proxy.send_event(UserEvent::Wake);
+        });
     }
 
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
@@ -428,8 +430,8 @@ impl ImageView {
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
     }
 
-    pub fn rotate(&mut self, deg: i32) {
-        self.rotation += deg;
+    pub fn rotate(&mut self, rot: i32) {
+        self.rotation += rot;
         if self.rotation > 3 {
             self.rotation -= 4;
         } else if self.rotation < 0 {
