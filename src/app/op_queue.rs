@@ -29,6 +29,12 @@ pub enum Op {
     Prev,
     Save(PathBuf),
     Resize(Vec2<u32>, FilterType),
+    Color {
+        hue: f32,
+        saturation: f32,
+        contrast: f32,
+        lightness: f32,
+    },
     Crop(Rect),
     FlipHorizontal,
     FlipVertical,
@@ -46,6 +52,7 @@ pub enum Output {
     FlipHorizontal,
     FlipVertical,
     Resize(Vec<Image>),
+    Color(Vec<Image>),
     Crop(Vec<Image>, i32),
     Undo,
     Redo,
@@ -171,6 +178,29 @@ impl OpQueue {
                             new.push(Image::with_delay(buffer, image.delay));
                         }
                         let _ = sender.send(Output::Resize(new));
+                        let _ = proxy.send_event(UserEvent::Wake);
+                    });
+                }
+                Op::Color {
+                    hue,
+                    saturation: _,
+                    contrast,
+                    lightness: _,
+                } => {
+                    let image_data = view.as_ref().unwrap().image_data.clone();
+                    let proxy = self.proxy.clone();
+                    let sender = self.sender.clone();
+                    thread::spawn(move || {
+                        let guard = image_data.read().unwrap();
+                        let mut new = Vec::new();
+                        for image in guard.frames.iter() {
+                            let buffer = image
+                                .buffer()
+                                .huerotate(hue as i32)
+                                .adjust_contrast(contrast);
+                            new.push(Image::with_delay(buffer, image.delay));
+                        }
+                        let _ = sender.send(Output::Color(new));
                         let _ = proxy.send_event(UserEvent::Wake);
                     });
                 }

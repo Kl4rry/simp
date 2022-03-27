@@ -22,11 +22,11 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 - [x] Switch from imgui to egui.
 - [x] Redo the checkered background.
 - [ ] Hotkey hints in menus.
-- [X] Help menu
-- [ ] Contrast adjustment.
-- [ ] Brightness adjustment.
-- [ ] Hue rotate.
-- [ ] Blur.
+- [X] Help menu.
+- [X] Hue rotation.
+- [X] Contrast adjustment.
+- [ ] Lightness adjustment.
+- [ ] Saturation adjustment.
 - [ ] More precise cropping.
 - [X] Add support for exif metadata.
 - [ ] Anti-aliasing (probably multisampling but maybe lanczos resampling on GPU).

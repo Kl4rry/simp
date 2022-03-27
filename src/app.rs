@@ -113,12 +113,22 @@ impl App {
                     self.image_view.as_mut().unwrap().rotate(dir);
                     stack.push(UndoFrame::Rotate(dir));
                 }
-                Output::Resize(mut images) => {
+                Output::Resize(mut frames) => {
                     if let Some(ref mut view) = self.image_view {
-                        view.swap_frames(&mut images, display);
-                        stack.push(UndoFrame::Resize(images));
+                        view.swap_frames(&mut frames, display);
+                        stack.push(UndoFrame::Resize(frames));
                     }
                     self.best_fit();
+                }
+                Output::Color(mut frames) => {
+                    if let Some(ref mut view) = self.image_view {
+                        view.swap_frames(&mut frames, display);
+                        stack.push(UndoFrame::Color(frames));
+                        view.hue = 0.0;
+                        view.contrast = 0.0;
+                        view.saturation = 0.0;
+                        view.lightness = 0.0;
+                    }
                 }
                 Output::Crop(mut frames, rotation) => {
                     if let Some(ref mut view) = self.image_view {
@@ -149,6 +159,10 @@ impl App {
                                 let view = self.image_view.as_mut().unwrap();
                                 view.swap_frames(frames, display);
                             }
+                            UndoFrame::Color(frames) => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                            }
                         }
                     }
                 }
@@ -171,6 +185,10 @@ impl App {
                                 std::mem::swap(&mut view.rotation, rotation);
                             }
                             UndoFrame::Resize(frames) => {
+                                let view = self.image_view.as_mut().unwrap();
+                                view.swap_frames(frames, display);
+                            }
+                            UndoFrame::Color(frames) => {
                                 let view = self.image_view.as_mut().unwrap();
                                 view.swap_frames(frames, display);
                             }
@@ -531,60 +549,116 @@ impl App {
                 .resizable(false)
                 .open(&mut open)
                 .show(ctx, |ui| {
-                    ui.label("Width");
-                    let w_focus = ui.text_edit_singleline(&mut self.resize.width).has_focus();
-                    ui.label("Height");
-                    let h_focus = ui.text_edit_singleline(&mut self.resize.height).has_focus();
-
-                    self.resize.width.retain(|c| c.is_numeric());
-                    self.resize.width.retain(|c| c.is_numeric());
-
-                    ui.checkbox(
-                        &mut self.resize.maintain_aspect_ratio,
-                        "Maintain aspect ratio",
-                    );
-
-                    ui.label("Resample");
-                    egui::ComboBox::new("filter", "")
-                        .selected_text("Nearest Neighbor")
-                        .show_ui(ui, |ui| {
-                            let selected = &mut self.resize.resample;
-                            ui.selectable_value(selected, FilterType::Nearest, "Nearest Neighbor");
-                            ui.selectable_value(selected, FilterType::Triangle, "Linear Filter");
-                            ui.selectable_value(selected, FilterType::CatmullRom, "Cubic Filter");
-                            ui.selectable_value(selected, FilterType::Gaussian, "Gaussian Filter");
-                            ui.selectable_value(selected, FilterType::Lanczos3, "Lanczos");
+                    egui::Grid::new("resize grid").show(ui, |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Width: ");
                         });
+                        let w_focus = ui.text_edit_singleline(&mut self.resize.width).has_focus();
+                        ui.end_row();
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Height: ");
+                        });
+                        let h_focus = ui.text_edit_singleline(&mut self.resize.height).has_focus();
+                        ui.end_row();
 
-                    let width = self.resize.width.parse::<u32>();
-                    let height = self.resize.height.parse::<u32>();
+                        self.resize.width.retain(|c| c.is_numeric());
+                        self.resize.width.retain(|c| c.is_numeric());
 
-                    if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
-                        let width = *width.as_ref().unwrap();
-                        let size = self.image_view.as_ref().unwrap().size;
-                        let ratio = width as f32 / size.x();
-                        self.resize.height = ((ratio * size.y()) as u32).to_string();
-                    }
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Maintain aspect ratio: ");
+                        });
+                        ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
+                        ui.end_row();
 
-                    if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
-                        let height = *height.as_ref().unwrap();
-                        let size = self.image_view.as_ref().unwrap().size;
-                        let ratio = height as f32 / size.y();
-                        self.resize.width = ((ratio * size.x()) as u32).to_string();
-                    }
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Resample: ");
+                        });
+                        let selected = &mut self.resize.resample;
+                        egui::ComboBox::new("filter", "")
+                            .selected_text(filter_name(selected))
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    selected,
+                                    FilterType::Nearest,
+                                    filter_name(&FilterType::Nearest),
+                                );
+                                ui.selectable_value(
+                                    selected,
+                                    FilterType::Triangle,
+                                    filter_name(&FilterType::Triangle),
+                                );
+                                ui.selectable_value(
+                                    selected,
+                                    FilterType::CatmullRom,
+                                    filter_name(&FilterType::CatmullRom),
+                                );
+                                ui.selectable_value(
+                                    selected,
+                                    FilterType::Gaussian,
+                                    filter_name(&FilterType::Gaussian),
+                                );
+                                ui.selectable_value(
+                                    selected,
+                                    FilterType::Lanczos3,
+                                    filter_name(&FilterType::Lanczos3),
+                                );
+                            });
+                        ui.end_row();
+                        ui.end_row();
 
-                    if ui
-                        .add_enabled(
-                            width.is_ok() && height.is_ok() && self.view_available(),
-                            Button::new("Resize"),
-                        )
-                        .clicked()
-                    {
-                        let width = width.unwrap();
-                        let height = height.unwrap();
-                        self.queue(Op::Resize(Vec2::new(width, height), self.resize.resample));
-                        resized = true;
-                    }
+                        let width = self.resize.width.parse::<u32>();
+                        let height = self.resize.height.parse::<u32>();
+
+                        if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
+                            let width = *width.as_ref().unwrap();
+                            let size = self.image_view.as_ref().unwrap().size;
+                            let ratio = width as f32 / size.x();
+                            self.resize.height = ((ratio * size.y()) as u32).to_string();
+                        }
+
+                        if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
+                            let height = *height.as_ref().unwrap();
+                            let size = self.image_view.as_ref().unwrap().size;
+                            let ratio = height as f32 / size.y();
+                            self.resize.width = ((ratio * size.x()) as u32).to_string();
+                        }
+
+                        ui.with_layout(
+                            egui::Layout::top_down_justified(egui::Align::Center),
+                            |ui| {
+                                if ui
+                                    .add_enabled(
+                                        width.is_ok() && height.is_ok() && self.view_available(),
+                                        Button::new("Cancel"),
+                                    )
+                                    .clicked()
+                                {
+                                    resized = true;
+                                }
+                            },
+                        );
+
+                        ui.with_layout(
+                            egui::Layout::top_down_justified(egui::Align::Center),
+                            |ui| {
+                                if ui
+                                    .add_enabled(
+                                        width.is_ok() && height.is_ok() && self.view_available(),
+                                        Button::new("Resize"),
+                                    )
+                                    .clicked()
+                                {
+                                    let width = width.unwrap();
+                                    let height = height.unwrap();
+                                    self.queue(Op::Resize(
+                                        Vec2::new(width, height),
+                                        self.resize.resample,
+                                    ));
+                                    resized = true;
+                                }
+                            },
+                        );
+                    });
                 });
             self.resize.visible = open && !resized;
         }
@@ -695,5 +769,15 @@ fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
         }
     } else {
         *old = *new;
+    }
+}
+
+fn filter_name(filter: &FilterType) -> &'static str {
+    match filter {
+        FilterType::Nearest => "Nearest Neighbor",
+        FilterType::Triangle => "Linear Filter",
+        FilterType::CatmullRom => "Cubic Filter",
+        FilterType::Gaussian => "Gaussian Filter",
+        FilterType::Lanczos3 => "Lanczos",
     }
 }
