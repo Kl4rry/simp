@@ -1,6 +1,6 @@
 use std::{path::Path, process::Command, thread, time::Duration};
 
-use egui::{Button, RichText, Style, TopBottomPanel};
+use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
 use glium::{
     backend::glutin::Display,
     glutin::{
@@ -17,7 +17,6 @@ pub mod image_view;
 use image_view::ImageView;
 
 pub mod image_list;
-//use image_list::ImageList;
 
 mod clipboard;
 
@@ -35,8 +34,6 @@ pub mod load_image;
 
 mod save_image;
 use crop::Crop;
-
-pub mod cursor;
 
 mod undo_stack;
 
@@ -63,7 +60,6 @@ pub struct App {
     modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
     current_filename: String,
-    //image_list: ImageList,
     op_queue: OpQueue,
     pub crop: Box<Crop>,
     resize: Resize,
@@ -77,12 +73,13 @@ impl App {
         !self.op_queue.working() && self.image_view.is_some()
     }
 
-    pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
-        while let Some((output, stack)) = self.op_queue.poll(display) {
+    pub fn poll(&mut self, display: &Display) {
+        while let Some((output, stack)) = self.op_queue.poll() {
             match output {
                 Output::ImageLoaded(image_data, path) => {
+                    stack.clear();
                     self.current_filename = if let Some(path) = &path {
-                        //self.image_list.change_dir(&path);
+                        self.op_queue.image_list.change_dir(&path);
                         path.file_name().unwrap().to_str().unwrap().to_string()
                     } else {
                         String::new()
@@ -102,7 +99,6 @@ impl App {
                         window.set_title(&self.current_filename.to_string());
                     }
 
-                    stack.clear();
                     self.best_fit();
                 }
                 Output::FlipHorizontal => {
@@ -183,8 +179,8 @@ impl App {
                 }
                 Output::Close => {
                     self.image_view = None;
-                    //self.image_list.clear();
                     stack.clear();
+                    self.op_queue.image_list.clear();
                     self.crop.cropping = false;
                     self.op_queue.cache.clear();
                 }
@@ -192,7 +188,10 @@ impl App {
                 Output::Done => (),
             }
         }
+    }
 
+    pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
+        self.poll(display);
         match event {
             UserEvent::QueueLoad(path) => {
                 self.queue(Op::LoadPath(path.to_path_buf(), false));
@@ -206,7 +205,6 @@ impl App {
                     msgbox::create("Error", &error, msgbox::IconType::Error).unwrap()
                 });
             }
-            UserEvent::SetCursor(icon) => cursor::set_cursor_icon(*icon, display),
             UserEvent::Exit => self.exit = true,
             UserEvent::Wake => (),
         };
@@ -319,31 +317,17 @@ impl App {
                                 self.resize.visible = true;
                             }
 
-                            // VirtualKeyCode::Left | VirtualKeyCode::D => {
-                            //     if let Some(path) = self.image_list.previous() {
-                            //         if self.crop.inner.is_none() {
-                            //             load_image::load(
-                            //                 self.proxy.clone(),
-                            //                 path,
-                            //                 self.cache.clone(),
-                            //                 self.image_loader.clone(),
-                            //             );
-                            //         }
-                            //     }
-                            // }
+                            VirtualKeyCode::Left | VirtualKeyCode::D => {
+                                if self.crop.inner.is_none() && self.view_available() {
+                                    self.queue(Op::Prev);
+                                }
+                            }
 
-                            // VirtualKeyCode::Right | VirtualKeyCode::A => {
-                            //     if let Some(path) = self.image_list.next() {
-                            //         if self.crop.inner.is_none() {
-                            //             load_image::load(
-                            //                 self.proxy.clone(),
-                            //                 path,
-                            //                 self.cache.clone(),
-                            //                 self.image_loader.clone(),
-                            //             );
-                            //         }
-                            //     }
-                            // }
+                            VirtualKeyCode::Right | VirtualKeyCode::A => {
+                                if self.crop.inner.is_none() && self.view_available() {
+                                    self.queue(Op::Next);
+                                }
+                            }
                             VirtualKeyCode::F4 if self.modifiers.ctrl() => {
                                 self.queue(Op::Close);
                             }
@@ -403,6 +387,11 @@ impl App {
     }
 
     pub fn handle_ui(&mut self, display: &Display, ctx: &egui::Context) {
+        if self.op_queue.working() {
+            ctx.output().cursor_icon = CursorIcon::Progress;
+        } else if self.crop.cropping {
+            ctx.output().cursor_icon = CursorIcon::Crosshair;
+        }
         if !self.fullscreen {
             self.menu_bar(display, ctx);
             self.bottom_bar(ctx);
@@ -468,28 +457,18 @@ impl App {
     fn bottom_bar(&mut self, ctx: &egui::Context) {
         TopBottomPanel::bottom("bottom").show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(), |ui| {
-                if let Some(image) = self.image_view.as_mut() {
-                    if ui.small_button("⬅").clicked() {
-                        // if let Some(path) = self.image_list.previous() {
-                        //     load_image::load(
-                        //         self.proxy.clone(),
-                        //         path,
-                        //         self.cache.clone(),
-                        //         self.image_loader.clone(),
-                        //     );
-                        // }
-                    }
-                    if ui.small_button("➡").clicked() {
-                        // if let Some(path) = self.image_list.next() {
-                        //     load_image::load(
-                        //         self.proxy.clone(),
-                        //         path,
-                        //         self.cache.clone(),
-                        //         self.image_loader.clone(),
-                        //     );
-                        // }
-                    }
+                if self.image_view.is_some() {
+                    ui.add_enabled_ui(self.view_available() && !self.crop.cropping, |ui| {
+                        if ui.small_button("⬅").clicked() {
+                            self.queue(Op::Prev);
+                        }
+                        if ui.small_button("➡").clicked() {
+                            self.queue(Op::Next);
+                        }
+                    });
+                }
 
+                if let Some(image) = self.image_view.as_mut() {
                     ui.label(format!("{} x {}", image.size.x(), image.size.y()));
                     ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
                 }
@@ -497,7 +476,6 @@ impl App {
         });
     }
 
-    // i want this function to die
     pub fn update(&mut self, display: &Display) -> (bool, Option<Duration>) {
         self.exit = false;
         self.delay = None;
@@ -672,7 +650,6 @@ impl App {
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
-            //image_list: ImageList::new(cache.clone(), proxy.clone(), image_loader.clone()),
             op_queue: OpQueue::new(proxy.clone()),
             proxy,
             modifiers: ModifiersState::empty(),
@@ -693,7 +670,7 @@ pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
         let dialog = rfd::MessageDialog::new()
             .set_level(rfd::MessageLevel::Warning)
             .set_title("Move to trash")
-            .set_description("Are you sure u want to move this to trash")
+            .set_description("Are you sure you want to move this to trash?")
             .set_buttons(rfd::MessageButtons::YesNo)
             .show();
 

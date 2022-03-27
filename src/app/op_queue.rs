@@ -8,14 +8,12 @@ use std::{
     thread,
 };
 
-use glium::{
-    glutin::{event_loop::EventLoopProxy, window::CursorIcon},
-    Display,
-};
+use glium::glutin::event_loop::EventLoopProxy;
 use image::imageops::FilterType;
 
 use super::{
-    cache::Cache, clipboard, cursor, image_view::ImageView, load_image::load_uncached, save_image,
+    cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
+    load_image::load_uncached, save_image,
 };
 use crate::{
     app::undo_stack::UndoStack,
@@ -27,6 +25,8 @@ use crate::{
 #[derive(Debug)]
 pub enum Op {
     LoadPath(PathBuf, bool),
+    Next,
+    Prev,
     Save(PathBuf),
     Resize(Vec2<u32>, FilterType),
     Crop(Rect),
@@ -56,7 +56,7 @@ pub enum Output {
 }
 
 #[derive(Default)]
-struct LoadingInfo {
+pub struct LoadingInfo {
     target_file: Option<PathBuf>,
     loading: HashSet<PathBuf>,
 }
@@ -69,6 +69,7 @@ pub struct OpQueue {
     proxy: EventLoopProxy<UserEvent>,
     stack: UndoStack,
     pub cache: Arc<Cache>,
+    pub image_list: ImageList,
 }
 
 impl OpQueue {
@@ -76,14 +77,23 @@ impl OpQueue {
         let (sender, receiver) = mpsc::channel();
 
         const CACHE_SIZE: usize = 1_000_000_000;
+        let cache = Arc::new(Cache::new(CACHE_SIZE));
+        let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
+
         Self {
             working: false,
-            loading_info: Arc::new(Mutex::new(LoadingInfo::default())),
+            image_list: ImageList::new(
+                cache.clone(),
+                proxy.clone(),
+                sender.clone(),
+                loading_info.clone(),
+            ),
+            loading_info,
             sender,
             receiver,
-            proxy,
             stack: UndoStack::new(),
-            cache: Arc::new(Cache::new(CACHE_SIZE)),
+            proxy,
+            cache,
         }
     }
 
@@ -92,15 +102,27 @@ impl OpQueue {
             self.working = true;
             match op {
                 Op::LoadPath(path, use_cache) => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     self.load(path, use_cache);
                 }
+                Op::Next => match self.image_list.next() {
+                    Some(path) => {
+                        self.load(path, true);
+                    }
+                    None => {
+                        let _ = self.sender.send(Output::Done);
+                        let _ = self.proxy.send_event(UserEvent::Wake);
+                    }
+                },
+                Op::Prev => match self.image_list.prev() {
+                    Some(path) => {
+                        self.load(path, true);
+                    }
+                    None => {
+                        let _ = self.sender.send(Output::Done);
+                        let _ = self.proxy.send_event(UserEvent::Wake);
+                    }
+                },
                 Op::Save(path) => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     if let Some(view) = view {
                         save_image::save(
                             self.proxy.clone(),
@@ -138,9 +160,6 @@ impl OpQueue {
                     let _ = self.proxy.send_event(UserEvent::Wake);
                 }
                 Op::Resize(size, resample) => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     let image_data = view.as_ref().unwrap().image_data.clone();
                     let proxy = self.proxy.clone();
                     let sender = self.sender.clone();
@@ -156,83 +175,27 @@ impl OpQueue {
                     });
                 }
                 Op::Crop(rect) => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     view.unwrap()
                         .crop(rect, self.proxy.clone(), self.sender.clone());
                 }
                 Op::Copy => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     clipboard::copy(view.unwrap(), self.proxy.clone(), self.sender.clone());
                 }
                 Op::Paste => {
-                    let _ = self
-                        .proxy
-                        .send_event(UserEvent::SetCursor(CursorIcon::Progress));
                     clipboard::paste(self.proxy.clone(), self.sender.clone());
                 }
             }
         }
     }
 
-    pub fn poll(&mut self, display: &Display) -> Option<(Output, &mut UndoStack)> {
+    pub fn poll(&mut self) -> Option<(Output, &mut UndoStack)> {
         match self.receiver.try_recv() {
             Ok(output) => {
                 self.working = false;
-                cursor::set_cursor_icon(CursorIcon::default(), display);
                 Some((output, &mut self.stack))
             }
             Err(_) => None,
         }
-    }
-
-    pub fn _prefetch(&self, path: impl AsRef<Path>) {
-        let path_buf = path.as_ref().to_path_buf();
-
-        if self.cache.contains(&path_buf) {
-            return;
-        }
-
-        {
-            let mut guard = self.loading_info.lock().unwrap();
-            if guard.loading.contains(&path_buf) {
-                return;
-            } else {
-                guard.loading.insert(path_buf.clone());
-            }
-        }
-
-        let cache = self.cache.clone();
-        let sender = self.sender.clone();
-        let proxy = self.proxy.clone();
-        let loading_info = self.loading_info.clone();
-        thread::spawn(move || {
-            let res = load_uncached(&path_buf);
-            let mut guard = loading_info.lock().unwrap();
-            guard.loading.remove(&path_buf);
-            if guard.target_file.as_ref() == Some(&path_buf) {
-                guard.target_file = None;
-            }
-
-            match res {
-                Ok(images) => {
-                    let images = Arc::new(RwLock::new(images));
-                    cache.put(path_buf.clone(), images.clone());
-                    if guard.target_file.as_ref() == Some(&path_buf) {
-                        sender
-                            .send(Output::ImageLoaded(images, Some(path_buf)))
-                            .unwrap();
-                        let _ = proxy.send_event(UserEvent::Wake);
-                    }
-                }
-                Err(error) => {
-                    let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
-                }
-            };
-        });
     }
 
     fn load(&self, path_buf: PathBuf, use_cache: bool) {
@@ -251,9 +214,13 @@ impl OpQueue {
         }
 
         if let Some(images) = self.cache.get(&path_buf) {
+            let mut guard = self.loading_info.lock().unwrap();
+            guard.loading.remove(&path_buf);
+            guard.target_file = None;
             self.sender
                 .send(Output::ImageLoaded(images, Some(path_buf)))
                 .unwrap();
+            let _ = self.proxy.send_event(UserEvent::Wake);
             return;
         }
 
@@ -277,6 +244,7 @@ impl OpQueue {
                     let _ = proxy.send_event(UserEvent::Wake);
                 }
                 Err(error) => {
+                    let _ = sender.send(Output::Done);
                     let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
                 }
             };
@@ -286,4 +254,53 @@ impl OpQueue {
     pub fn working(&self) -> bool {
         self.working
     }
+}
+
+pub fn prefetch(
+    path: impl AsRef<Path>,
+    cache: Arc<Cache>,
+    proxy: EventLoopProxy<UserEvent>,
+    sender: Sender<Output>,
+    loading_info: Arc<Mutex<LoadingInfo>>,
+) {
+    let path_buf = path.as_ref().to_path_buf();
+
+    if cache.contains(&path_buf) {
+        return;
+    }
+
+    {
+        let mut guard = loading_info.lock().unwrap();
+        if guard.loading.contains(&path_buf) {
+            return;
+        } else {
+            guard.loading.insert(path_buf.clone());
+        }
+    }
+
+    thread::spawn(move || {
+        let res = load_uncached(&path_buf);
+        let mut guard = loading_info.lock().unwrap();
+        guard.loading.remove(&path_buf);
+
+        match res {
+            Ok(images) => {
+                let images = Arc::new(RwLock::new(images));
+                cache.put(path_buf.clone(), images.clone());
+                if guard.target_file.as_ref() == Some(&path_buf) {
+                    sender
+                        .send(Output::ImageLoaded(images, Some(path_buf.clone())))
+                        .unwrap();
+                    let _ = proxy.send_event(UserEvent::Wake);
+                }
+            }
+            Err(error) => {
+                let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
+            }
+        };
+
+        if guard.target_file.as_ref() == Some(&path_buf) {
+            guard.target_file = None;
+        }
+    });
 }

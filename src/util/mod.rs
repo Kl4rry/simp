@@ -1,6 +1,5 @@
 use std::{path::PathBuf, time::Duration};
 
-use glium::glutin::window::CursorIcon;
 use image::{Delay, DynamicImage, Frame, ImageBuffer, Rgba};
 
 pub mod extensions;
@@ -89,7 +88,6 @@ impl From<Image> for Frame {
 
 pub enum UserEvent {
     ErrorMessage(String),
-    SetCursor(CursorIcon),
     QueueLoad(PathBuf),
     QueueSave(PathBuf),
     Wake,
