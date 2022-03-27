@@ -80,10 +80,10 @@ vec3 rotateHue(vec3 p, float hue) {
 }
 
 float adjustContrastPixel(float c, float percent) {
-    c = c * 255;
+    c = c * max_value;
     float d = ((c / max_value - 0.5) * percent + 0.5) * max_value;
     float e = clamp(d, 0.0, max_value);
-    return e / 255;
+    return e / max_value;
 }
 
 vec3 adjustContrast(vec3 p, float contrast) {
@@ -111,8 +111,8 @@ vec3 adjustSaturation(vec3 p, float sat) {
 }
 
 vec3 getCheckColor() {
-    vec3 color1 = vec3(64, 64, 64) / 255;
-    vec3 color2 = vec3(48, 48, 48) / 255;
+    vec3 color1 = vec3(64, 64, 64) / max_value;
+    vec3 color2 = vec3(48, 48, 48) / max_value;
 
     float checkSize = 12.0;
     float x = floor(gl_FragCoord[0] / checkSize);
