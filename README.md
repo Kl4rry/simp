@@ -7,7 +7,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 ## Goals
 
 * Support of as many image formats as possible.
-* 60 Hz. Avoid blocking for more then 16ms.
+* 60 Hz. Avoid blocking for more than 16ms.
 * Flicker free redrawing.
 * Always use GPU-acceleration where possible.
 * Desktop OS support.
