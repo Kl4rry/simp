@@ -17,7 +17,7 @@ ctrlc = "3.2.0"
 egui = "0.17.0"
 egui_glium = "0.17.0"
 glium = "0.31.0"
-image = { version = "0.24.1", features = ["avif-decoder"] }
+image = "0.24.1"
 imagepipe = "0.4.0"
 lazy_static = "1.4.0"
 libwebp = "0.1.2"
