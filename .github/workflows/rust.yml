@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-stable-debug-target-
 
       - name: Install system deps
-        run: sudo apt-get update && sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
+        run: sudo snap install dav1d && sudo apt-get update && sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
 
       - name: Install Rust
         run: |
