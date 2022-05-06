@@ -79,13 +79,11 @@ impl System {
             let window_context = display.gl_window();
             let window = window_context.window();
 
-            let pos = window.outer_position().unwrap();
             let size = window.inner_size();
 
             App::new(
                 proxy.clone(),
                 [size.width as f32, size.height as f32],
-                [pos.x, pos.y],
                 &display,
             )
         };

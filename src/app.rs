@@ -52,7 +52,6 @@ pub struct App {
     delay: Option<Duration>,
     pub image_view: Option<Box<ImageView>>,
     pub size: Vec2<f32>,
-    pub position: Vec2<i32>,
     fullscreen: bool,
     pub top_bar_size: f32,
     pub bottom_bar_size: f32,
@@ -233,10 +232,6 @@ impl App {
             WindowEvent::Resized(size) => {
                 *self.size.mut_x() = size.width as f32;
                 *self.size.mut_y() = size.height as f32;
-            }
-            WindowEvent::Moved(position) => {
-                *self.position.mut_x() = position.x;
-                *self.position.mut_x() = position.y;
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_position.set_x(position.x as f32);
@@ -709,18 +704,12 @@ impl App {
         }
     }
 
-    pub fn new(
-        proxy: EventLoopProxy<UserEvent>,
-        size: [f32; 2],
-        position: [i32; 2],
-        display: &Display,
-    ) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
         App {
             exit: false,
             delay: None,
             image_view: None,
             size: Vec2::from(size),
-            position: Vec2::from(position),
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
