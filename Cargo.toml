@@ -1,7 +1,7 @@
 [package]
 name = "simp"
 version = "2.0.3"
-authors = ["Axel Kappel <axel.e.kappel@gmail.com>"]
+authors = ["Axel Kappel"]
 edition = "2021"
 license = "Apache-2.0"
 description = "The simple image manipulation program"
