@@ -150,11 +150,8 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
         Err(_) => return None,
     };
 
-    let width = raw.width;
-    let height = raw.height;
     let source = ImageSource::Raw(raw);
-
-    let mut pipeline = match Pipeline::new_from_source(source, width, height, true) {
+    let mut pipeline = match Pipeline::new_from_source(source) {
         Ok(pipeline) => pipeline,
         Err(_) => return None,
     };
