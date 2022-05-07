@@ -1,8 +1,9 @@
 use std::{io::Cursor, time::Duration};
 
 use image::{
-    codecs::gif::GifDecoder, io::Reader as ImageReader, AnimationDecoder, DynamicImage, Frame,
-    ImageBuffer, ImageFormat, Rgb, Rgba,
+    codecs::{gif::GifDecoder, png::PngDecoder},
+    io::Reader as ImageReader,
+    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -67,10 +68,27 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
             }
             None
         }
-        format => match ImageReader::with_format(Cursor::new(&bytes), format).decode() {
-            Ok(image) => Some(vec![Image::new(image)]),
-            Err(_) => None,
-        },
+        ImageFormat::Png => {
+            if let Ok(decoder) = PngDecoder::new(bytes) {
+                if decoder.is_apng() {
+                    return Some(decode_images(decoder.apng().into_frames()));
+                } else if let Ok(image) = DynamicImage::from_decoder(decoder) {
+                    return Some(vec![Image::new(image)]);
+                }
+            }
+            None
+        }
+        format => {
+            let mut reader = ImageReader::with_format(Cursor::new(&bytes), format);
+            reader.no_limits();
+            match reader.decode() {
+                Ok(image) => Some(vec![Image::new(image)]),
+                Err(err) => {
+                    println!("{:?}", err);
+                    None
+                }
+            }
+        }
     }
 }
 
