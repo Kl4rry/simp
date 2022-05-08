@@ -83,10 +83,7 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
             reader.no_limits();
             match reader.decode() {
                 Ok(image) => Some(vec![Image::new(image)]),
-                Err(err) => {
-                    println!("{:?}", err);
-                    None
-                }
+                Err(err) => None,
             }
         }
     }
