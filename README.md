@@ -60,9 +60,10 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | farbfeld | ✅                                                                    | ✅               |
 | SVG      | ✅ Rastarized at 96 dpi                                               | ❌               |
 | PSD      | ✅                                                                    | ❌               |
-| Raw      | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (1) | ❌               |
+| Raw      | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (2) | ❌               |
 
-1. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
+1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
+2. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 
 ## Keybinds
 
