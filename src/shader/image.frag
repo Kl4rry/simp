@@ -115,8 +115,8 @@ vec3 getCheckColor() {
     vec3 color2 = vec3(48, 48, 48) / max_value;
 
     float checkSize = 12.0;
-    float x = floor(gl_FragCoord[0] / checkSize);
-    float y = floor((gl_FragCoord[1] - size.y) / checkSize);
+    float x = floor(gl_FragCoord.x / checkSize);
+    float y = floor((gl_FragCoord.y - size.y) / checkSize);
 
     if(mod(x + y, 2) == 0) {
         return color1;

@@ -11,8 +11,8 @@ const vec4 transparent = vec4(0.0, 0.0, 0.0, 0.0);
 const vec4 line_color = vec4(0.0, 0.0, 0.0, 1.0);
 
 void main() {
-	float x = gl_FragCoord[0];
-	float y = gl_FragCoord[1];
+	float x = gl_FragCoord.x;
+	float y = gl_FragCoord.y;
 
 	vec2 start_inv = start;
 	vec2 end_inv = end;
@@ -32,13 +32,26 @@ void main() {
 		end_inv.x = temp;
 	}
 
-	vec2 start_outer = start_inv + vec2(-2.0, 2.0);
-	vec2 end_outer = end_inv + vec2(2.0, -2.0);
+	vec2 start_outer = start_inv + vec2(-1.0, 1.0);
+	vec2 end_outer = end_inv + vec2(1.0, -1.0);
 
 	bool line = false;
 
 	if(x > start_outer.x && x < end_outer.x && y < start_outer.y && y > end_outer.y) {
-		color = line_color;
+		if(floor(x) == floor(start_outer.x) || floor(x) == floor(end_outer.x) - 1) {
+			if(mod(floor(y / 10), 2) == 0) {
+				color = line_color;
+			} else {
+				color = transparent;
+			}
+		} else {
+			if(mod(floor(x / 10), 2) == 0) {
+				color = line_color;
+			} else {
+				color = transparent;
+			}
+		}
+		
 		line = true;
 	}
 
