@@ -358,24 +358,25 @@ impl ImageView {
                 match rotation {
                     0 => (),
                     1 => {
-                        let buffer = frame.buffer().rotate270();
+                        let buffer = frame.buffer().rotate90();
                         *frame.buffer_mut() = buffer;
                     }
                     2 => {
                         rotate180_in_place(frame.buffer_mut());
                     }
                     3 => {
-                        let buffer = frame.buffer().rotate90();
+                        let buffer = frame.buffer().rotate270();
                         *frame.buffer_mut() = buffer;
                     }
                     _ => unreachable!(),
                 }
 
-                let real_width = (normalized_width * frame.buffer().width() as f32) as u32;
-                let real_height = (normalized_height * frame.buffer().height() as f32) as u32;
+                let real_width = (normalized_width * frame.buffer().width() as f32).ceil() as u32;
+                let real_height =
+                    (normalized_height * frame.buffer().height() as f32).ceil() as u32;
 
-                let real_x = (normalized_x * frame.buffer().width() as f32) as u32;
-                let real_y = (normalized_y * frame.buffer().height() as f32) as u32;
+                let real_x = (normalized_x * frame.buffer().width() as f32).floor() as u32;
+                let real_y = (normalized_y * frame.buffer().height() as f32).floor() as u32;
 
                 let image = frame
                     .buffer()
