@@ -62,6 +62,8 @@ pub struct ImageView {
     pub contrast: f32,
     pub lightness: f32,
     pub saturation: f32,
+    pub grayscale: bool,
+    pub invert: bool,
     shader: Box<Program>,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -139,6 +141,8 @@ impl ImageView {
             contrast: 0.0,
             lightness: 0.0,
             saturation: 0.0,
+            grayscale: false,
+            invert: false,
         }
     }
 
@@ -172,12 +176,23 @@ impl ImageView {
 
         let raw: [[f32; 4]; 4] = matrix.into();
 
+        #[rustfmt::skip]
         target
             .draw(
                 &self.vertices,
                 &self.indices,
                 &self.shader,
-                &uniform! { matrix: raw, tex: Sampler(&self.texture, self.sampler), size: size, hue: self.hue, contrast: self.contrast, lightness: self.lightness, saturation: self.saturation },
+                &uniform! {
+                    matrix: raw,
+                    tex: Sampler(&self.texture, self.sampler),
+                    size: size,
+                    hue: self.hue,
+                    contrast: self.contrast,
+                    lightness: self.lightness,
+                    saturation: self.saturation,
+                    grayscale: self.grayscale,
+                    invert: self.invert
+                },
                 &DrawParameters {
                     blend: Blend::alpha_blending(),
                     ..DrawParameters::default()

@@ -9,7 +9,7 @@ use std::{
 };
 
 use glium::glutin::event_loop::EventLoopProxy;
-use image::imageops::FilterType;
+use image::{imageops::{FilterType, grayscale_alpha}, DynamicImage};
 
 use super::{
     cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
@@ -34,6 +34,8 @@ pub enum Op {
         saturation: f32,
         contrast: f32,
         lightness: f32,
+        grayscale: bool,
+        invert: bool,
     },
     Crop(Rect),
     FlipHorizontal,
@@ -186,6 +188,8 @@ impl OpQueue {
                     saturation: _,
                     contrast,
                     lightness: _,
+                    grayscale,
+                    invert,
                 } => {
                     let image_data = view.as_ref().unwrap().image_data.clone();
                     let proxy = self.proxy.clone();
@@ -194,10 +198,21 @@ impl OpQueue {
                         let guard = image_data.read().unwrap();
                         let mut new = Vec::new();
                         for image in guard.frames.iter() {
-                            let buffer = image
+                            let mut buffer = image
                                 .buffer()
                                 .huerotate(hue as i32)
                                 .adjust_contrast(contrast);
+
+                            if grayscale {
+                                buffer = DynamicImage::ImageLumaA8(
+                                    grayscale_alpha(&buffer),
+                                );
+                            }
+
+                            if invert {
+                                buffer.invert();
+                            }
+
                             new.push(Image::with_delay(buffer, image.delay));
                         }
                         let _ = sender.send(Output::Color(new));

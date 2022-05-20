@@ -46,6 +46,16 @@ impl App {
                             -100.0..=100.0,
                         ));
                         ui.end_row();
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Grayscale: ");
+                        });
+                        ui.checkbox(&mut self.image_view.as_mut().unwrap().grayscale, "");
+                        ui.end_row();
+                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.label("Invert: ");
+                        });
+                        ui.checkbox(&mut self.image_view.as_mut().unwrap().invert, "");
+                        ui.end_row();
                         ui.end_row();
 
                         ui.with_layout(
@@ -72,12 +82,17 @@ impl App {
                                     let saturation = view.saturation;
                                     let contrast = view.contrast;
                                     let lightness = view.lightness;
+                                    let grayscale = view.grayscale;
+                                    let invert = view.invert;
                                     self.queue(Op::Color {
                                         hue,
                                         saturation,
                                         contrast,
                                         lightness,
+                                        grayscale,
+                                        invert,
                                     });
+                                    closed = true;
                                 }
                             },
                         );
@@ -90,6 +105,8 @@ impl App {
                     view.contrast = 0.0;
                     view.saturation = 0.0;
                     view.lightness = 0.0;
+                    view.grayscale = false;
+                    view.invert = false;
                 }
             }
         }

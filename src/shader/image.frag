@@ -9,6 +9,8 @@ uniform float hue = 0.0;
 uniform float contrast = 0.0;
 uniform float lightness = 0.0;
 uniform float saturation = 0.0;
+uniform bool grayscale = false;
+uniform bool invert = false;
 
 const float PI = 3.141592653589793238462643383279502884197169399375105820974944;
 const float max_value = 255;
@@ -104,10 +106,12 @@ vec3 lighten(vec3 p, float value) {
 vec3 adjustSaturation(vec3 p, float sat) {
     sat = sat / 100;
     vec3 hsl = rgb2hsl(p);
-    float s = hsl.y;
-    float factor = (1.0 - s) * sat;
-    hsl.y = clamp(s + factor, 0, 1);
+    hsl.y = clamp(hsl.y + sat, 0, 1);
     return hsl2rgb(hsl);
+}
+
+vec3 invertRgb(vec3 p) {
+    return vec3(1.0 - p.r, 1.0 - p.g, 1.0 - p.b);
 }
 
 vec3 getCheckColor() {
@@ -133,6 +137,15 @@ void main() {
     p.rgb = adjustContrast(p.rgb, contrast);
     p.rgb = lighten(p.rgb, lightness);
     p.rgb = adjustSaturation(p.rgb, saturation);
+
+    if(grayscale) {
+        const vec3 toLuma = vec3(0.299, 0.587, 0.114);
+        p.rgb = vec3(dot(p.rgb, toLuma));
+    }
+
+    if(invert) {
+        p.rgb = invertRgb(p.rgb);
+    }
 
     vec3 check_color = getCheckColor();
     color.rgb = check_color * (1 - p.a) + p.a * p.rgb;
