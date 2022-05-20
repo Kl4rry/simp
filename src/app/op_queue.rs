@@ -204,6 +204,7 @@ impl OpQueue {
                                 .adjust_contrast(contrast);
 
                             if grayscale {
+                                // TODO use correct grayscale function on cpu
                                 buffer = DynamicImage::ImageLumaA8(
                                     grayscale_alpha(&buffer),
                                 );
