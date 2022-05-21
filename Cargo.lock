@@ -2857,6 +2857,7 @@ dependencies = [
  "lru",
  "msgbox",
  "nanoid",
+ "num-traits",
  "psd",
  "rawloader",
  "resvg",

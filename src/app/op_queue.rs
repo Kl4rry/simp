@@ -9,7 +9,7 @@ use std::{
 };
 
 use glium::glutin::event_loop::EventLoopProxy;
-use image::{imageops::{FilterType, grayscale_alpha}, DynamicImage};
+use image::{imageops::FilterType, DynamicImage};
 
 use super::{
     cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
@@ -21,6 +21,8 @@ use crate::{
     util::{Image, ImageData, UserEvent},
     vec2::Vec2,
 };
+
+mod imageops;
 
 #[derive(Debug)]
 pub enum Op {
@@ -204,10 +206,7 @@ impl OpQueue {
                                 .adjust_contrast(contrast);
 
                             if grayscale {
-                                // TODO use correct grayscale function on cpu
-                                buffer = DynamicImage::ImageLumaA8(
-                                    grayscale_alpha(&buffer),
-                                );
+                                buffer = DynamicImage::ImageLumaA8(imageops::grayscale(&buffer));
                             }
 
                             if invert {
