@@ -30,15 +30,9 @@ mod util;
 use util::UserEvent;
 mod image_io;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct Config {
     maximized: bool,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self { maximized: false }
-    }
 }
 
 pub struct System {
@@ -147,7 +141,6 @@ impl System {
                     // draw things behind egui here
                     let dimensions = display.get_framebuffer_dimensions();
                     let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
-                    //background.render(&mut target, size, app.top_bar_size);
 
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);
