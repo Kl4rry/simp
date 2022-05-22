@@ -32,16 +32,12 @@ mod image_io;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
-    width: f64,
-    height: f64,
+    maximized: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            width: 1100f64,
-            height: 720f64,
-        }
+        Self { maximized: false }
     }
 }
 
@@ -69,7 +65,8 @@ impl System {
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(glutin::dpi::LogicalSize::new(640f64, 400f64))
-            .with_inner_size(glutin::dpi::LogicalSize::new(config.width, config.height))
+            .with_inner_size(glutin::dpi::LogicalSize::new(1100f64, 720f64))
+            .with_maximized(config.maximized)
             .with_window_icon(Some(icon::get_icon()));
 
         let display =
@@ -173,9 +170,10 @@ impl System {
                     ..
                 } => *control_flow = ControlFlow::Exit,
                 Event::LoopDestroyed => {
+                    let window_context = display.gl_window();
+                    let window = window_context.window();
                     let data = Config {
-                        width: app.size.x() as f64,
-                        height: app.size.y() as f64,
+                        maximized: window.is_maximized(),
                     };
                     confy::store("simp", data).unwrap();
                 }
