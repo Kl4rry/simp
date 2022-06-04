@@ -340,7 +340,9 @@ pub fn prefetch(
                 }
             }
             Err(error) => {
-                let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
+                if guard.target_file.as_ref() == Some(&path_buf) {
+                    let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
+                }
             }
         };
 

@@ -72,11 +72,7 @@ impl System {
 
             let size = window.inner_size();
 
-            App::new(
-                proxy.clone(),
-                [size.width as f32, size.height as f32],
-                &display,
-            )
+            App::new(proxy.clone(), [size.width as f32, size.height as f32])
         };
 
         let egui = egui_glium::EguiGlium::new(&display);
@@ -147,9 +143,6 @@ impl System {
                     }
 
                     egui.paint(&display, &mut target);
-
-                    // draw things on top of egui here
-                    app.crop.render(&mut target, size);
 
                     target.finish().unwrap();
                 }

@@ -10,56 +10,59 @@ const vec4 background_color = vec4(0.0, 0.0, 0.0, 0.5);
 const vec4 transparent = vec4(0.0, 0.0, 0.0, 0.0);
 const vec4 line_color = vec4(0.0, 0.0, 0.0, 1.0);
 
+vec3 inverseGamma(vec3 color, float gamma) {
+    return pow(color, vec3(gamma));
+}
+
 void main() {
 	float x = gl_FragCoord.x;
-	float y = gl_FragCoord.y;
+	float y = size.y - gl_FragCoord.y;
 
-	vec2 start_inv = start;
-	vec2 end_inv = end;
-
-	start_inv.y = size.y - start.y;
-	end_inv.y = size.y - end.y;
-
-	if(start_inv.y < end_inv.y) {
-		float temp = start_inv.y;
-		start_inv.y = end_inv.y;
-		end_inv.y = temp;
-	}
-
-	if(start_inv.x > end_inv.x) {
-		float temp = start_inv.x;
-		start_inv.x = end_inv.x;
-		end_inv.x = temp;
-	}
-
-	vec2 start_outer = start_inv + vec2(-1.0, 1.0);
-	vec2 end_outer = end_inv + vec2(1.0, -1.0);
+	vec2 start_outer = round(start + vec2(-1.1, -1.1));
+	vec2 end_outer = round(end + vec2(1.1, 1.1));
 
 	bool line = false;
 
-	if(x > start_outer.x && x < end_outer.x && y < start_outer.y && y > end_outer.y) {
+	if(!(x < start_outer.x || x > end_outer.x || y < start_outer.y || y > end_outer.y)) {
 		if(floor(x) == floor(start_outer.x) || floor(x) == floor(end_outer.x) - 1) {
-			if(mod(floor(y / 10), 2) == 0) {
+			if(mod(round((y - start.y) / 5), 2) == 0) {
 				color = line_color;
 			} else {
 				color = transparent;
 			}
-		} else {
-			if(mod(floor(x / 10), 2) == 0) {
+			line = true;
+		} else if(floor(y) == floor(start_outer.y) || floor(y) == floor(end_outer.y) - 1) {
+			if(mod(round((x - start.x) / 5), 2) == 0) {
 				color = line_color;
 			} else {
 				color = transparent;
 			}
+			line = true;
 		}
-		
-		line = true;
 	}
 
-	if(x > start_inv.x && x < end_inv.x && y < start_inv.y && y > end_inv.y) {
-		color = transparent;
-	} else {
+	if(x < start.x || x > end.x || y < start.y || y > end.y) {
 		if(!line) {
-			color = background_color;
+			color = transparent;
+		}
+	} else {
+		color = transparent;
+	}
+
+	vec4 blue = vec4(inverseGamma(vec3(0.180, 0.737, 0.917), 2.2), 1.0);
+	float radius = 5;
+
+	vec2 dots[4] = vec2[4](start, vec2(start.x, end.y), vec2(end.x, start.y), end);
+
+	for(int i = 0; i < dots.length(); i++) {
+		vec2 pos = dots[i];
+		float diff = length(pos - vec2(x, y));
+		if(diff < radius) {
+			if(diff < radius - 1) {
+				color = blue;
+			} else {
+				color = vec4(blue.rgb, radius - diff);
+			}
 		}
 	}
 }

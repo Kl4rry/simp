@@ -1,6 +1,6 @@
 use std::{
     error, fmt,
-    fs::{rename, File, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -86,7 +86,7 @@ fn open_file(path: impl AsRef<Path>) -> Result<File, std::io::Error> {
 
 fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
     let mut id = String::from('.');
-    id.push_str(&nanoid::nanoid!());
+    id.push_str(&nanoid::nanoid!(6));
     let mut buf = path.as_ref().to_path_buf();
     buf.set_file_name(id);
     buf
@@ -100,9 +100,18 @@ pub fn save_with_format(
 ) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    image.buffer().write_to(&mut file, format)?;
 
-    Ok(rename(temp_path, path)?)
+    if let Err(err) = image.buffer().write_to(&mut file, format) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(err)?;
+    }
+
+    if let Err(err) = fs::rename(&temp_path, path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(err)?;
+    }
+
+    Ok(())
 }
 
 #[inline]
@@ -120,7 +129,7 @@ pub fn tiff(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
         buffer.color(),
     )?;
 
-    Ok(rename(temp_path, path)?)
+    Ok(fs::rename(temp_path, path)?)
 }
 
 #[inline]
@@ -132,7 +141,7 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     let mut encoder = GifEncoder::new(file);
     encoder.encode_frames(frames)?;
 
-    Ok(rename(temp_path, path)?)
+    Ok(fs::rename(temp_path, path)?)
 }
 
 #[inline]
@@ -146,7 +155,7 @@ pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
         image.buffer().height(),
     )?;
 
-    Ok(rename(temp_path, path)?)
+    Ok(fs::rename(temp_path, path)?)
 }
 
 #[inline]
@@ -174,7 +183,7 @@ pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<
     let mut file = open_file(&temp_path)?;
     file.write_all(&*webp_data)?;
 
-    Ok(rename(temp_path, path)?)
+    Ok(fs::rename(temp_path, path)?)
 }
 
 #[inline]
@@ -191,5 +200,5 @@ pub fn webp(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
     let mut file = open_file(&temp_path)?;
     file.write_all(&*webp_data)?;
 
-    Ok(rename(temp_path, path)?)
+    Ok(fs::rename(temp_path, path)?)
 }

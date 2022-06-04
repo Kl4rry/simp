@@ -11,7 +11,7 @@ use glium::{
 };
 use image::imageops::FilterType;
 
-use crate::{min, rect::Rect, util::UserEvent, vec2::Vec2};
+use crate::{min, util::UserEvent, vec2::Vec2};
 
 pub mod image_view;
 use image_view::ImageView;
@@ -28,12 +28,9 @@ mod metadata;
 pub mod op_queue;
 use op_queue::{Op, OpQueue, Output};
 
-pub mod crop;
-
 pub mod load_image;
 
 mod save_image;
-use crop::Crop;
 
 mod undo_stack;
 
@@ -60,7 +57,6 @@ pub struct App {
     mouse_position: Vec2<f32>,
     current_filename: String,
     op_queue: OpQueue,
-    pub crop: Box<Crop>,
     resize: Resize,
     help_visible: bool,
     color_visible: bool,
@@ -198,7 +194,6 @@ impl App {
                     self.image_view = None;
                     stack.clear();
                     self.op_queue.image_list.clear();
-                    self.crop.cropping = false;
                     self.op_queue.cache.clear();
                 }
                 // indicates that the operation is done with no output
@@ -244,9 +239,7 @@ impl App {
                         MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                     };
 
-                    if self.crop.inner.is_none() {
-                        self.zoom(scroll, self.mouse_position);
-                    }
+                    self.zoom(scroll, self.mouse_position);
                 }
             }
             WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -316,7 +309,7 @@ impl App {
                                 }
                             }
                             VirtualKeyCode::X if self.modifiers.ctrl() => {
-                                self.crop.cropping = true;
+                                self.image_view.as_mut().unwrap().start_crop()
                             }
 
                             VirtualKeyCode::Z if self.modifiers.ctrl() => {
@@ -331,13 +324,17 @@ impl App {
                             }
 
                             VirtualKeyCode::Left | VirtualKeyCode::D => {
-                                if self.crop.inner.is_none() && self.view_available() {
+                                if self.view_available()
+                                    && self.image_view.as_ref().unwrap().cropping()
+                                {
                                     self.queue(Op::Prev);
                                 }
                             }
 
                             VirtualKeyCode::Right | VirtualKeyCode::A => {
-                                if self.crop.inner.is_none() && self.view_available() {
+                                if self.view_available()
+                                    && self.image_view.as_ref().unwrap().cropping()
+                                {
                                     self.queue(Op::Next);
                                 }
                             }
@@ -362,12 +359,18 @@ impl App {
                                 }
                             }
                             VirtualKeyCode::Escape => {
-                                let window_context = display.gl_window();
-                                let window = window_context.window();
-                                let fullscreen = window.fullscreen();
-                                if fullscreen.is_some() {
-                                    window.set_fullscreen(None);
-                                    self.fullscreen = false;
+                                if self.view_available()
+                                    && self.image_view.as_ref().unwrap().cropping()
+                                {
+                                    self.image_view.as_mut().unwrap().cancel_crop();
+                                } else {
+                                    let window_context = display.gl_window();
+                                    let window = window_context.window();
+                                    let fullscreen = window.fullscreen();
+                                    if fullscreen.is_some() {
+                                        window.set_fullscreen(None);
+                                        self.fullscreen = false;
+                                    }
                                 }
                             }
                             _ => (),
@@ -384,14 +387,10 @@ impl App {
                     }
                 }
                 '+' => {
-                    if self.crop.inner.is_none() {
-                        self.zoom(1.0, self.size / 2.0);
-                    }
+                    self.zoom(1.0, self.size / 2.0);
                 }
                 '-' => {
-                    if self.crop.inner.is_none() {
-                        self.zoom(-1.0, self.size / 2.0);
-                    }
+                    self.zoom(-1.0, self.size / 2.0);
                 }
                 _ => (),
             },
@@ -402,18 +401,19 @@ impl App {
     pub fn handle_ui(&mut self, display: &Display, ctx: &egui::Context) {
         if self.op_queue.working() {
             ctx.output().cursor_icon = CursorIcon::Progress;
-        } else if self.crop.cropping {
-            ctx.output().cursor_icon = CursorIcon::Crosshair;
         }
+
         if !self.fullscreen {
             self.menu_bar(display, ctx);
             self.bottom_bar(ctx);
         }
+
         self.main_area(display, ctx);
         self.resize_ui(ctx);
         self.help_ui(ctx);
         self.color_ui(ctx);
         self.metadata_ui(ctx);
+        self.crop_ui(ctx);
     }
 
     pub fn main_area(&mut self, _display: &Display, ctx: &egui::Context) {
@@ -432,36 +432,8 @@ impl App {
 
             if let Some(ref mut image) = self.image_view {
                 if res.dragged_by(egui::PointerButton::Primary) {
-                    let vec = res.drag_delta();
-                    let delta = Vec2::from((vec.x, vec.y));
-                    if self.crop.cropping {
-                        if let Some(ref mut inner) = self.crop.inner {
-                            inner.current += delta;
-                        } else {
-                            let cursor_pos = self.mouse_position;
-                            self.crop.inner = Some(crop::Inner {
-                                start: cursor_pos - delta,
-                                current: cursor_pos,
-                            });
-                        }
-                    } else {
-                        image.position += delta;
-                    }
-                } else if self.crop.cropping {
-                    if let Some(ref inner) = self.crop.inner {
-                        let mut size = inner.current - inner.start;
-                        *size.mut_x() = size.x().abs();
-                        *size.mut_y() = size.y().abs();
-
-                        let start = Vec2::new(
-                            min!(inner.start.x(), inner.current.x()),
-                            min!(inner.start.y(), inner.current.y()),
-                        );
-
-                        self.queue(Op::Crop(Rect::new(start, size)));
-                        self.crop.inner = None;
-                        self.crop.cropping = false;
-                    }
+                    let vec2 = res.drag_delta();
+                    image.position += Vec2::from((vec2.x, vec2.y));
                 }
             }
         });
@@ -471,14 +443,17 @@ impl App {
         TopBottomPanel::bottom("bottom").show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(), |ui| {
                 if self.image_view.is_some() {
-                    ui.add_enabled_ui(self.view_available() && !self.crop.cropping, |ui| {
-                        if ui.small_button("⬅").clicked() {
-                            self.queue(Op::Prev);
-                        }
-                        if ui.small_button("➡").clicked() {
-                            self.queue(Op::Next);
-                        }
-                    });
+                    ui.add_enabled_ui(
+                        self.view_available() && !self.image_view.as_ref().unwrap().cropping(),
+                        |ui| {
+                            if ui.small_button("⬅").clicked() {
+                                self.queue(Op::Prev);
+                            }
+                            if ui.small_button("➡").clicked() {
+                                self.queue(Op::Next);
+                            }
+                        },
+                    );
                 }
 
                 if let Some(image) = self.image_view.as_mut() {
@@ -556,8 +531,8 @@ impl App {
                         let h_focus = ui.text_edit_singleline(&mut self.resize.height).has_focus();
                         ui.end_row();
 
-                        self.resize.width.retain(|c| c.is_numeric());
-                        self.resize.width.retain(|c| c.is_numeric());
+                        self.resize.width.retain(|c| c.is_ascii_digit());
+                        self.resize.height.retain(|c| c.is_ascii_digit());
 
                         ui.with_layout(egui::Layout::right_to_left(), |ui| {
                             ui.label("Maintain aspect ratio: ");
@@ -621,13 +596,7 @@ impl App {
                         ui.with_layout(
                             egui::Layout::top_down_justified(egui::Align::Center),
                             |ui| {
-                                if ui
-                                    .add_enabled(
-                                        width.is_ok() && height.is_ok() && self.view_available(),
-                                        Button::new("Cancel"),
-                                    )
-                                    .clicked()
-                                {
+                                if ui.add(Button::new("Cancel")).clicked() {
                                     resized = true;
                                 }
                             },
@@ -656,6 +625,131 @@ impl App {
                     });
                 });
             self.resize.visible = open && !resized;
+        }
+    }
+
+    fn crop_ui(&mut self, ctx: &egui::Context) {
+        let mut crop = None;
+        if let Some(ref mut view) = self.image_view {
+            let mut cancel = false;
+            let size = view.rotated_size();
+            if let Some(rect) = view.crop.rect.as_mut() {
+                egui::Window::new("Crop")
+                    .id(egui::Id::new("crop window"))
+                    .collapsible(false)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        let old_width = rect.size.x();
+                        let old_height = rect.size.y();
+
+                        egui::Grid::new("crop grid").show(ui, |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                                ui.label("X: ");
+                            });
+                            ui.text_edit_singleline(&mut view.crop.x);
+                            ui.end_row();
+                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                                ui.label("Y: ");
+                            });
+                            ui.text_edit_singleline(&mut view.crop.y);
+                            ui.end_row();
+
+                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                                ui.label("Width: ");
+                            });
+                            ui.text_edit_singleline(&mut view.crop.width);
+                            ui.end_row();
+                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                                ui.label("Height: ");
+                            });
+                            ui.text_edit_singleline(&mut view.crop.height);
+                            ui.end_row();
+
+                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                                ui.label("Maintain aspect ratio: ");
+                            });
+                            ui.checkbox(&mut view.crop.maintain_aspect_ratio, "");
+                            ui.end_row();
+                            ui.end_row();
+
+                            *rect.position.mut_x() = min!(
+                                view.crop.x.parse::<u32>().unwrap_or(0) as f32,
+                                size.x() - 1.0
+                            );
+                            *rect.position.mut_y() = min!(
+                                view.crop.y.parse::<u32>().unwrap_or(0) as f32,
+                                size.y() - 1.0
+                            );
+
+                            *rect.size.mut_x() =
+                                (view.crop.width.parse::<u32>().unwrap_or(size.x() as u32) as f32)
+                                    .clamp(1.0, size.x() - rect.x());
+                            *rect.size.mut_y() =
+                                (view.crop.height.parse::<u32>().unwrap_or(size.y() as u32) as f32)
+                                    .clamp(1.0, size.y() - rect.y());
+
+                            if view.crop.x.parse::<u32>().is_ok() {
+                                view.crop.x = rect.x().to_string();
+                            }
+
+                            if view.crop.y.parse::<u32>().is_ok() {
+                                view.crop.y = rect.y().to_string();
+                            }
+
+                            if view.crop.width.parse::<u32>().is_ok() {
+                                view.crop.width = rect.width().to_string();
+                            }
+
+                            if view.crop.height.parse::<u32>().is_ok() {
+                                view.crop.height = rect.height().to_string();
+                            }
+
+                            view.crop.x.retain(|c| c.is_ascii_digit());
+                            view.crop.y.retain(|c| c.is_ascii_digit());
+                            view.crop.width.retain(|c| c.is_ascii_digit());
+                            view.crop.height.retain(|c| c.is_ascii_digit());
+
+                            if view.crop.maintain_aspect_ratio {
+                                if old_width != rect.width() {
+                                    let ratio = rect.width() / size.x();
+                                    let new_height = (ratio * size.y()) as u32;
+                                    *rect.size.mut_y() = new_height as f32;
+                                    view.crop.height = new_height.to_string();
+                                } else if old_height != rect.height() {
+                                    let ratio = rect.height() / size.y();
+                                    let new_width = (ratio * size.x()) as u32;
+                                    *rect.size.mut_x() = new_width as f32;
+                                    view.crop.width = new_width.to_string();
+                                }
+                            }
+
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui.add(Button::new("Cancel")).clicked() {
+                                        cancel = true;
+                                    }
+                                },
+                            );
+
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui.add(Button::new("Crop")).clicked() {
+                                        crop = Some(*rect);
+                                        cancel = true;
+                                    }
+                                },
+                            );
+                        });
+                    });
+            }
+            if cancel {
+                view.cancel_crop();
+            }
+        }
+        if let Some(rect) = crop {
+            self.queue(Op::Crop(rect));
         }
     }
 
@@ -704,7 +798,7 @@ impl App {
         }
     }
 
-    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2], display: &Display) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
         App {
             exit: false,
             delay: None,
@@ -718,7 +812,6 @@ impl App {
             modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
             current_filename: String::new(),
-            crop: Box::new(Crop::new(display)),
             resize: Resize::default(),
             help_visible: false,
             color_visible: false,

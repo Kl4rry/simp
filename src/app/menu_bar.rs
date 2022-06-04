@@ -195,7 +195,7 @@ impl App {
                         .add_enabled(self.view_available(), Button::new("Crop"))
                         .clicked()
                     {
-                        self.crop.cropping = true;
+                        self.image_view.as_mut().unwrap().start_crop();
                         ui.close_menu();
                     }
 

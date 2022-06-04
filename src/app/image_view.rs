@@ -24,11 +24,14 @@ use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
 
 use super::op_queue::Output;
 use crate::{
-    max, min,
+    max,
     rect::Rect,
     util::{Image, ImageData, UserEvent},
     vec2::Vec2,
 };
+
+mod crop;
+use crop::Crop;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
@@ -64,6 +67,7 @@ pub struct ImageView {
     pub saturation: f32,
     pub grayscale: bool,
     pub invert: bool,
+    pub crop: Crop,
     shader: Box<Program>,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
@@ -122,6 +126,7 @@ impl ImageView {
             index: 0,
             horizontal_flip: false,
             vertical_flip: false,
+            crop: Crop::new(display),
             shader: Box::new(
                 Program::from_source(
                     display,
@@ -199,6 +204,8 @@ impl ImageView {
                 },
             )
             .unwrap();
+
+        self.crop.render(target, size, position, self.scale);
     }
 
     pub fn scaled(&self) -> Vec2<f32> {
@@ -241,52 +248,6 @@ impl ImageView {
         }
 
         size
-    }
-
-    pub fn bounds(&self) -> Rect {
-        let mut vectors = [
-            Vector4::new(0.0, 0.0, 0.0, 1.0),
-            Vector4::new(0.0, self.size.y(), 0.0, 1.0),
-            Vector4::new(self.size.x(), 0.0, 0.0, 1.0),
-            Vector4::new(self.size.x(), self.size.y(), 0.0, 1.0),
-        ];
-
-        let position = self.position - self.scaled() / 2.0;
-        let scale = Matrix4::from_scale(self.scale);
-        let translation =
-            Matrix4::from_translation(cgmath::Vector3::new(position.x(), position.y(), 0.0));
-
-        let rotation = get_rotation_matrix(degrees_to_radians((self.rotation * 90) as f32));
-
-        let pre_rotation =
-            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
-        let post_rotation = Matrix4::from_translation(Vector3::new(
-            -self.size.x() / 2.0,
-            -self.size.y() / 2.0,
-            0.0,
-        ));
-        let final_rotation = (pre_rotation * rotation) * post_rotation;
-
-        let matrix = translation * scale * final_rotation;
-
-        for vector in &mut vectors {
-            (*vector) = matrix * (*vector);
-        }
-
-        let mut size = Vec2::default();
-        for outer in &vectors {
-            for inner in &vectors {
-                size.set_x(max!((inner.x - outer.x).abs(), size.x()));
-                size.set_y(max!((inner.y - outer.y).abs(), size.y()));
-            }
-        }
-
-        let position = Vec2::new(
-            min!(vectors[0].x, vectors[1].x, vectors[2].x, vectors[3].x),
-            min!(vectors[0].y, vectors[1].y, vectors[2].y, vectors[3].y),
-        );
-
-        Rect::new(position, size)
     }
 
     pub fn flip_horizontal(&mut self, display: &Display) {
@@ -332,36 +293,6 @@ impl ImageView {
     }
 
     pub fn crop(&self, cut: Rect, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
-        let bounds = self.bounds();
-        if !bounds.intersects(&cut) {
-            let _ = sender.send(Output::Done);
-            let _ = proxy.send_event(UserEvent::Wake);
-            return;
-        }
-
-        let left = max!(cut.left(), bounds.left()) - bounds.x();
-        let right = min!(cut.right(), bounds.right()) - bounds.x();
-
-        let top = max!(cut.top(), bounds.top()) - bounds.y();
-        let bottom = min!(cut.bottom(), bounds.bottom()) - bounds.y();
-
-        let width = right - left;
-        let height = bottom - top;
-
-        let normalized_width = 1.0 / (bounds.width() / width);
-        let normalized_height = 1.0 / (bounds.height() / height);
-
-        let mut normalized_x = 1.0 / (bounds.width() / left);
-        let mut normalized_y = 1.0 / (bounds.height() / top);
-
-        if self.horizontal_flip {
-            normalized_x = 1.0 - normalized_x - normalized_width;
-        }
-
-        if self.vertical_flip {
-            normalized_y = 1.0 - normalized_y - normalized_height;
-        }
-
         let rotation = self.rotation;
         let image_data = self.image_data.clone();
         let old_rotation = self.rotation;
@@ -386,16 +317,12 @@ impl ImageView {
                     _ => unreachable!(),
                 }
 
-                let real_width = (normalized_width * frame.buffer().width() as f32).ceil() as u32;
-                let real_height =
-                    (normalized_height * frame.buffer().height() as f32).ceil() as u32;
-
-                let real_x = (normalized_x * frame.buffer().width() as f32).floor() as u32;
-                let real_y = (normalized_y * frame.buffer().height() as f32).floor() as u32;
-
-                let image = frame
-                    .buffer()
-                    .crop_imm(real_x, real_y, real_width, real_height);
+                let image = frame.buffer().crop_imm(
+                    cut.x() as u32,
+                    cut.y() as u32,
+                    cut.width() as u32,
+                    cut.height() as u32,
+                );
 
                 new_frames.push(Image::with_delay(image, frame.delay));
             }
@@ -453,6 +380,32 @@ impl ImageView {
         } else if self.rotation < 0 {
             self.rotation += 4;
         }
+    }
+
+    pub fn rotated_size(&self) -> Vec2<f32> {
+        let mut size = self.size;
+        if self.rotation % 2 != 0 {
+            size.swap();
+        }
+        size
+    }
+
+    pub fn cropping(&self) -> bool {
+        self.crop.cropping()
+    }
+
+    pub fn start_crop(&mut self) {
+        let size = self.rotated_size();
+        let position = Vec2::new(0.0, 0.0);
+        self.crop.rect = Some(Rect { position, size });
+        self.crop.x = position.x().to_string();
+        self.crop.y = position.y().to_string();
+        self.crop.width = size.x().to_string();
+        self.crop.height = size.y().to_string();
+    }
+
+    pub fn cancel_crop(&mut self) {
+        self.crop.rect = None;
     }
 }
 

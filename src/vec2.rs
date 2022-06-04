@@ -47,6 +47,14 @@ impl<T: Copy> Vec2<T> {
     pub fn set_y(&mut self, y: T) {
         self.inner[1] = y;
     }
+
+    #[inline]
+    pub fn swap(&mut self) {
+        let x = self.inner[0];
+        let y = self.inner[1];
+        self.inner[0] = y;
+        self.inner[1] = x;
+    }
 }
 
 impl Vec2<f32> {
