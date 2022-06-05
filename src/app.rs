@@ -472,31 +472,37 @@ impl App {
             let mut window_size = self.size;
             window_size.set_y(window_size.y() - self.top_bar_size - self.bottom_bar_size);
 
+            const MARGIN: f32 = 20.0;
+
             if image_size.x() < window_size.x() {
                 image.position.set_x(self.size.x() / 2.0);
             } else {
-                if image.position.x() - image_size.x() / 2.0 > 0.0 {
-                    image.position.set_x(image_size.x() / 2.0);
+                if image.position.x() - image_size.x() / 2.0 > 0.0 + MARGIN {
+                    image.position.set_x(image_size.x() / 2.0 + MARGIN);
                 }
 
-                if image.position.x() + image_size.x() / 2.0 < window_size.x() {
-                    image.position.set_x(window_size.x() - image_size.x() / 2.0);
+                if image.position.x() + image_size.x() / 2.0 < window_size.x() - MARGIN {
+                    image
+                        .position
+                        .set_x(window_size.x() - image_size.x() / 2.0 - MARGIN);
                 }
             }
 
             if image_size.y() < window_size.y() {
                 image.position.set_y(self.size.y() / 2.0);
             } else {
-                if image.position.y() - image_size.y() / 2.0 > self.top_bar_size {
+                if image.position.y() - image_size.y() / 2.0 > self.top_bar_size + MARGIN {
                     image
                         .position
-                        .set_y(image_size.y() / 2.0 + self.top_bar_size);
+                        .set_y(image_size.y() / 2.0 + self.top_bar_size + MARGIN);
                 }
 
-                if image.position.y() + image_size.y() / 2.0 < window_size.y() + self.top_bar_size {
-                    image
-                        .position
-                        .set_y((window_size.y() - image_size.y() / 2.0) + self.top_bar_size);
+                if image.position.y() + image_size.y() / 2.0
+                    < window_size.y() + self.top_bar_size - MARGIN
+                {
+                    image.position.set_y(
+                        (window_size.y() - image_size.y() / 2.0) + self.top_bar_size - MARGIN,
+                    );
                 }
             }
         }
