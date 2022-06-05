@@ -428,13 +428,8 @@ impl App {
                 });
             }
 
-            let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
-
-            if let Some(ref mut image) = self.image_view {
-                if res.dragged_by(egui::PointerButton::Primary) {
-                    let vec2 = res.drag_delta();
-                    image.position += Vec2::from((vec2.x, vec2.y));
-                }
+            if let Some(ref mut view) = self.image_view {
+                view.handle_drag(ui);
             }
         });
     }
@@ -639,9 +634,6 @@ impl App {
                     .collapsible(false)
                     .resizable(false)
                     .show(ctx, |ui| {
-                        let old_width = rect.size.x();
-                        let old_height = rect.size.y();
-
                         egui::Grid::new("crop grid").show(ui, |ui| {
                             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                                 ui.label("X: ");
@@ -663,12 +655,6 @@ impl App {
                                 ui.label("Height: ");
                             });
                             ui.text_edit_singleline(&mut view.crop.height);
-                            ui.end_row();
-
-                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                                ui.label("Maintain aspect ratio: ");
-                            });
-                            ui.checkbox(&mut view.crop.maintain_aspect_ratio, "");
                             ui.end_row();
                             ui.end_row();
 
@@ -708,20 +694,6 @@ impl App {
                             view.crop.y.retain(|c| c.is_ascii_digit());
                             view.crop.width.retain(|c| c.is_ascii_digit());
                             view.crop.height.retain(|c| c.is_ascii_digit());
-
-                            if view.crop.maintain_aspect_ratio {
-                                if old_width != rect.width() {
-                                    let ratio = rect.width() / size.x();
-                                    let new_height = (ratio * size.y()) as u32;
-                                    *rect.size.mut_y() = new_height as f32;
-                                    view.crop.height = new_height.to_string();
-                                } else if old_height != rect.height() {
-                                    let ratio = rect.height() / size.y();
-                                    let new_width = (ratio * size.x()) as u32;
-                                    *rect.size.mut_x() = new_width as f32;
-                                    view.crop.width = new_width.to_string();
-                                }
-                            }
 
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),

@@ -135,8 +135,8 @@ impl System {
                     target.clear_color_srgb(0.172, 0.172, 0.172, 1.0);
 
                     // draw things behind egui here
-                    let dimensions = display.get_framebuffer_dimensions();
-                    let size = Vec2::new(dimensions.0 as f32, dimensions.1 as f32);
+                    let (width, height) = display.get_framebuffer_dimensions();
+                    let size = Vec2::new(width as f32, height as f32);
 
                     if let Some(image) = app.image_view.as_mut() {
                         image.render(&mut target, size);

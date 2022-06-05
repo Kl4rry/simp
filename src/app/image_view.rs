@@ -7,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use cgmath::{Matrix4, Ortho, Vector3, Vector4};
+use cgmath::{Deg, Matrix4, Ortho, Vector3, Vector4};
 use glium::{
     backend::glutin::Display,
     draw_parameters::DrawParameters,
@@ -166,7 +166,7 @@ impl ImageView {
         let scale = Matrix4::from_scale(self.scale);
         let translation = Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
 
-        let rotation = get_rotation_matrix(degrees_to_radians((self.rotation * 90) as f32));
+        let rotation = Matrix4::from_angle_z(Deg((self.rotation * 90) as f32));
 
         let pre_rotation =
             Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
@@ -220,15 +220,7 @@ impl ImageView {
             Vector4::new(self.size.x(), self.size.y(), 0.0, 1.0),
         ];
 
-        let rot = degrees_to_radians((self.rotation * 90) as f32);
-
-        #[rustfmt::skip]
-        let rotation = Matrix4::new(
-            rot.cos(), -(rot.sin()), 0.0, 0.0,
-            rot.sin(), rot.cos(), 0.0, 0.0,
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,
-        );
+        let rotation = Matrix4::from_angle_z(Deg((self.rotation * 90) as f32));
 
         let scale = Matrix4::from_scale(self.scale);
 
@@ -407,15 +399,20 @@ impl ImageView {
     pub fn cancel_crop(&mut self) {
         self.crop.rect = None;
     }
-}
 
-#[inline(always)]
-fn degrees_to_radians(deg: f32) -> f32 {
-    (std::f32::consts::PI / 180.0) * deg
-}
+    pub fn handle_drag(&mut self, ui: &egui::Ui) {
+        let dragging = self
+            .crop
+            .handle_drag(ui, self.position, self.rotated_size(), self.scale);
 
-fn get_rotation_matrix(rad: f32) -> Matrix4<f32> {
-    Matrix4::from_angle_z(cgmath::Rad(rad))
+        if !dragging {
+            let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
+            if res.dragged_by(egui::PointerButton::Primary) {
+                let vec2 = res.drag_delta();
+                self.position += Vec2::from((vec2.x, vec2.y));
+            }
+        }
+    }
 }
 
 fn get_texture(image: &DynamicImage, display: &Display) -> SrgbTexture2d {

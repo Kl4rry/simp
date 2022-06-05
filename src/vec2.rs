@@ -6,6 +6,8 @@ use std::{
 
 use glium::uniforms::{AsUniformValue, UniformValue};
 
+use crate::max;
+
 #[repr(C)]
 #[derive(Default, Copy, Clone, PartialEq, Debug)]
 pub struct Vec2<T> {
@@ -16,6 +18,12 @@ impl<T: Copy> Vec2<T> {
     #[inline]
     pub fn new(x: T, y: T) -> Self {
         Self { inner: [x, y] }
+    }
+
+    pub fn splat(size: T) -> Self {
+        Self {
+            inner: [size, size],
+        }
     }
 
     #[inline]
@@ -54,6 +62,15 @@ impl<T: Copy> Vec2<T> {
         let y = self.inner[1];
         self.inner[0] = y;
         self.inner[1] = x;
+    }
+}
+
+impl<T: Copy + std::cmp::PartialOrd> Vec2<T> {
+    #[inline]
+    pub fn max(&self, x: T, y: T) -> Self {
+        Self {
+            inner: [max!(self.inner[0], x), max!(self.inner[1], y)],
+        }
     }
 }
 
@@ -150,6 +167,36 @@ impl<T> From<(T, T)> for Vec2<T> {
         Self {
             inner: [inner.0, inner.1],
         }
+    }
+}
+
+impl From<Vec2<f32>> for egui::Pos2 {
+    fn from(vec2: Vec2<f32>) -> Self {
+        Self {
+            x: vec2.x(),
+            y: vec2.y(),
+        }
+    }
+}
+
+impl From<Vec2<f32>> for egui::Vec2 {
+    fn from(vec2: Vec2<f32>) -> Self {
+        Self {
+            x: vec2.x(),
+            y: vec2.y(),
+        }
+    }
+}
+
+impl From<egui::Vec2> for Vec2<f32> {
+    fn from(vec2: egui::Vec2) -> Self {
+        Self::new(vec2.x, vec2.y)
+    }
+}
+
+impl From<egui::Pos2> for Vec2<f32> {
+    fn from(vec2: egui::Pos2) -> Self {
+        Self::new(vec2.x, vec2.y)
     }
 }
 
