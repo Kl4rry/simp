@@ -367,11 +367,7 @@ impl ImageView {
 
     pub fn rotate(&mut self, rot: i32) {
         self.rotation += rot;
-        if self.rotation > 3 {
-            self.rotation -= 4;
-        } else if self.rotation < 0 {
-            self.rotation += 4;
-        }
+        self.rotation %= 4;
     }
 
     pub fn rotated_size(&self) -> Vec2<f32> {
@@ -406,7 +402,9 @@ impl ImageView {
             .handle_drag(ui, self.position, self.rotated_size(), self.scale);
 
         let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
-        if (res.dragged_by(egui::PointerButton::Primary) && !dragging) || res.dragged_by(egui::PointerButton::Middle) {
+        if (res.dragged_by(egui::PointerButton::Primary) && !dragging)
+            || res.dragged_by(egui::PointerButton::Middle)
+        {
             let vec2 = res.drag_delta();
             self.position += Vec2::from((vec2.x, vec2.y));
         }
