@@ -140,7 +140,7 @@ impl OpQueue {
                             self.sender.clone(),
                             path,
                             view.image_data.clone(),
-                            view.rotation,
+                            view.rotation(),
                             view.horizontal_flip,
                             view.vertical_flip,
                         )

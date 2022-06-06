@@ -15,7 +15,7 @@ use crate::util::{Image, ImageData, UserEvent};
 
 pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
     let image_data = view.image_data.clone();
-    let rotation = view.rotation;
+    let rotation = view.rotation();
     let horizontal_flip = view.horizontal_flip;
     let vertical_flip = view.vertical_flip;
 

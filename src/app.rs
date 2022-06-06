@@ -127,7 +127,7 @@ impl App {
                 }
                 Output::Crop(mut frames, rotation) => {
                     if let Some(ref mut view) = self.image_view {
-                        view.rotation = 0;
+                        view.set_rotation(0);
                         view.swap_frames(&mut frames, display);
                         stack.push(UndoFrame::Crop { frames, rotation })
                     }
@@ -148,7 +148,7 @@ impl App {
                             UndoFrame::Crop { frames, rotation } => {
                                 let view = self.image_view.as_mut().unwrap();
                                 view.swap_frames(frames, display);
-                                std::mem::swap(&mut view.rotation, rotation);
+                                view.swap_rotation(rotation);
                             }
                             UndoFrame::Resize(frames) => {
                                 let view = self.image_view.as_mut().unwrap();
@@ -177,7 +177,7 @@ impl App {
                             UndoFrame::Crop { frames, rotation } => {
                                 let view = self.image_view.as_mut().unwrap();
                                 view.swap_frames(frames, display);
-                                std::mem::swap(&mut view.rotation, rotation);
+                                view.swap_rotation(rotation);
                             }
                             UndoFrame::Resize(frames) => {
                                 let view = self.image_view.as_mut().unwrap();

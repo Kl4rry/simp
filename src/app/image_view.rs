@@ -54,7 +54,7 @@ pub struct ImageView {
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
     pub scale: f32,
-    pub rotation: i32,
+    rotation: i32,
     pub path: Option<PathBuf>,
     pub image_data: Arc<RwLock<ImageData>>,
     pub last_frame: Instant,
@@ -365,8 +365,21 @@ impl ImageView {
         self.vertices = VertexBuffer::new(display, &shape).unwrap();
     }
 
+    pub fn rotation(&self) -> i32 {
+        self.rotation
+    }
+
     pub fn rotate(&mut self, rot: i32) {
         self.rotation += rot;
+        self.rotation %= 4;
+    }
+
+    pub fn set_rotation(&mut self, rot: i32) {
+        self.rotation = rot % 4;
+    }
+
+    pub fn swap_rotation(&mut self, rot: &mut i32) {
+        std::mem::swap(&mut self.rotation, rot);
         self.rotation %= 4;
     }
 
