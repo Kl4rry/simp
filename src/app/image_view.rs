@@ -405,12 +405,10 @@ impl ImageView {
             .crop
             .handle_drag(ui, self.position, self.rotated_size(), self.scale);
 
-        if !dragging {
-            let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
-            if res.dragged_by(egui::PointerButton::Primary) {
-                let vec2 = res.drag_delta();
-                self.position += Vec2::from((vec2.x, vec2.y));
-            }
+        let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
+        if (res.dragged_by(egui::PointerButton::Primary) && !dragging) || res.dragged_by(egui::PointerButton::Middle) {
+            let vec2 = res.drag_delta();
+            self.position += Vec2::from((vec2.x, vec2.y));
         }
     }
 }
