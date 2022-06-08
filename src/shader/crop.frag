@@ -8,7 +8,8 @@ uniform vec2 size;
 
 const vec4 background_color = vec4(0.0, 0.0, 0.0, 0.5);
 const vec4 transparent = vec4(0.0, 0.0, 0.0, 0.0);
-const vec4 line_color = vec4(0.0, 0.0, 0.0, 1.0);
+const vec4 line_color1 = vec4(0.0, 0.0, 0.0, 1.0);
+const vec4 line_color2 = vec4(1.0, 1.0, 1.0, 1.0);
 
 vec3 inverseGamma(vec3 color, float gamma) {
     return pow(color, vec3(gamma));
@@ -26,16 +27,16 @@ void main() {
 	if(!(x < start_outer.x || x > end_outer.x || y < start_outer.y || y > end_outer.y)) {
 		if(floor(x) == floor(start_outer.x) || floor(x) == floor(end_outer.x) - 1) {
 			if(mod(round((y - start.y) / 5), 2) == 0) {
-				color = line_color;
+				color = line_color1;
 			} else {
-				color = transparent;
+				color = line_color2;
 			}
 			line = true;
 		} else if(floor(y) == floor(start_outer.y) || floor(y) == floor(end_outer.y) - 1) {
 			if(mod(round((x - start.x) / 5), 2) == 0) {
-				color = line_color;
+				color = line_color1;
 			} else {
-				color = transparent;
+				color = line_color2;
 			}
 			line = true;
 		}
