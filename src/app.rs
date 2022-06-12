@@ -325,7 +325,7 @@ impl App {
 
                             VirtualKeyCode::Left | VirtualKeyCode::D => {
                                 if self.view_available()
-                                    && self.image_view.as_ref().unwrap().cropping()
+                                    && !self.image_view.as_ref().unwrap().cropping()
                                 {
                                     self.queue(Op::Prev);
                                 }
@@ -333,7 +333,7 @@ impl App {
 
                             VirtualKeyCode::Right | VirtualKeyCode::A => {
                                 if self.view_available()
-                                    && self.image_view.as_ref().unwrap().cropping()
+                                    && !self.image_view.as_ref().unwrap().cropping()
                                 {
                                     self.queue(Op::Next);
                                 }
