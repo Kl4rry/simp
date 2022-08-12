@@ -58,14 +58,15 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | DDS       | ✅ DXT1, DXT3, DXT5                                                   | ❌               |
 | TGA       | ✅                                                                    | ✅               |
 | farbfeld  | ✅                                                                    | ✅               |
-| SVG       | ✅ Rastarized at 96 dpi                                               | ❌               |
+| SVG       | ✅ Rastarized at 96 dpi (2)                                           | ❌               |
 | PSD       | ✅                                                                    | ❌               |
-| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (2) | ❌               |
-| HEIF/HEIC | ❌ (3)                                                                | ❌               |
+| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
+| HEIF/HEIC | ❌ (4)                                                                | ❌               |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
-2. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
-3. HEIF/HEIC is not supported because it is currently very hard to link libheif on windows.
+2. SVGs are rastarized because Simp is primarly a bitmap image editor.
+3. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
+4. HEIF/HEIC is not supported because it is currently very hard to link libheif on windows.
 
 ## Keybinds
 
