@@ -9,7 +9,7 @@ use glium::{
         window::Fullscreen,
     },
 };
-use image::imageops::FilterType;
+use image::{imageops::FilterType, DynamicImage};
 
 use crate::{min, util::UserEvent, vec2::Vec2};
 
@@ -454,6 +454,23 @@ impl App {
                 if let Some(image) = self.image_view.as_mut() {
                     ui.label(format!("{} x {}", image.size.x(), image.size.y()));
                     ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
+
+                    let g = image.image_data.read();
+                    let buf = g.as_ref().unwrap().frames[0].buffer();
+                    let color_space = match buf {
+                        DynamicImage::ImageLuma8(_) => "Luma8",
+                        DynamicImage::ImageLumaA8(_) => "LumaA8",
+                        DynamicImage::ImageRgb8(_) => "Rgb8",
+                        DynamicImage::ImageRgba8(_) => "Rgba8",
+                        DynamicImage::ImageLuma16(_) => "Luma16",
+                        DynamicImage::ImageLumaA16(_) => "LumaA16",
+                        DynamicImage::ImageRgb16(_) => "Rgb16",
+                        DynamicImage::ImageRgba16(_) => "Rgba16",
+                        DynamicImage::ImageRgb32F(_) => "Rgb32F",
+                        DynamicImage::ImageRgba32F(_) => "Rgba32F",
+                        _ => panic!("Unknown color space name. This is a bug."),
+                    };
+                    ui.label(color_space);
                 }
             });
         });

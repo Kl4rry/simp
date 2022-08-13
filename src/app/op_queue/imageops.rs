@@ -1,5 +1,9 @@
-use image::{GenericImageView, ImageBuffer, Luma, LumaA, Pixel, Primitive, Rgb, Rgba};
-use num_traits::NumCast;
+use image::{
+    DynamicImage, GenericImageView, ImageBuffer, Luma, LumaA, Pixel, Primitive, Rgb, Rgba,
+};
+use num_traits::{NumCast, ToPrimitive};
+
+use crate::{max, min};
 
 pub trait ToGrayScale {
     type SubPixel;
@@ -72,6 +76,171 @@ where
     for (x, y, pixel) in image.pixels() {
         let grayscale = pixel.to_gray_scale();
         out.put_pixel(x, y, grayscale);
+    }
+
+    out
+}
+
+pub struct Hsl {
+    h: f64,
+    s: f64,
+    l: f64,
+}
+
+// from https://docs.rs/hsl/latest/src/hsl/lib.rs.html#1-206
+pub fn rgb2hsl<Sub: Primitive + ToPrimitive>(rgb: Rgb<Sub>) -> Hsl {
+    let mut h: f64;
+    let s: f64;
+    let l: f64;
+
+    let max: f64 = NumCast::from(Sub::DEFAULT_MAX_VALUE).unwrap();
+    let r: f64 = rgb.0[0].to_f64().unwrap() / max;
+    let g: f64 = rgb.0[1].to_f64().unwrap() / max;
+    let b: f64 = rgb.0[2].to_f64().unwrap() / max;
+
+    let max = max!(max!(r, g), b);
+    let min = min!(min!(r, g), b);
+
+    // Luminosity is the average of the max and min rgb color intensities.
+    l = (max + min) / 2_f64;
+
+    // Saturation
+    let delta: f64 = max - min;
+    if delta == 0_f64 {
+        // it's gray
+        return Hsl {
+            h: 0_f64,
+            s: 0_f64,
+            l: l,
+        };
+    }
+
+    // it's not gray
+    if l < 0.5_f64 {
+        s = delta / (max + min);
+    } else {
+        s = delta / (2_f64 - max - min);
+    }
+
+    // Hue
+    let r2 = (((max - r) / 6_f64) + (delta / 2_f64)) / delta;
+    let g2 = (((max - g) / 6_f64) + (delta / 2_f64)) / delta;
+    let b2 = (((max - b) / 6_f64) + (delta / 2_f64)) / delta;
+
+    h = match max {
+        x if x == r => b2 - g2,
+        x if x == g => (1_f64 / 3_f64) + r2 - b2,
+        _ => (2_f64 / 3_f64) + g2 - r2,
+    };
+
+    // Fix wraparounds
+    if h < 0 as f64 {
+        h += 1_f64;
+    } else if h > 1 as f64 {
+        h -= 1_f64;
+    }
+
+    // Hue is precise to milli-degrees, e.g. `74.52deg`.
+    let h_degrees = (h * 360_f64 * 100_f64).round() / 100_f64;
+    Hsl {
+        h: h_degrees,
+        s: s,
+        l: l,
+    }
+}
+
+// from https://docs.rs/hsl/latest/src/hsl/lib.rs.html#1-206
+pub fn hsl2rgb<Sub: Primitive + ToPrimitive>(hsl: Hsl) -> Rgb<Sub> {
+    let to_sub = |pre: f64| -> Sub {
+        NumCast::from((pre * Sub::DEFAULT_MAX_VALUE.to_f64().unwrap()).round()).unwrap()
+    };
+
+    if hsl.s == 0.0 {
+        // Achromatic, i.e., grey.
+        let l: Sub = to_sub(hsl.l);
+        return Rgb([l, l, l]);
+    }
+
+    let h = hsl.h / 360.0; // treat this as 0..1 instead of degrees
+    let s = hsl.s;
+    let l = hsl.l;
+
+    let q = if l < 0.5 {
+        l * (1.0 + s)
+    } else {
+        l + s - (l * s)
+    };
+    let p = 2.0 * l - q;
+
+    Rgb([
+        to_sub(hue_to_rgb(p, q, h + 1.0 / 3.0)),
+        to_sub(hue_to_rgb(p, q, h)),
+        to_sub(hue_to_rgb(p, q, h - 1.0 / 3.0)),
+    ])
+}
+
+fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
+    // Normalize
+    let t = if t < 0.0 {
+        t + 1.0
+    } else if t > 1.0 {
+        t - 1.0
+    } else {
+        t
+    };
+
+    if t < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * t
+    } else if t < 1.0 / 2.0 {
+        q
+    } else if t < 2.0 / 3.0 {
+        p + (q - p) * (2.0 / 3.0 - t) * 6.0
+    } else {
+        p
+    }
+}
+
+// TODO Improve fix this so it works with more color types nativly. It should also be done in place as allocating is expensive.
+pub fn adjust_saturation(image: DynamicImage, saturation: f64) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let (width, height) = image.dimensions();
+    let mut out = ImageBuffer::new(width, height);
+
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = image.get_pixel(x, y);
+
+            // this is an ugly way of the getting the alpha
+            let alpha = pixel.to_rgba().0[3];
+            let rgb = pixel.to_rgb();
+            let mut hsl = rgb2hsl(rgb);
+            let saturation = saturation / 100.0;
+            hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+            let rgb: Rgb<u8> = hsl2rgb(hsl);
+            out.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], alpha]));
+        }
+    }
+
+    out
+}
+
+// TODO same fixes as above.
+pub fn lighten(image: DynamicImage, value: f64) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let (width, height) = image.dimensions();
+    let mut out = ImageBuffer::new(width, height);
+
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = image.get_pixel(x, y);
+
+            // this is an ugly way of the getting the alpha
+            let alpha = pixel.to_rgba().0[3];
+            let rgb = pixel.to_rgb();
+            let mut hsl = rgb2hsl(rgb);
+            let light = value / 100.0;
+            hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+            let rgb: Rgb<u8> = hsl2rgb(hsl);
+            out.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], alpha]));
+        }
     }
 
     out

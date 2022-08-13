@@ -11,6 +11,7 @@ use std::{
 use glium::glutin::event_loop::EventLoopProxy;
 use image::{imageops::FilterType, DynamicImage};
 
+use self::imageops::{adjust_saturation, lighten};
 use super::{
     cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
     load_image::load_uncached, save_image,
@@ -187,9 +188,9 @@ impl OpQueue {
                 }
                 Op::Color {
                     hue,
-                    saturation: _,
+                    saturation,
                     contrast,
-                    lightness: _,
+                    lightness,
                     grayscale,
                     invert,
                 } => {
@@ -204,6 +205,17 @@ impl OpQueue {
                                 .buffer()
                                 .huerotate(hue as i32)
                                 .adjust_contrast(contrast);
+
+                            if saturation != 0.0 {
+                                buffer = DynamicImage::from(lighten(buffer, lightness as f64));
+                            }
+
+                            if lightness != 0.0 {
+                                buffer = DynamicImage::from(adjust_saturation(
+                                    buffer,
+                                    saturation as f64,
+                                ));
+                            }
 
                             if grayscale {
                                 buffer = DynamicImage::ImageLumaA8(imageops::grayscale(&buffer));
