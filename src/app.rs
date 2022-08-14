@@ -489,7 +489,7 @@ impl App {
             let mut window_size = self.size;
             window_size.set_y(window_size.y() - self.top_bar_size - self.bottom_bar_size);
 
-            const MARGIN: f32 = 20.0;
+            const MARGIN: f32 = 50.0;
 
             if image_size.x() < window_size.x() {
                 image.position.set_x(self.size.x() / 2.0);
