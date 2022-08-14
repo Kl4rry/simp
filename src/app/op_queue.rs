@@ -9,9 +9,15 @@ use std::{
 };
 
 use glium::glutin::event_loop::EventLoopProxy;
-use image::{imageops::FilterType, DynamicImage};
+use image::{
+    imageops::{
+        colorops::{contrast_in_place, huerotate_in_place},
+        FilterType,
+    },
+    DynamicImage,
+};
 
-use self::imageops::{adjust_saturation, lighten};
+use self::imageops::{adjust_saturation_in_place, lighten_in_place};
 use super::{
     cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
     load_image::load_uncached, save_image,
@@ -199,33 +205,34 @@ impl OpQueue {
                     let sender = self.sender.clone();
                     thread::spawn(move || {
                         let guard = image_data.read().unwrap();
-                        let mut new = Vec::new();
-                        for image in guard.frames.iter() {
-                            let mut buffer = image
-                                .buffer()
-                                .huerotate(hue as i32)
-                                .adjust_contrast(contrast);
+                        let mut new: Vec<_> = guard.frames.clone();
+                        drop(guard);
+                        for image in &mut new {
+                            let buffer = image.buffer_mut();
 
-                            if saturation != 0.0 {
-                                buffer = DynamicImage::from(lighten(buffer, lightness as f64));
+                            if hue != 0.0 {
+                                huerotate_in_place(buffer, hue as i32);
+                            }
+
+                            if contrast != 0.0 {
+                                contrast_in_place(buffer, contrast);
                             }
 
                             if lightness != 0.0 {
-                                buffer = DynamicImage::from(adjust_saturation(
-                                    buffer,
-                                    saturation as f64,
-                                ));
+                                lighten_in_place(buffer, lightness as f64);
+                            }
+
+                            if saturation != 0.0 {
+                                adjust_saturation_in_place(buffer, saturation as f64);
                             }
 
                             if grayscale {
-                                buffer = DynamicImage::ImageLumaA8(imageops::grayscale(&buffer));
+                                *buffer = DynamicImage::ImageLumaA8(imageops::grayscale(buffer));
                             }
 
                             if invert {
                                 buffer.invert();
                             }
-
-                            new.push(Image::with_delay(buffer, image.delay));
                         }
                         let _ = sender.send(Output::Color(new));
                         let _ = proxy.send_event(UserEvent::Wake);

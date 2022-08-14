@@ -181,7 +181,7 @@ pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<
 
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    file.write_all(&*webp_data)?;
+    file.write_all(&webp_data)?;
 
     Ok(fs::rename(temp_path, path)?)
 }
@@ -198,7 +198,7 @@ pub fn webp(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
 
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
-    file.write_all(&*webp_data)?;
+    file.write_all(&webp_data)?;
 
     Ok(fs::rename(temp_path, path)?)
 }

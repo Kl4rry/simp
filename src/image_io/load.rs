@@ -111,7 +111,7 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
 
     let svg = tree.svg_node();
     let mut pix_map =
-        tiny_skia::Pixmap::new((*svg).size.width() as u32, (*svg).size.height() as u32).unwrap();
+        tiny_skia::Pixmap::new(svg.size.width() as u32, svg.size.height() as u32).unwrap();
 
     resvg::render(
         &tree,

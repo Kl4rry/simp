@@ -183,6 +183,7 @@ fn main() {
             &format!("panic occurred: {}", panic_info),
             msgbox::IconType::Error,
         );
+        std::process::exit(1);
     }));
 
     let mut system = System::new();

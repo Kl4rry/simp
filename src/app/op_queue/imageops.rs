@@ -90,8 +90,6 @@ pub struct Hsl {
 // from https://docs.rs/hsl/latest/src/hsl/lib.rs.html#1-206
 pub fn rgb2hsl<Sub: Primitive + ToPrimitive>(rgb: Rgb<Sub>) -> Hsl {
     let mut h: f64;
-    let s: f64;
-    let l: f64;
 
     let max: f64 = NumCast::from(Sub::DEFAULT_MAX_VALUE).unwrap();
     let r: f64 = rgb.0[0].to_f64().unwrap() / max;
@@ -102,7 +100,7 @@ pub fn rgb2hsl<Sub: Primitive + ToPrimitive>(rgb: Rgb<Sub>) -> Hsl {
     let min = min!(min!(r, g), b);
 
     // Luminosity is the average of the max and min rgb color intensities.
-    l = (max + min) / 2_f64;
+    let l = (max + min) / 2_f64;
 
     // Saturation
     let delta: f64 = max - min;
@@ -111,16 +109,16 @@ pub fn rgb2hsl<Sub: Primitive + ToPrimitive>(rgb: Rgb<Sub>) -> Hsl {
         return Hsl {
             h: 0_f64,
             s: 0_f64,
-            l: l,
+            l,
         };
     }
 
     // it's not gray
-    if l < 0.5_f64 {
-        s = delta / (max + min);
+    let s = if l < 0.5_f64 {
+        delta / (max + min)
     } else {
-        s = delta / (2_f64 - max - min);
-    }
+        delta / (2_f64 - max - min)
+    };
 
     // Hue
     let r2 = (((max - r) / 6_f64) + (delta / 2_f64)) / delta;
@@ -136,17 +134,13 @@ pub fn rgb2hsl<Sub: Primitive + ToPrimitive>(rgb: Rgb<Sub>) -> Hsl {
     // Fix wraparounds
     if h < 0 as f64 {
         h += 1_f64;
-    } else if h > 1 as f64 {
+    } else if h > 1_f64 {
         h -= 1_f64;
     }
 
     // Hue is precise to milli-degrees, e.g. `74.52deg`.
     let h_degrees = (h * 360_f64 * 100_f64).round() / 100_f64;
-    Hsl {
-        h: h_degrees,
-        s: s,
-        l: l,
-    }
+    Hsl { h: h_degrees, s, l }
 }
 
 // from https://docs.rs/hsl/latest/src/hsl/lib.rs.html#1-206
@@ -200,48 +194,225 @@ fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
     }
 }
 
-// TODO Improve fix this so it works with more color types nativly. It should also be done in place as allocating is expensive.
-pub fn adjust_saturation(image: DynamicImage, saturation: f64) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-    let (width, height) = image.dimensions();
-    let mut out = ImageBuffer::new(width, height);
-
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = image.get_pixel(x, y);
-
-            // this is an ugly way of the getting the alpha
-            let alpha = pixel.to_rgba().0[3];
-            let rgb = pixel.to_rgb();
-            let mut hsl = rgb2hsl(rgb);
-            let saturation = saturation / 100.0;
-            hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
-            let rgb: Rgb<u8> = hsl2rgb(hsl);
-            out.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], alpha]));
-        }
-    }
-
-    out
+fn luma2hsl<Sub: Primitive + ToPrimitive>(luma: Sub) -> Hsl {
+    rgb2hsl(Rgb([luma, luma, luma]))
 }
 
-// TODO same fixes as above.
-pub fn lighten(image: DynamicImage, value: f64) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+// TODO
+// This function has a ton of duplication because the image crate is bad.
+// When the Enlargable trait becomes public it can be generic over subpixel.
+pub fn adjust_saturation_in_place(image: &mut DynamicImage, saturation: f64) {
     let (width, height) = image.dimensions();
-    let mut out = ImageBuffer::new(width, height);
-
-    for y in 0..height {
-        for x in 0..width {
-            let pixel = image.get_pixel(x, y);
-
-            // this is an ugly way of the getting the alpha
-            let alpha = pixel.to_rgba().0[3];
-            let rgb = pixel.to_rgb();
-            let mut hsl = rgb2hsl(rgb);
-            let light = value / 100.0;
-            hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-            let rgb: Rgb<u8> = hsl2rgb(hsl);
-            out.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], alpha]));
+    match image {
+        DynamicImage::ImageRgb8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgb = pixel.to_rgb();
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<u8> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, rgb);
+                }
+            }
         }
+        DynamicImage::ImageRgba8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgba = pixel.to_rgba();
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<u8> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgb16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgb = pixel.to_rgb();
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<u16> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, rgb);
+                }
+            }
+        }
+        DynamicImage::ImageRgba16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgba = pixel.to_rgba();
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<u16> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgb32F(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgb = pixel.to_rgb();
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<f32> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, rgb);
+                }
+            }
+        }
+        DynamicImage::ImageRgba32F(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let pixel = image.get_pixel(x, y);
+                    let rgba = pixel.to_rgba();
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    let saturation = saturation / 100.0;
+                    hsl.s = (hsl.s + saturation).clamp(0.0, 1.0);
+                    let rgb: Rgb<f32> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        _ => (),
     }
+}
 
-    out
+// TODO
+// This function has the same problem was the one above.
+pub fn lighten_in_place(image: &mut DynamicImage, value: f64) {
+    let light = value / 100.0;
+    let (width, height) = image.dimensions();
+    match image {
+        DynamicImage::ImageRgb8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<u8> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgba8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<u8> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgb16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<u16> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgba16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<u16> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgb32F(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<f32> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                }
+            }
+        }
+        DynamicImage::ImageRgba32F(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let rgba = *image.get_pixel(x, y);
+                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
+                    let mut hsl = rgb2hsl(rgb);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let rgb: Rgb<f32> = hsl2rgb(hsl);
+                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                }
+            }
+        }
+        DynamicImage::ImageLuma8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let luma = *image.get_pixel(x, y);
+                    let mut hsl = luma2hsl(luma[0]);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let luma: Luma<u8> = hsl2rgb(hsl).to_luma();
+                    image.put_pixel(x, y, luma);
+                }
+            }
+        }
+        DynamicImage::ImageLumaA8(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let luma = *image.get_pixel(x, y);
+                    let alpha = luma[1];
+                    let mut hsl = luma2hsl(luma[0]);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let luma: Luma<u8> = hsl2rgb(hsl).to_luma();
+                    image.put_pixel(x, y, LumaA([luma[0], alpha]));
+                }
+            }
+        }
+        DynamicImage::ImageLuma16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let luma = *image.get_pixel(x, y);
+                    let mut hsl = luma2hsl(luma[0]);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let luma: Luma<u16> = hsl2rgb(hsl).to_luma();
+                    image.put_pixel(x, y, luma);
+                }
+            }
+        }
+        DynamicImage::ImageLumaA16(image) => {
+            for y in 0..height {
+                for x in 0..width {
+                    let luma = *image.get_pixel(x, y);
+                    let alpha = luma[1];
+                    let mut hsl = luma2hsl(luma[0]);
+                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
+                    let luma: Luma<u16> = hsl2rgb(hsl).to_luma();
+                    image.put_pixel(x, y, LumaA([luma[0], alpha]));
+                }
+            }
+        }
+        _ => (),
+    }
 }

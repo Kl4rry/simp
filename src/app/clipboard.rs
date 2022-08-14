@@ -82,7 +82,7 @@ pub fn paste(proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
                 let width = image_data.width;
                 let height = image_data.height;
                 let mut data = Vec::with_capacity(image_data.bytes.len());
-                data.extend_from_slice(&*image_data.bytes);
+                data.extend_from_slice(&image_data.bytes);
                 let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data)
                     .unwrap();
                 let _ = sender.send(Output::ImageLoaded(
