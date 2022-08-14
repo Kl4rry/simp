@@ -90,6 +90,7 @@ pub enum UserEvent {
     ErrorMessage(String),
     QueueLoad(PathBuf),
     QueueSave(PathBuf),
+    QueueDelete(PathBuf),
     Wake,
     Exit,
 }

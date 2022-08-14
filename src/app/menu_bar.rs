@@ -215,7 +215,7 @@ impl App {
                     {
                         if let Some(ref view) = self.image_view {
                             if let Some(ref path) = view.path {
-                                delete(path, self.proxy.clone());
+                                delete(path.clone(), self.proxy.clone());
                             }
                         }
                         ui.close_menu();

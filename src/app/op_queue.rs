@@ -55,6 +55,7 @@ pub enum Op {
     Close,
     Copy,
     Paste,
+    Delete(PathBuf),
 }
 
 pub enum Output {
@@ -248,6 +249,22 @@ impl OpQueue {
                 Op::Paste => {
                     clipboard::paste(self.proxy.clone(), self.sender.clone());
                 }
+                Op::Delete(path) => match trash::delete(&path) {
+                    Ok(_) => match self.image_list.trash(&path) {
+                        Some(path) => {
+                            self.load(path, true);
+                        }
+                        None => {
+                            let _ = self.sender.send(Output::Close);
+                            let _ = self.proxy.send_event(UserEvent::Wake);
+                        }
+                    },
+                    Err(error) => {
+                        let _ = self
+                            .proxy
+                            .send_event(UserEvent::ErrorMessage(error.to_string()));
+                    }
+                },
             }
         }
     }

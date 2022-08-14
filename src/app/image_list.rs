@@ -170,6 +170,23 @@ impl ImageList {
             None
         }
     }
+
+    /// Removes path from list and returns the path to the new current image in the dir.
+    /// Will return None if there are no more images in the current dir.
+    pub fn trash(&mut self, path: &PathBuf) -> Option<PathBuf> {
+        self.cache.pop(path);
+        let mut lock = self.list.lock().unwrap();
+        if let Some(ref mut list) = *lock {
+            let index = self.index.load(Ordering::SeqCst);
+            let p = list[index].clone();
+            if p == *path {
+                list.remove(index);
+                return list.get(index).cloned();
+            }
+        }
+
+        None
+    }
 }
 
 fn next_index(index: usize, len: usize) -> usize {

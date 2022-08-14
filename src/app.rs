@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command, thread, time::Duration};
+use std::{path::PathBuf, process::Command, thread, time::Duration};
 
 use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
 use glium::{
@@ -211,6 +211,9 @@ impl App {
             UserEvent::QueueSave(path) => {
                 self.queue(Op::Save(path.to_path_buf()));
             }
+            UserEvent::QueueDelete(path) => {
+                self.queue(Op::Delete(path.to_path_buf()));
+            }
             UserEvent::ErrorMessage(error) => {
                 let error = error.clone();
                 thread::spawn(move || {
@@ -254,7 +257,7 @@ impl App {
                             VirtualKeyCode::Delete => {
                                 if let Some(ref view) = self.image_view {
                                     if let Some(ref path) = view.path {
-                                        delete(path, self.proxy.clone());
+                                        delete(path.clone(), self.proxy.clone());
                                     }
                                 }
                             }
@@ -815,8 +818,7 @@ impl App {
     }
 }
 
-pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
-    let path = path.as_ref().to_path_buf();
+pub fn delete(path: PathBuf, proxy: EventLoopProxy<UserEvent>) {
     thread::spawn(move || {
         let dialog = rfd::MessageDialog::new()
             .set_level(rfd::MessageLevel::Warning)
@@ -826,9 +828,7 @@ pub fn delete<P: AsRef<Path>>(path: P, proxy: EventLoopProxy<UserEvent>) {
             .show();
 
         if dialog {
-            if let Err(error) = trash::delete(path) {
-                let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
-            }
+            let _ = proxy.send_event(UserEvent::QueueDelete(path));
         }
     });
 }
