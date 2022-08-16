@@ -372,6 +372,9 @@ impl ImageView {
     pub fn rotate(&mut self, rot: i32) {
         self.rotation += rot;
         self.rotation %= 4;
+        while self.rotation < 0 {
+            self.rotation += 4;
+        }
     }
 
     pub fn set_rotation(&mut self, rot: i32) {
