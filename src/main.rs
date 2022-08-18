@@ -35,7 +35,7 @@ struct Config {
     maximized: bool,
 }
 
-pub struct System {
+pub struct WindowHandler {
     pub event_loop: EventLoop<UserEvent>,
     pub proxy: EventLoopProxy<UserEvent>,
     pub display: glium::Display,
@@ -43,7 +43,7 @@ pub struct System {
     pub app: App,
 }
 
-impl System {
+impl WindowHandler {
     pub fn new() -> Self {
         let config: Config = confy::load("simp").unwrap_or_default();
 
@@ -95,15 +95,15 @@ impl System {
     }
 }
 
-impl Default for System {
+impl Default for WindowHandler {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl System {
+impl WindowHandler {
     pub fn main_loop(self) {
-        let System {
+        let WindowHandler {
             event_loop,
             display,
             mut egui,
@@ -186,7 +186,7 @@ fn main() {
         std::process::exit(1);
     }));
 
-    let mut system = System::new();
+    let mut system = WindowHandler::new();
 
     let mut args: Vec<String> = env::args().collect();
     if args.len() > 1 {
