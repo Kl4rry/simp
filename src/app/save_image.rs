@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    sync::{mpsc::Sender, Arc, RwLock},
+    sync::{Arc, RwLock},
     thread,
 };
 
@@ -10,7 +10,7 @@ use image::{
     ImageOutputFormat,
 };
 
-use super::op_queue::Output;
+use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
     image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
@@ -39,7 +39,6 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
-    sender: Sender<Output>,
     mut path: PathBuf,
     image_data: Arc<RwLock<ImageData>>,
     rotation: i32,
@@ -101,10 +100,9 @@ pub fn save(
             }
         };
 
-        let _ = sender.send(Output::Done);
-        let _ = match res {
-            Ok(_) => proxy.send_event(UserEvent::Wake),
-            Err(error) => proxy.send_event(UserEvent::ErrorMessage(error.to_string())),
-        };
+        proxy.send_output(Output::Done);
+        if let Err(error) = res {
+            let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
+        }
     });
 }

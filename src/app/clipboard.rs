@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    sync::{mpsc::Sender, Arc, RwLock},
+    sync::{Arc, RwLock},
     thread,
 };
 
@@ -10,10 +10,13 @@ use image::{
     EncodableLayout, GenericImageView, ImageBuffer, Rgba,
 };
 
-use super::{image_view::ImageView, op_queue::Output};
+use super::{
+    image_view::ImageView,
+    op_queue::{Output, UserEventLoopProxyExt},
+};
 use crate::util::{Image, ImageData, UserEvent};
 
-pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
+pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>) {
     let image_data = view.image_data.clone();
     let rotation = view.rotation();
     let horizontal_flip = view.horizontal_flip;
@@ -70,12 +73,11 @@ pub fn copy(view: &ImageView, proxy: EventLoopProxy<UserEvent>, sender: Sender<O
             let _ = clipboard.set_image(image_data);
         }
 
-        let _ = sender.send(Output::Done);
-        let _ = proxy.send_event(UserEvent::Wake);
+        proxy.send_output(Output::Done);
     });
 }
 
-pub fn paste(proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
+pub fn paste(proxy: EventLoopProxy<UserEvent>) {
     thread::spawn(move || {
         if let Ok(mut clipboard) = arboard::Clipboard::new() {
             if let Ok(image_data) = clipboard.get_image() {
@@ -85,16 +87,14 @@ pub fn paste(proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
                 data.extend_from_slice(&image_data.bytes);
                 let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, data)
                     .unwrap();
-                let _ = sender.send(Output::ImageLoaded(
+                proxy.send_output(Output::ImageLoaded(
                     Arc::new(RwLock::new(ImageData::from(vec![Image::from(image)]))),
                     None,
                 ));
-                let _ = proxy.send_event(UserEvent::Wake);
                 return;
             }
         }
         // if it fails we must still notify the main thread that we are not doing work
-        let _ = sender.send(Output::Done);
-        let _ = proxy.send_event(UserEvent::Wake);
+        proxy.send_output(Output::Done);
     });
 }

@@ -68,142 +68,140 @@ impl App {
         !self.op_queue.working() && self.image_view.is_some()
     }
 
-    pub fn poll(&mut self, display: &Display) {
-        while let Some((output, stack)) = self.op_queue.poll() {
-            match output {
-                Output::ImageLoaded(image_data, path) => {
-                    stack.clear();
-                    self.current_filename = if let Some(path) = &path {
-                        self.op_queue.image_list.change_dir(&path);
-                        path.file_name().unwrap().to_str().unwrap().to_string()
-                    } else {
-                        String::new()
-                    };
+    pub fn handle_output(&mut self, display: &Display, output: Output) {
+        let stack = self.op_queue.undo_stack_mut();
+        match output {
+            Output::ImageLoaded(image_data, path) => {
+                stack.clear();
+                self.current_filename = if let Some(path) = &path {
+                    self.op_queue.image_list.change_dir(&path);
+                    path.file_name().unwrap().to_str().unwrap().to_string()
+                } else {
+                    String::new()
+                };
 
-                    let view = Box::new(ImageView::new(display, image_data, path));
-                    self.resize
-                        .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
-                    self.image_view = Some(view);
+                let view = Box::new(ImageView::new(display, image_data, path));
+                self.resize
+                    .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
+                self.image_view = Some(view);
 
-                    let window_context = display.gl_window();
-                    let window = window_context.window();
+                let window_context = display.gl_window();
+                let window = window_context.window();
 
-                    if self.current_filename.is_empty() {
-                        window.set_title("Simp");
-                    } else {
-                        window.set_title(&self.current_filename.to_string());
-                    }
+                if self.current_filename.is_empty() {
+                    window.set_title("Simp");
+                } else {
+                    window.set_title(&self.current_filename.to_string());
+                }
 
-                    self.best_fit();
-                }
-                Output::FlipHorizontal => {
-                    self.image_view.as_mut().unwrap().flip_horizontal(display);
-                    stack.push(UndoFrame::FlipHorizontal);
-                }
-                Output::FlipVertical => {
-                    self.image_view.as_mut().unwrap().flip_vertical(display);
-                    stack.push(UndoFrame::FlipVertical);
-                }
-                Output::Rotate(dir) => {
-                    self.image_view.as_mut().unwrap().rotate(dir);
-                    stack.push(UndoFrame::Rotate(dir));
-                }
-                Output::Resize(mut frames) => {
-                    if let Some(ref mut view) = self.image_view {
-                        view.swap_frames(&mut frames, display);
-                        stack.push(UndoFrame::Resize(frames));
-                    }
-                    self.best_fit();
-                }
-                Output::Color(mut frames) => {
-                    if let Some(ref mut view) = self.image_view {
-                        view.swap_frames(&mut frames, display);
-                        stack.push(UndoFrame::Color(frames));
-                        view.hue = 0.0;
-                        view.contrast = 0.0;
-                        view.saturation = 0.0;
-                        view.lightness = 0.0;
-                    }
-                }
-                Output::Crop(mut frames, rotation) => {
-                    if let Some(ref mut view) = self.image_view {
-                        view.set_rotation(0);
-                        view.swap_frames(&mut frames, display);
-                        stack.push(UndoFrame::Crop { frames, rotation })
-                    }
-                }
-                Output::Undo => {
-                    let frame = stack.undo();
-                    if let Some(frame) = frame {
-                        match frame {
-                            UndoFrame::Rotate(rot) => {
-                                self.image_view.as_mut().unwrap().rotate(-*rot);
-                            }
-                            UndoFrame::FlipHorizontal => {
-                                self.image_view.as_mut().unwrap().flip_horizontal(display);
-                            }
-                            UndoFrame::FlipVertical => {
-                                self.image_view.as_mut().unwrap().flip_vertical(display);
-                            }
-                            UndoFrame::Crop { frames, rotation } => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                                view.swap_rotation(rotation);
-                            }
-                            UndoFrame::Resize(frames) => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                            }
-                            UndoFrame::Color(frames) => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                            }
-                        }
-                    }
-                }
-                Output::Redo => {
-                    let frame = stack.redo();
-                    if let Some(frame) = frame {
-                        match frame {
-                            UndoFrame::Rotate(rot) => {
-                                self.image_view.as_mut().unwrap().rotate(*rot);
-                            }
-                            UndoFrame::FlipHorizontal => {
-                                self.image_view.as_mut().unwrap().flip_horizontal(display);
-                            }
-                            UndoFrame::FlipVertical => {
-                                self.image_view.as_mut().unwrap().flip_vertical(display);
-                            }
-                            UndoFrame::Crop { frames, rotation } => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                                view.swap_rotation(rotation);
-                            }
-                            UndoFrame::Resize(frames) => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                            }
-                            UndoFrame::Color(frames) => {
-                                let view = self.image_view.as_mut().unwrap();
-                                view.swap_frames(frames, display);
-                            }
-                        }
-                    }
-                }
-                Output::Close => {
-                    self.image_view = None;
-                    stack.clear();
-                    self.op_queue.image_list.clear();
-                    self.op_queue.cache.clear();
-                }
-                // indicates that the operation is done with no output
-                Output::Done => (),
+                self.best_fit();
             }
+            Output::FlipHorizontal => {
+                self.image_view.as_mut().unwrap().flip_horizontal(display);
+                stack.push(UndoFrame::FlipHorizontal);
+            }
+            Output::FlipVertical => {
+                self.image_view.as_mut().unwrap().flip_vertical(display);
+                stack.push(UndoFrame::FlipVertical);
+            }
+            Output::Rotate(dir) => {
+                self.image_view.as_mut().unwrap().rotate(dir);
+                stack.push(UndoFrame::Rotate(dir));
+            }
+            Output::Resize(mut frames) => {
+                if let Some(ref mut view) = self.image_view {
+                    view.swap_frames(&mut frames, display);
+                    stack.push(UndoFrame::Resize(frames));
+                }
+                self.best_fit();
+            }
+            Output::Color(mut frames) => {
+                if let Some(ref mut view) = self.image_view {
+                    view.swap_frames(&mut frames, display);
+                    stack.push(UndoFrame::Color(frames));
+                    view.hue = 0.0;
+                    view.contrast = 0.0;
+                    view.saturation = 0.0;
+                    view.lightness = 0.0;
+                }
+            }
+            Output::Crop(mut frames, rotation) => {
+                if let Some(ref mut view) = self.image_view {
+                    view.set_rotation(0);
+                    view.swap_frames(&mut frames, display);
+                    stack.push(UndoFrame::Crop { frames, rotation })
+                }
+            }
+            Output::Undo => {
+                let frame = stack.undo();
+                if let Some(frame) = frame {
+                    match frame {
+                        UndoFrame::Rotate(rot) => {
+                            self.image_view.as_mut().unwrap().rotate(-*rot);
+                        }
+                        UndoFrame::FlipHorizontal => {
+                            self.image_view.as_mut().unwrap().flip_horizontal(display);
+                        }
+                        UndoFrame::FlipVertical => {
+                            self.image_view.as_mut().unwrap().flip_vertical(display);
+                        }
+                        UndoFrame::Crop { frames, rotation } => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                            view.swap_rotation(rotation);
+                        }
+                        UndoFrame::Resize(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                        }
+                        UndoFrame::Color(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                        }
+                    }
+                }
+            }
+            Output::Redo => {
+                let frame = stack.redo();
+                if let Some(frame) = frame {
+                    match frame {
+                        UndoFrame::Rotate(rot) => {
+                            self.image_view.as_mut().unwrap().rotate(*rot);
+                        }
+                        UndoFrame::FlipHorizontal => {
+                            self.image_view.as_mut().unwrap().flip_horizontal(display);
+                        }
+                        UndoFrame::FlipVertical => {
+                            self.image_view.as_mut().unwrap().flip_vertical(display);
+                        }
+                        UndoFrame::Crop { frames, rotation } => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                            view.swap_rotation(rotation);
+                        }
+                        UndoFrame::Resize(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                        }
+                        UndoFrame::Color(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(frames, display);
+                        }
+                    }
+                }
+            }
+            Output::Close => {
+                self.image_view = None;
+                stack.clear();
+                self.op_queue.image_list.clear();
+                self.op_queue.cache.clear();
+            }
+            // indicates that the operation is done with no output
+            Output::Done => (),
         }
     }
 
     pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
-        self.poll(display);
         match event {
             UserEvent::QueueLoad(path) => {
                 self.queue(Op::LoadPath(path.to_path_buf(), false));
@@ -221,7 +219,12 @@ impl App {
                 });
             }
             UserEvent::Exit => self.exit = true,
-            UserEvent::Wake => (),
+            UserEvent::Output(output) => {
+                if let Some(output) = output.take() {
+                    self.op_queue.set_working(false);
+                    self.handle_output(display, output);
+                }
+            }
         };
     }
 

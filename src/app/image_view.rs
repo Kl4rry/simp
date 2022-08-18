@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     mem,
     path::PathBuf,
-    sync::{mpsc::Sender, Arc, RwLock},
+    sync::{Arc, RwLock},
     thread,
     time::{Duration, Instant},
 };
@@ -22,7 +22,7 @@ use glium::{
 };
 use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
 
-use super::op_queue::Output;
+use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
     max,
     rect::Rect,
@@ -284,7 +284,7 @@ impl ImageView {
         }
     }
 
-    pub fn crop(&self, cut: Rect, proxy: EventLoopProxy<UserEvent>, sender: Sender<Output>) {
+    pub fn crop(&self, cut: Rect, proxy: EventLoopProxy<UserEvent>) {
         let rotation = self.rotation;
         let image_data = self.image_data.clone();
         let old_rotation = self.rotation;
@@ -319,8 +319,7 @@ impl ImageView {
                 new_frames.push(Image::with_delay(image, frame.delay));
             }
 
-            let _ = sender.send(Output::Crop(new_frames, old_rotation));
-            let _ = proxy.send_event(UserEvent::Wake);
+            proxy.send_output(Output::Crop(new_frames, old_rotation));
         });
     }
 

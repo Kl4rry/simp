@@ -2,7 +2,6 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
-        mpsc::Sender,
         Arc, Mutex,
     },
     thread,
@@ -10,7 +9,7 @@ use std::{
 
 use glium::glutin::event_loop::EventLoopProxy;
 
-use super::op_queue::{prefetch, LoadingInfo, Output};
+use super::op_queue::{prefetch, LoadingInfo};
 use crate::{
     app::cache::Cache,
     util::{extensions::*, UserEvent},
@@ -24,7 +23,6 @@ pub struct ImageList {
     path: Option<PathBuf>,
     cache: Arc<Cache>,
     proxy: EventLoopProxy<UserEvent>,
-    sender: Sender<Output>,
     loading_info: Arc<Mutex<LoadingInfo>>,
 }
 
@@ -32,7 +30,6 @@ impl ImageList {
     pub fn new(
         cache: Arc<Cache>,
         proxy: EventLoopProxy<UserEvent>,
-        sender: Sender<Output>,
         loading_info: Arc<Mutex<LoadingInfo>>,
     ) -> Self {
         Self {
@@ -41,7 +38,6 @@ impl ImageList {
             path: None,
             proxy,
             cache,
-            sender,
             loading_info,
         }
     }
@@ -78,7 +74,6 @@ impl ImageList {
         let proxy = self.proxy.clone();
         let cache = self.cache.clone();
         let loading_info = self.loading_info.clone();
-        let sender = self.sender.clone();
         thread::spawn(move || {
             let mut list = Vec::new();
             let dirs = std::fs::read_dir(dir_path).unwrap();
@@ -109,22 +104,10 @@ impl ImageList {
             }
 
             let next = list[next_index(t_index.load(Ordering::SeqCst), list.len())].clone();
-            prefetch(
-                next,
-                cache.clone(),
-                proxy.clone(),
-                sender.clone(),
-                loading_info.clone(),
-            );
+            prefetch(next, cache.clone(), proxy.clone(), loading_info.clone());
 
             let prev = list[prev_index(t_index.load(Ordering::SeqCst), list.len())].clone();
-            prefetch(
-                prev,
-                cache.clone(),
-                proxy.clone(),
-                sender.clone(),
-                loading_info.clone(),
-            );
+            prefetch(prev, cache.clone(), proxy.clone(), loading_info.clone());
 
             *t_list.lock().unwrap() = Some(list);
         });
@@ -141,7 +124,6 @@ impl ImageList {
                 list[next_index(self.index.load(Ordering::SeqCst), list.len())].clone(),
                 self.cache.clone(),
                 self.proxy.clone(),
-                self.sender.clone(),
                 self.loading_info.clone(),
             );
             Some(list[self.index.load(Ordering::SeqCst)].clone())
@@ -162,7 +144,6 @@ impl ImageList {
                 list[prev_index(self.index.load(Ordering::SeqCst), list.len())].clone(),
                 self.cache.clone(),
                 self.proxy.clone(),
-                self.sender.clone(),
                 self.loading_info.clone(),
             );
             Some(list[self.index.load(Ordering::SeqCst)].clone())

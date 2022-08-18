@@ -2,6 +2,8 @@ use std::{path::PathBuf, time::Duration};
 
 use image::{Delay, DynamicImage, Frame, ImageBuffer, Rgba};
 
+use crate::app::op_queue::Output;
+
 pub mod extensions;
 
 #[macro_export]
@@ -91,7 +93,7 @@ pub enum UserEvent {
     QueueLoad(PathBuf),
     QueueSave(PathBuf),
     QueueDelete(PathBuf),
-    Wake,
+    Output(Option<Output>),
     Exit,
 }
 

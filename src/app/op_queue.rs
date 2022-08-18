@@ -1,10 +1,7 @@
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
-    sync::{
-        mpsc::{self, Receiver, Sender},
-        Arc, Mutex, RwLock,
-    },
+    sync::{Arc, Mutex, RwLock},
     thread,
 };
 
@@ -74,6 +71,16 @@ pub enum Output {
     Done,
 }
 
+pub trait UserEventLoopProxyExt {
+    fn send_output(&self, output: Output);
+}
+
+impl UserEventLoopProxyExt for EventLoopProxy<UserEvent> {
+    fn send_output(&self, output: Output) {
+        let _ = self.send_event(UserEvent::Output(Some(output)));
+    }
+}
+
 #[derive(Default)]
 pub struct LoadingInfo {
     target_file: Option<PathBuf>,
@@ -83,8 +90,6 @@ pub struct LoadingInfo {
 pub struct OpQueue {
     working: bool,
     loading_info: Arc<Mutex<LoadingInfo>>,
-    sender: Sender<Output>,
-    receiver: Receiver<Output>,
     proxy: EventLoopProxy<UserEvent>,
     stack: UndoStack,
     pub cache: Arc<Cache>,
@@ -93,23 +98,14 @@ pub struct OpQueue {
 
 impl OpQueue {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
-        let (sender, receiver) = mpsc::channel();
-
         const CACHE_SIZE: usize = 1_000_000_000;
         let cache = Arc::new(Cache::new(CACHE_SIZE));
         let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
 
         Self {
             working: false,
-            image_list: ImageList::new(
-                cache.clone(),
-                proxy.clone(),
-                sender.clone(),
-                loading_info.clone(),
-            ),
+            image_list: ImageList::new(cache.clone(), proxy.clone(), loading_info.clone()),
             loading_info,
-            sender,
-            receiver,
             stack: UndoStack::new(),
             proxy,
             cache,
@@ -128,8 +124,7 @@ impl OpQueue {
                         self.load(path, true);
                     }
                     None => {
-                        let _ = self.sender.send(Output::Done);
-                        let _ = self.proxy.send_event(UserEvent::Wake);
+                        self.proxy.send_output(Output::Done);
                     }
                 },
                 Op::Prev => match self.image_list.prev() {
@@ -137,15 +132,13 @@ impl OpQueue {
                         self.load(path, true);
                     }
                     None => {
-                        let _ = self.sender.send(Output::Done);
-                        let _ = self.proxy.send_event(UserEvent::Wake);
+                        self.proxy.send_output(Output::Done);
                     }
                 },
                 Op::Save(path) => {
                     if let Some(view) = view {
                         save_image::save(
                             self.proxy.clone(),
-                            self.sender.clone(),
                             path,
                             view.image_data.clone(),
                             view.rotation(),
@@ -155,33 +148,26 @@ impl OpQueue {
                     }
                 }
                 Op::Rotate(dir) => {
-                    let _ = self.sender.send(Output::Rotate(dir));
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::Rotate(dir));
                 }
                 Op::FlipHorizontal => {
-                    let _ = self.sender.send(Output::FlipHorizontal);
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::FlipHorizontal);
                 }
                 Op::FlipVertical => {
-                    let _ = self.sender.send(Output::FlipVertical);
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::FlipVertical);
                 }
                 Op::Undo => {
-                    let _ = self.sender.send(Output::Undo);
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::Undo);
                 }
                 Op::Redo => {
-                    let _ = self.sender.send(Output::Redo);
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::Redo);
                 }
                 Op::Close => {
-                    let _ = self.sender.send(Output::Close);
-                    let _ = self.proxy.send_event(UserEvent::Wake);
+                    self.proxy.send_output(Output::Close);
                 }
                 Op::Resize(size, resample) => {
                     let image_data = view.as_ref().unwrap().image_data.clone();
                     let proxy = self.proxy.clone();
-                    let sender = self.sender.clone();
                     thread::spawn(move || {
                         let guard = image_data.read().unwrap();
                         let mut new = Vec::new();
@@ -189,8 +175,7 @@ impl OpQueue {
                             let buffer = image.buffer().resize_exact(size.x(), size.y(), resample);
                             new.push(Image::with_delay(buffer, image.delay));
                         }
-                        let _ = sender.send(Output::Resize(new));
-                        let _ = proxy.send_event(UserEvent::Wake);
+                        proxy.send_output(Output::Resize(new));
                     });
                 }
                 Op::Color {
@@ -203,7 +188,6 @@ impl OpQueue {
                 } => {
                     let image_data = view.as_ref().unwrap().image_data.clone();
                     let proxy = self.proxy.clone();
-                    let sender = self.sender.clone();
                     thread::spawn(move || {
                         let guard = image_data.read().unwrap();
                         let mut new: Vec<_> = guard.frames.clone();
@@ -235,19 +219,17 @@ impl OpQueue {
                                 buffer.invert();
                             }
                         }
-                        let _ = sender.send(Output::Color(new));
-                        let _ = proxy.send_event(UserEvent::Wake);
+                        proxy.send_output(Output::Color(new));
                     });
                 }
                 Op::Crop(rect) => {
-                    view.unwrap()
-                        .crop(rect, self.proxy.clone(), self.sender.clone());
+                    view.unwrap().crop(rect, self.proxy.clone());
                 }
                 Op::Copy => {
-                    clipboard::copy(view.unwrap(), self.proxy.clone(), self.sender.clone());
+                    clipboard::copy(view.unwrap(), self.proxy.clone());
                 }
                 Op::Paste => {
-                    clipboard::paste(self.proxy.clone(), self.sender.clone());
+                    clipboard::paste(self.proxy.clone());
                 }
                 Op::Delete(path) => match trash::delete(&path) {
                     Ok(_) => match self.image_list.trash(&path) {
@@ -255,8 +237,7 @@ impl OpQueue {
                             self.load(path, true);
                         }
                         None => {
-                            let _ = self.sender.send(Output::Close);
-                            let _ = self.proxy.send_event(UserEvent::Wake);
+                            self.proxy.send_output(Output::Close);
                         }
                     },
                     Err(error) => {
@@ -269,14 +250,8 @@ impl OpQueue {
         }
     }
 
-    pub fn poll(&mut self) -> Option<(Output, &mut UndoStack)> {
-        match self.receiver.try_recv() {
-            Ok(output) => {
-                self.working = false;
-                Some((output, &mut self.stack))
-            }
-            Err(_) => None,
-        }
+    pub fn undo_stack_mut(&mut self) -> &mut UndoStack {
+        &mut self.stack
     }
 
     fn load(&self, path_buf: PathBuf, use_cache: bool) {
@@ -298,15 +273,12 @@ impl OpQueue {
             let mut guard = self.loading_info.lock().unwrap();
             guard.loading.remove(&path_buf);
             guard.target_file = None;
-            self.sender
-                .send(Output::ImageLoaded(images, Some(path_buf)))
-                .unwrap();
-            let _ = self.proxy.send_event(UserEvent::Wake);
+            self.proxy
+                .send_output(Output::ImageLoaded(images, Some(path_buf)));
             return;
         }
 
         let cache = self.cache.clone();
-        let sender = self.sender.clone();
         let proxy = self.proxy.clone();
         let loading_info = self.loading_info.clone();
         thread::spawn(move || {
@@ -319,13 +291,10 @@ impl OpQueue {
                 Ok(images) => {
                     let images = Arc::new(RwLock::new(images));
                     cache.put(path_buf.clone(), images.clone());
-                    sender
-                        .send(Output::ImageLoaded(images, Some(path_buf)))
-                        .unwrap();
-                    let _ = proxy.send_event(UserEvent::Wake);
+                    proxy.send_output(Output::ImageLoaded(images, Some(path_buf)));
                 }
                 Err(error) => {
-                    let _ = sender.send(Output::Done);
+                    proxy.send_output(Output::Done);
                     let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
                 }
             };
@@ -335,13 +304,16 @@ impl OpQueue {
     pub fn working(&self) -> bool {
         self.working
     }
+
+    pub fn set_working(&mut self, working: bool) {
+        self.working = working;
+    }
 }
 
 pub fn prefetch(
     path: impl AsRef<Path>,
     cache: Arc<Cache>,
     proxy: EventLoopProxy<UserEvent>,
-    sender: Sender<Output>,
     loading_info: Arc<Mutex<LoadingInfo>>,
 ) {
     let path_buf = path.as_ref().to_path_buf();
@@ -369,10 +341,7 @@ pub fn prefetch(
                 let images = Arc::new(RwLock::new(images));
                 cache.put(path_buf.clone(), images.clone());
                 if guard.target_file.as_ref() == Some(&path_buf) {
-                    sender
-                        .send(Output::ImageLoaded(images, Some(path_buf.clone())))
-                        .unwrap();
-                    let _ = proxy.send_event(UserEvent::Wake);
+                    proxy.send_output(Output::ImageLoaded(images, Some(path_buf.clone())));
                 }
             }
             Err(error) => {
