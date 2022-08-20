@@ -87,20 +87,21 @@ impl Crop {
     pub fn render(
         &self,
         target: &mut glium::Frame,
-        size: Vec2<f32>,
+        window_size: Vec2<f32>,
         position: Vec2<f32>,
+        image_size: Vec2<f32>,
         scale: f32,
     ) {
         if let Some(ref rect) = self.rect {
-            let start = rect.position * scale + position;
-            let end = (rect.position + rect.size) * scale + position;
+            let start = position - (image_size / 2.0) * scale + rect.position * scale;
+            let end = position - (image_size / 2.0) * scale + (rect.position + rect.size) * scale;
 
             target
                 .draw(
                     &self.vertices,
                     &self.indices,
                     &self.shader,
-                    &uniform! { start: start, end: end, size: *size },
+                    &uniform! { start: start, end: end, size: *window_size },
                     &DrawParameters {
                         blend: Blend::alpha_blending(),
                         ..DrawParameters::default()

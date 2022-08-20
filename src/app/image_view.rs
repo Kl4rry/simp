@@ -205,7 +205,8 @@ impl ImageView {
             )
             .unwrap();
 
-        self.crop.render(target, size, position, self.scale);
+        self.crop
+            .render(target, size, self.position, self.rotated_size(), self.scale);
     }
 
     pub fn scaled(&self) -> Vec2<f32> {
