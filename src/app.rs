@@ -94,7 +94,7 @@ impl App {
                     window.set_title(&self.current_filename.to_string());
                 }
 
-                self.best_fit();
+                self.largest_fit();
             }
             Output::FlipHorizontal => {
                 self.image_view.as_mut().unwrap().flip_horizontal(display);
@@ -113,7 +113,6 @@ impl App {
                     view.swap_frames(&mut frames, display);
                     stack.push(UndoFrame::Resize(frames));
                 }
-                self.best_fit();
             }
             Output::Color(mut frames) => {
                 if let Some(ref mut view) = self.image_view {
