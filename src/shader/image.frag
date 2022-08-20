@@ -47,9 +47,10 @@ vec3 rgb2hsl(vec3 rgb) {
     return result;
 }
 
-vec3 hsl2rgb(in vec3 c) {
-    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-    return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0 * c.z - 1.0));
+vec3 hsl2rgb(vec3 hsl) {
+    hsl = clamp(hsl, 0, 1);
+    vec3 rgb = clamp(abs(mod(hsl.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+    return hsl.z + hsl.y * (rgb - 0.5) * (1.0 - abs(2.0 * hsl.z - 1.0));
 }
 
 vec3 gammaCorrection(vec3 color, float gamma) {
@@ -78,7 +79,7 @@ vec3 rotateHue(vec3 p, float hue) {
     float new_g = matrix[3] * p.r + matrix[4] * p.g + matrix[5] * p.b;
     float new_b = matrix[6] * p.r + matrix[7] * p.g + matrix[8] * p.b;
 
-    return vec3(clamp(new_r, 0, max_value), clamp(new_g, 0, max_value), clamp(new_b, 0, max_value));
+    return vec3(clamp(new_r, 0, 1), clamp(new_g, 0, 1), clamp(new_b, 0, 1));
 }
 
 float adjustContrastPixel(float c, float percent) {
@@ -99,7 +100,7 @@ vec3 adjustContrast(vec3 p, float contrast) {
 vec3 lighten(vec3 p, float value) {
     float light = (value / 100);
     vec3 hsl = rgb2hsl(p);
-    hsl.z = clamp(hsl.z + light, 0, 1);
+    hsl.z = clamp(hsl.z + light, 0, 1.0);
     return hsl2rgb(hsl);
 }
 

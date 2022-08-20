@@ -122,6 +122,10 @@ impl App {
                     view.contrast = 0.0;
                     view.saturation = 0.0;
                     view.lightness = 0.0;
+                    view.grayscale = false;
+                    view.invert = false;
+                    let window = display.gl_window();
+                    window.window().request_redraw();
                 }
             }
             Output::Crop(mut frames, rotation) => {
