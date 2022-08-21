@@ -151,6 +151,18 @@ impl ImageView {
         }
     }
 
+    pub fn get_rotation_mat(&self) -> Matrix4<f32> {
+        let rotation = Matrix4::from_angle_z(Deg((self.rotation * 90) as f32));
+        let pre_rotation =
+            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
+        let post_rotation = Matrix4::from_translation(Vector3::new(
+            -self.size.x() / 2.0,
+            -self.size.y() / 2.0,
+            0.0,
+        ));
+        (pre_rotation * rotation) * post_rotation
+    }
+
     pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
         let ortho: Matrix4<f32> = Ortho {
             left: 0.0,
@@ -166,18 +178,8 @@ impl ImageView {
         let scale = Matrix4::from_scale(self.scale);
         let translation = Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
 
-        let rotation = Matrix4::from_angle_z(Deg((self.rotation * 90) as f32));
-
-        let pre_rotation =
-            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
-        let post_rotation = Matrix4::from_translation(Vector3::new(
-            -self.size.x() / 2.0,
-            -self.size.y() / 2.0,
-            0.0,
-        ));
-        let final_rotation = (pre_rotation * rotation) * post_rotation;
-
-        let matrix = ortho * translation * scale * final_rotation;
+        let rotation = self.get_rotation_mat();
+        let matrix = ortho * translation * scale * rotation;
 
         let raw: [[f32; 4]; 4] = matrix.into();
 

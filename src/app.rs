@@ -479,7 +479,88 @@ impl App {
                         DynamicImage::ImageRgba32F(_) => "Rgba32F",
                         _ => panic!("Unknown color space name. This is a bug."),
                     };
-                    ui.label(color_space);
+
+                    {
+                        let pos = (((self.mouse_position
+                            - image.position
+                            - (image.rotated_size() / 2.0) * image.scale)
+                            + image.rotated_size() * image.scale)
+                            / image.scale)
+                            .floor()
+                            .map(|v| v as i64);
+
+                        if pos.x() >= 0
+                            && pos.y() >= 0
+                            && pos.x() < image.rotated_size().x() as i64
+                            && pos.y() < image.rotated_size().y() as i64
+                        {
+                            let guard = image.image_data.read().unwrap();
+                            let frame = &guard.frames[image.index];
+                            let buffer = frame.buffer();
+
+                            let mut pos = pos.map(|v| v as u32);
+                            match image.rotation() {
+                                0 => (),
+                                1 => {
+                                    pos.swap();
+                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
+                                },
+                                2 => {
+                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
+                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
+                                },
+                                3 => {
+                                    pos.swap();
+                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
+                                },
+                                _ => panic!("rotated more then 360 degrees"),
+                            }
+
+                            if image.horizontal_flip {
+                                *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
+                            }
+
+                            if image.vertical_flip {
+                                *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
+                            }
+
+                            fn p2s<P: >(p: P) -> String
+                            where
+                                P: image::Pixel,
+                                <P as image::Pixel>::Subpixel: ToString,
+                            {
+                                let channels = p.channels();
+                                let mut out = String::new();
+
+                                for i in 0..channels.len() {
+                                    out.push_str(&channels[i].to_string());
+                                    if i < channels.len() - 1 {
+                                        out.push_str(", ");
+                                    }
+                                }
+
+                                out
+                            }
+
+                            #[rustfmt::skip]
+                            let color_str = match buffer {
+                                DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgb8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgba8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageLuma16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageLumaA16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgb16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgba16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgb32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                _ => panic!("Unknown color space name. This is a bug."),
+                            };
+                            ui.label(format!("{}: {}", color_space, color_str));
+                            return;
+                        }
+                        ui.label(color_space);
+                    }
                 }
             });
         });

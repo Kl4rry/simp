@@ -63,6 +63,26 @@ impl<T: Copy> Vec2<T> {
         self.inner[0] = y;
         self.inner[1] = x;
     }
+
+    pub fn map<U, F>(self, f: F) -> Vec2<U>
+    where
+        U: Copy,
+        F: Copy + FnOnce(T) -> U,
+    {
+        Vec2::new(f(self.inner[0]), f(self.inner[1]))
+    }
+}
+
+impl<T: Copy + num_traits::Float> Vec2<T> {
+    #[inline]
+    pub fn round(self) -> Self {
+        Self::new(self.inner[0].round(), self.inner[1].round())
+    }
+
+    #[inline]
+    pub fn floor(self) -> Self {
+        Self::new(self.inner[0].floor(), self.inner[1].floor())
+    }
 }
 
 impl<T: Copy + std::cmp::PartialOrd> Vec2<T> {
