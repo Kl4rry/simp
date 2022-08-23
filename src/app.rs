@@ -766,6 +766,8 @@ impl App {
                             ui.end_row();
                             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                                 ui.label("Height: ");
+                                // stupid space to prevent even stupider linebreak in button text
+                                ui.add_space(0.0);
                             });
                             ui.text_edit_singleline(&mut view.crop.height);
                             ui.end_row();
