@@ -12,7 +12,7 @@ use image::{
 
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
-    image_io::save::{farbfeld, gif, save_with_format, tiff, webp, webp_animation},
+    image_io::save::{exr, farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
 };
 
@@ -28,7 +28,8 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
         .add_filter("TIFF", &["tiff", "tif"])
         .add_filter("WEBP", &["webp"])
         .add_filter("Targaformat", &["ff", "farbfeld"])
-        .add_filter("TGA", &["tga"]);
+        .add_filter("TGA", &["tga"])
+        .add_filter("EXR", &["exr"]);
 
     thread::spawn(move || {
         if let Some(path) = dialog.save_file() {
@@ -94,6 +95,7 @@ pub fn save(
                     webp(path, &frames[0])
                 }
             }
+            "exr" => exr(path, &frames[0]),
             _ => {
                 path.set_extension("png");
                 save_with_format(path, &frames[0], ImageOutputFormat::Png)

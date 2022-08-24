@@ -1,18 +1,20 @@
 use std::{
     error, fmt,
     fs::{self, File, OpenOptions},
-    io::Write,
+    io::{BufWriter, Write},
     path::{Path, PathBuf},
 };
 
 use image::{
-    codecs::{farbfeld::FarbfeldEncoder, gif::GifEncoder, tiff::TiffEncoder},
-    EncodableLayout, Frame, GenericImageView, ImageError, ImageOutputFormat,
+    codecs::{
+        farbfeld::FarbfeldEncoder, gif::GifEncoder, openexr::OpenExrEncoder, tiff::TiffEncoder,
+    },
+    EncodableLayout, Frame, GenericImageView, ImageEncoder, ImageError, ImageOutputFormat,
 };
 use libwebp::WebPEncodeLosslessRGBA;
 use webp_animation::{Encoder, EncoderOptions, EncodingConfig};
 
-use crate::util::Image;
+use crate::util::{HasAlpha, Image};
 
 type SaveResult<T> = Result<T, SaveError>;
 
@@ -99,9 +101,9 @@ pub fn save_with_format(
     format: ImageOutputFormat,
 ) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
-    let mut file = open_file(&temp_path)?;
+    let file = open_file(&temp_path)?;
 
-    if let Err(err) = image.buffer().write_to(&mut file, format) {
+    if let Err(err) = image.buffer().write_to(&mut BufWriter::new(file), format) {
         let _ = fs::remove_file(&temp_path);
         return Err(err)?;
     }
@@ -119,7 +121,7 @@ pub fn tiff(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
 
-    let encoder = TiffEncoder::new(file);
+    let encoder = TiffEncoder::new(BufWriter::new(file));
     let buffer = image.buffer();
 
     encoder.encode(
@@ -138,7 +140,7 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     let file = open_file(&temp_path)?;
 
     let frames: Vec<Frame> = images.into_iter().map(|image| image.into()).collect();
-    let mut encoder = GifEncoder::new(file);
+    let mut encoder = GifEncoder::new(BufWriter::new(file));
     encoder.encode_frames(frames)?;
 
     Ok(fs::rename(temp_path, path)?)
@@ -148,7 +150,7 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
 pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
-    let encoder = FarbfeldEncoder::new(file);
+    let encoder = FarbfeldEncoder::new(BufWriter::new(file));
     encoder.encode(
         image.buffer().to_rgba16().as_bytes(),
         image.buffer().width(),
@@ -199,6 +201,32 @@ pub fn webp(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
     file.write_all(&webp_data)?;
+
+    Ok(fs::rename(temp_path, path)?)
+}
+
+#[inline]
+pub fn exr(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
+    let temp_path = get_temp_path(path.as_ref());
+    let file = open_file(&temp_path)?;
+    let encoder = OpenExrEncoder::new(BufWriter::new(file));
+    let (width, height) = image.buffer().dimensions();
+
+    if image.buffer().has_alpha() {
+        encoder.write_image(
+            image.buffer().to_rgba32f().as_bytes(),
+            width,
+            height,
+            image::ColorType::Rgba32F,
+        )?;
+    } else {
+        encoder.write_image(
+            image.buffer().to_rgb32f().as_bytes(),
+            width,
+            height,
+            image::ColorType::Rgb32F,
+        )?;
+    }
 
     Ok(fs::rename(temp_path, path)?)
 }

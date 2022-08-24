@@ -32,25 +32,25 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Supported Codecs
 
-| Format    | Decoding                                                             | Encoding        |
-| --------- | -------------------------------------------------------------------- | --------------- |
-| PNG       | ✅                                                                    | ✅               |
-| JPEG      | ✅ Baseline and progressive                                           | ✅ Baseline      |
-| GIF       | ✅                                                                    | ✅               |
-| BMP       | ✅                                                                    | ✅               |
-| ICO       | ✅                                                                    | ✅               |
-| TIFF      | ✅ Baseline(no fax support) + LZW + PackBits                          | ✅               |
-| WebP      | ✅ Converted to Rgba8                                                 | ✅ Lossless only |
-| AVIF      | ✅ Only 8-bit                                                         | ❌               |
-| PNM       | ✅ PBM, PGM, PPM, standard PAM                                        | ❌               |
-| DDS       | ✅ DXT1, DXT3, DXT5                                                   | ❌               |
-| TGA       | ✅                                                                    | ✅               |
-| farbfeld  | ✅                                                                    | ✅               |
-| SVG       | ✅ Rastarized at 96 dpi (2)                                           | ❌               |
-| PSD       | ✅                                                                    | ❌               |
-| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
-| HEIF/HEIC | ❌ (4)                                                                | ❌               |
-| OpenEXR   | ✅ Rgb32F, Rgba32F (no dwa compression)                               | ❌               |
+| Format    | Decoding                                                             | Encoding                               |
+| --------- | -------------------------------------------------------------------- | -------------------------------------- |
+| PNG       | ✅                                                                    | ✅                                      |
+| JPEG      | ✅ Baseline and progressive                                           | ✅ Baseline                             |
+| GIF       | ✅                                                                    | ✅                                      |
+| BMP       | ✅                                                                    | ✅                                      |
+| ICO       | ✅                                                                    | ✅                                      |
+| TIFF      | ✅ Baseline(no fax support) + LZW + PackBits                          | ✅                                      |
+| WebP      | ✅ Converted to Rgba8                                                 | ✅ Lossless only                        |
+| AVIF      | ✅ Only 8-bit                                                         | ❌                                      |
+| PNM       | ✅ PBM, PGM, PPM, standard PAM                                        | ❌                                      |
+| DDS       | ✅ DXT1, DXT3, DXT5                                                   | ❌                                      |
+| TGA       | ✅                                                                    | ✅                                      |
+| farbfeld  | ✅                                                                    | ✅                                      |
+| SVG       | ✅ Rastarized at 96 dpi (2)                                           | ❌                                      |
+| PSD       | ✅                                                                    | ❌                                      |
+| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌                                      |
+| HEIF/HEIC | ❌ (4)                                                                | ❌                                      |
+| OpenEXR   | ✅ Rgb32F, Rgba32F (no dwa compression)                               | ✅ Rgb32F, Rgba32F (no dwa compression) |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
 2. SVGs are rastarized because Simp is primarly a bitmap image editor.
