@@ -1,7 +1,7 @@
 use std::{io::Cursor, time::Duration};
 
 use image::{
-    codecs::{gif::GifDecoder, png::PngDecoder},
+    codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder},
     io::Reader as ImageReader,
     AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
 };
@@ -73,6 +73,33 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                 if decoder.is_apng() {
                     return Some(decode_images(decoder.apng().into_frames()));
                 } else if let Ok(image) = DynamicImage::from_decoder(decoder) {
+                    return Some(vec![Image::new(image)]);
+                }
+            }
+            None
+        }
+        ImageFormat::OpenExr => {
+            if let Ok(decoder) = OpenExrDecoder::new(Cursor::new(bytes)) {
+                if let Ok(mut image) = DynamicImage::from_decoder(decoder) {
+                    // For some reason some of the values are NaN which cannot be converted to srgb to be sent to the GPU.
+                    // This simply sets them to zero and hopes for the best.
+                    match &mut image {
+                        DynamicImage::ImageRgb32F(buffer) => {
+                            for sample in buffer.as_flat_samples_mut().as_mut_slice() {
+                                if sample.is_nan() {
+                                    *sample = 0.0;
+                                }
+                            }
+                        }
+                        DynamicImage::ImageRgba32F(buffer) => {
+                            for sample in buffer.as_flat_samples_mut().as_mut_slice() {
+                                if sample.is_nan() {
+                                    *sample = 0.0;
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
                     return Some(vec![Image::new(image)]);
                 }
             }

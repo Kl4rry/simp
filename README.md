@@ -50,7 +50,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | PSD       | ✅                                                                    | ❌               |
 | Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
 | HEIF/HEIC | ❌ (4)                                                                | ❌               |
-| EXR       | ❌                                                                    | ❌               |
+| OpenEXR   | ✅ Rgb32F, Rgba32F (no dwa compression)                               | ❌               |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
 2. SVGs are rastarized because Simp is primarly a bitmap image editor.

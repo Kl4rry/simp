@@ -17,7 +17,7 @@ ctrlc = "3.2.0"
 egui = "0.18.1"
 egui_glium = "0.18.0"
 glium = "0.31.0"
-image = "0.24.2"
+image = { version = "0.24.2", features = ["exr"] }
 imagepipe = "0.5.0"
 lazy_static = "1.4.0"
 libwebp = { version = "0.1.2", features = ["static"] }
