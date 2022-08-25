@@ -90,36 +90,6 @@ impl App {
 
                 menu::menu_button(ui, "Image", |ui| {
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Color"))
-                        .clicked()
-                    {
-                        self.color_visible = true;
-                        ui.close_menu();
-                    }
-
-                    if ui
-                        .add_enabled(
-                            self.image_view.is_some()
-                                && !self
-                                    .image_view
-                                    .as_ref()
-                                    .unwrap()
-                                    .image_data
-                                    .read()
-                                    .unwrap()
-                                    .metadata
-                                    .is_empty(),
-                            Button::new("Metadata"),
-                        )
-                        .clicked()
-                    {
-                        self.metadata_visible = true;
-                        ui.close_menu();
-                    }
-
-                    ui.separator();
-
-                    if ui
                         .add_enabled(self.view_available(), Button::new("Rotate Left"))
                         .clicked()
                     {
@@ -192,6 +162,14 @@ impl App {
                     ui.separator();
 
                     if ui
+                        .add_enabled(self.image_view.is_some(), Button::new("Color"))
+                        .clicked()
+                    {
+                        self.color_visible = true;
+                        ui.close_menu();
+                    }
+
+                    if ui
                         .add_enabled(self.view_available(), Button::new("Crop"))
                         .clicked()
                     {
@@ -204,6 +182,28 @@ impl App {
                         .clicked()
                     {
                         self.resize.visible = true;
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            self.image_view.is_some()
+                                && !self
+                                    .image_view
+                                    .as_ref()
+                                    .unwrap()
+                                    .image_data
+                                    .read()
+                                    .unwrap()
+                                    .metadata
+                                    .is_empty(),
+                            Button::new("Metadata"),
+                        )
+                        .clicked()
+                    {
+                        self.metadata_visible = true;
                         ui.close_menu();
                     }
 
