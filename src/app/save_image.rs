@@ -20,7 +20,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::FileDialog::new()
         .set_file_name(&name)
         .set_parent(display.gl_window().window())
-        .add_filter("PNG", &["png"])
+        .add_filter("PNG", &["png", "apng"])
         .add_filter("JPEG", &["jpg", "jpeg", "jpe", "jif", "jfif"])
         .add_filter("GIF", &["gif"])
         .add_filter("ICO", &["ico"])
