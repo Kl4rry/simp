@@ -9,7 +9,7 @@ fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
 lazy_static! {
     pub static ref RASTER: HashSet<&'static str> = create_set(&[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
-        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld"
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr"
     ]);
     pub static ref UNDETECTABLE_RASTER: HashSet<&'static str> = create_set(&["tga"]);
     pub static ref VECTOR: HashSet<&'static str> = create_set(&["svg"]);

@@ -74,8 +74,9 @@ impl ImageList {
         let proxy = self.proxy.clone();
         let cache = self.cache.clone();
         let loading_info = self.loading_info.clone();
+        let mut list = vec![path_buf.clone()];
         thread::spawn(move || {
-            let mut list = Vec::new();
+            //let mut list = Vec::new();
             let dirs = std::fs::read_dir(dir_path).unwrap();
 
             for dir in dirs.flatten() {
@@ -96,6 +97,7 @@ impl ImageList {
             }
 
             list.sort_by(|a, b| b.cmp(a));
+            list.dedup();
 
             for (index, path) in list.iter().enumerate() {
                 if *path == path_buf {
