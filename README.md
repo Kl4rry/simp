@@ -41,7 +41,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | ICO       | ✅                                                                    | ✅                                      |
 | TIFF      | ✅ Baseline(no fax support) + LZW + PackBits                          | ✅                                      |
 | WebP      | ✅ Converted to Rgba8                                                 | ✅ Lossless only                        |
-| AVIF      | ✅ Only 8-bit                                                         | ❌                                      |
+| AVIF      | ✅ Only 8-bit (1)                                                     | ❌                                      |
 | PNM       | ✅ PBM, PGM, PPM, standard PAM                                        | ❌                                      |
 | DDS       | ✅ DXT1, DXT3, DXT5                                                   | ❌                                      |
 | TGA       | ✅                                                                    | ✅                                      |
