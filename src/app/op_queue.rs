@@ -14,7 +14,7 @@ use image::{
     DynamicImage,
 };
 
-use self::imageops::{adjust_saturation_in_place, lighten_in_place};
+use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{
     cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
     load_image::load_uncached, save_image,
@@ -39,7 +39,7 @@ pub enum Op {
         hue: f32,
         saturation: f32,
         contrast: f32,
-        lightness: f32,
+        brightness: f32,
         grayscale: bool,
         invert: bool,
     },
@@ -182,7 +182,7 @@ impl OpQueue {
                     hue,
                     saturation,
                     contrast,
-                    lightness,
+                    brightness,
                     grayscale,
                     invert,
                 } => {
@@ -203,12 +203,12 @@ impl OpQueue {
                                 contrast_in_place(buffer, contrast);
                             }
 
-                            if lightness != 0.0 {
-                                lighten_in_place(buffer, lightness as f64);
-                            }
-
                             if saturation != 0.0 {
                                 adjust_saturation_in_place(buffer, saturation as f64);
+                            }
+
+                            if brightness != 0.0 {
+                                brighten_in_place(buffer, brightness as f64);
                             }
 
                             if grayscale {

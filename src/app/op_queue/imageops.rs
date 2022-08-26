@@ -194,6 +194,7 @@ fn hue_to_rgb(p: f64, q: f64, t: f64) -> f64 {
     }
 }
 
+#[allow(unused)]
 fn luma2hsl<Sub: Primitive + ToPrimitive>(luma: Sub) -> Hsl {
     rgb2hsl(Rgb([luma, luma, luma]))
 }
@@ -291,125 +292,197 @@ pub fn adjust_saturation_in_place(image: &mut DynamicImage, saturation: f64) {
 
 // TODO
 // This function has the same problem was the one above.
-pub fn lighten_in_place(image: &mut DynamicImage, value: f64) {
-    let light = value / 100.0;
+pub fn brighten_in_place(image: &mut DynamicImage, value: f64) {
+    let value = (value / 100.0).clamp(0.0, 1.0);
     let (width, height) = image.dimensions();
     match image {
         DynamicImage::ImageRgb8(image) => {
+            let max = u8::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<u8> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageRgba8(image) => {
+            let max = u8::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<u8> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageRgb16(image) => {
+            let max = u16::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<u16> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageRgba16(image) => {
+            let max = u16::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<u16> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageRgb32F(image) => {
+            let max = 1.0f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<f32> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgb([rgb[0], rgb[1], rgb[2]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageRgba32F(image) => {
+            let max = 1.0f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let rgba = *image.get_pixel(x, y);
-                    let rgb = *Rgb::from_slice(&rgba.0[0..3]);
-                    let mut hsl = rgb2hsl(rgb);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let rgb: Rgb<f32> = hsl2rgb(hsl);
-                    image.put_pixel(x, y, Rgba([rgb[0], rgb[1], rgb[2], rgba[3]]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageLuma8(image) => {
+            let max = u8::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let luma = *image.get_pixel(x, y);
-                    let mut hsl = luma2hsl(luma[0]);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let luma: Luma<u8> = hsl2rgb(hsl).to_luma();
-                    image.put_pixel(x, y, luma);
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageLumaA8(image) => {
+            let max = u8::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let luma = *image.get_pixel(x, y);
-                    let alpha = luma[1];
-                    let mut hsl = luma2hsl(luma[0]);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let luma: Luma<u8> = hsl2rgb(hsl).to_luma();
-                    image.put_pixel(x, y, LumaA([luma[0], alpha]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageLuma16(image) => {
+            let max = u16::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let luma = *image.get_pixel(x, y);
-                    let mut hsl = luma2hsl(luma[0]);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let luma: Luma<u16> = hsl2rgb(hsl).to_luma();
-                    image.put_pixel(x, y, luma);
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }
         DynamicImage::ImageLumaA16(image) => {
+            let max = u16::MAX as f64;
+            let value = value * max;
             for y in 0..height {
                 for x in 0..width {
-                    let luma = *image.get_pixel(x, y);
-                    let alpha = luma[1];
-                    let mut hsl = luma2hsl(luma[0]);
-                    hsl.l = (hsl.l + light).clamp(0.0, 1.0);
-                    let luma: Luma<u16> = hsl2rgb(hsl).to_luma();
-                    image.put_pixel(x, y, LumaA([luma[0], alpha]));
+                    let e = image.get_pixel(x, y).map_with_alpha(
+                        |b| {
+                            let c: i32 = NumCast::from(b).unwrap();
+                            let d = (c as f64 + value).clamp(0.0, max) as u8;
+
+                            NumCast::from(d).unwrap()
+                        },
+                        |alpha| alpha,
+                    );
+
+                    image.put_pixel(x, y, e);
                 }
             }
         }

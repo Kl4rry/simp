@@ -7,7 +7,7 @@ uniform sampler2D tex;
 uniform vec2 size;
 uniform float hue = 0.0;
 uniform float contrast = 0.0;
-uniform float lightness = 0.0;
+uniform float brightness = 0.0;
 uniform float saturation = 0.0;
 uniform bool grayscale = false;
 uniform bool invert = false;
@@ -17,6 +17,7 @@ const float max_value = 255;
 
 // https://gist.github.com/ciembor/1494530
 vec3 rgb2hsl(vec3 rgb) {
+    rgb = clamp(rgb, 0, 1); 
     vec3 result;
 
     float r = rgb.r;
@@ -97,11 +98,12 @@ vec3 adjustContrast(vec3 p, float contrast) {
     return vec3(new_r, new_g, new_b);
 }
 
-vec3 lighten(vec3 p, float value) {
+vec3 brighten(vec3 p, float value) {
     float light = (value / 100);
-    vec3 hsl = rgb2hsl(p);
-    hsl.z = clamp(hsl.z + light, 0, 1.0);
-    return hsl2rgb(hsl);
+    //vec3 hsl = rgb2hsl(p);
+    //hsl.z = clamp(hsl.z + light, 0, 1.0);
+    //return hsl2rgb(hsl);
+    return clamp(vec3(p.r + light, p.g + light, p.b + light), 0, 1);
 }
 
 vec3 adjustSaturation(vec3 p, float sat) {
@@ -136,8 +138,8 @@ void main() {
 
     p.rgb = rotateHue(p.rgb, hue);
     p.rgb = adjustContrast(p.rgb, contrast);
-    p.rgb = lighten(p.rgb, lightness);
     p.rgb = adjustSaturation(p.rgb, saturation);
+    p.rgb = brighten(p.rgb, brightness);
 
     if(grayscale) {
         const vec3 toLuma = vec3(0.299, 0.587, 0.114);

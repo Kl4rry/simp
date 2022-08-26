@@ -31,10 +31,10 @@ impl App {
                         ));
                         ui.end_row();
                         ui.with_layout(egui::Layout::right_to_left(), |ui| {
-                            ui.label("Lightness: ");
+                            ui.label("Brightness: ");
                         });
                         ui.add(Slider::new(
-                            &mut self.image_view.as_mut().unwrap().lightness,
+                            &mut self.image_view.as_mut().unwrap().brightness,
                             -100.0..=100.0,
                         ));
                         ui.end_row();
@@ -81,14 +81,14 @@ impl App {
                                     let hue = view.hue;
                                     let saturation = view.saturation;
                                     let contrast = view.contrast;
-                                    let lightness = view.lightness;
+                                    let brightness = view.brightness;
                                     let grayscale = view.grayscale;
                                     let invert = view.invert;
                                     self.queue(Op::Color {
                                         hue,
                                         saturation,
                                         contrast,
-                                        lightness,
+                                        brightness,
                                         grayscale,
                                         invert,
                                     });
@@ -104,7 +104,7 @@ impl App {
                     view.hue = 0.0;
                     view.contrast = 0.0;
                     view.saturation = 0.0;
-                    view.lightness = 0.0;
+                    view.brightness = 0.0;
                     view.grayscale = false;
                     view.invert = false;
                 }
