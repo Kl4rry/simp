@@ -1,1 +1,151 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Simp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="main.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="normalize.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <div class="header">
+            <a href="/">
+                <img src="simp.png" class="logo">
+            </a>
+            <div class="header-text">
+                <h1>Simp</h1>
+                <p id="deacronym">The simple image manipulation program</p>
+                <div id="links">
+                    <a class="button" href="https://github.com/Kl4rry/simp/releases/latest">Download</a>
+                    <div id="github-container">
+                        <a href="https://github.com/Kl4rry/simp"><img id="github" height="33" src="github.svg"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p id="description">Simp is a simple and fast GPU accelerated cross platform image manipulation program.</p>
+
+        <h3 class="left">Full support for editing GIFS!</h3>
+        <p>With Simp you can edit GIFS like they are any other image.</p>
+        <video autoplay muted loop class="margin-top">
+            <source src="crop.mp4" type="video/mp4">
+        </video>
+
+        <h3 class="left">Cropping and resizing</h3>
+        <p>Quickly and easily edit the size of images.</p>
+        <video autoplay muted loop class="margin-top">
+            <source src="crop.mp4" type="video/mp4">
+        </video>
+
+        <h3 class="left">Perfect for pixel art!</h3>
+        <p>Edit your pixel art without it becoming blurry.</p>
+        <video autoplay muted loop class="margin-top">
+            <source src="pixelart.mp4" type="video/mp4">
+        </video>
+
+        <h3>Many supported image formats</h3>
+        <table>
+            <tr>
+                <th>Format</th>
+                <th>Opening</th>
+                <th>Saving</th>
+            </tr>
+            <tr>
+                <td>PNG</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>JPEG</td>
+                <td>✅ Baseline and progressive</td>
+                <td>✅ Baseline</td>
+            </tr>
+            <tr>
+                <td>GIF</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>BMP</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>ICO</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>TIFF</td>
+                <td>✅ Baseline(no fax support) + LZW + PackBits</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>WebP</td>
+                <td>✅ Converted to Rgba8</td>
+                <td>✅ Lossless only</td>
+            </tr>
+            <tr>
+                <td>WebP</td>
+                <td>✅ Converted to Rgba8</td>
+                <td>✅ Lossless only</td>
+            </tr>
+            <tr>
+                <td>AVIF</td>
+                <td>🚧 Only 8-bit (1)</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td>PNM</td>
+                <td>✅ PBM, PGM, PPM, standard PAM</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td>DDS</td>
+                <td>✅ DXT1, DXT3, DXT5</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td>TGA</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>farbfeld</td>
+                <td>✅</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>SVG</td>
+                <td>✅ Rastarized at 96 dpi (2)</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td>PSD</td>
+                <td>✅</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td>Raw</td>
+                <td>✅ (3)</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td>OpenEXR</td>
+                <td>✅ Rgb32F, Rgba32F</td>
+                <td>✅ Rgb32F, Rgba32F</td>
+            </tr>
+        </table>
+        <ol>
+            <li>Building with AVIF support requires the C library dav1d and is therefore not enabled by default.</li>
+            <li>SVGs are rastarized because Simp is primarly a bitmap image editor.</li>
+            <li>Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.</li>
+        </ol>
+    </main>
+</body>
+</html>

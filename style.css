@@ -1,0 +1,149 @@
+
+* {
+    /* border: 1px solid red; */
+}
+
+body {
+    background-color: #1d2021;
+    display: flex;
+    justify-content: center;
+    font-family: Helvetica;
+    color: white;
+}
+
+h1 {
+    font-size: 60px;
+    margin: 0px;
+}
+
+h2 {
+    text-align: center;
+    font-size: 40px;
+}
+
+h3 {
+    font-size: 30px;
+    text-align: center;
+    margin-bottom: 0px;
+}
+
+#deacronym {
+    font-size: 25px;
+    margin: 0px;
+}
+
+#description {
+    font-size: 20px;
+    text-align: center;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: center;
+    margin: 20px;
+    margin-bottom: 50px;
+}
+
+.header-text {
+    display: flex;
+    justify-content: space-evenly;
+    flex-direction: column;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+a {
+    color: white;
+    text-decoration: none;
+}
+
+a:hover {
+    cursor: pointer;
+}
+
+.logo {
+    height: 200px;
+    width: 200px;
+    margin-right: 40px;
+}
+
+hr {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    color: #a89984;
+}
+
+main {
+    max-width: 900px;
+    padding: 20px;
+    background-color: #1d2021;
+}
+
+img {
+    width: 100%;
+}
+
+video {
+    width: 100%;
+}
+
+tr {
+    padding: 10px;
+}
+
+table, th, td {
+    border: 1px solid #504945;
+    border-collapse: collapse;
+    padding: 15px;
+    font-size: 20px;
+    margin: auto;
+}
+
+li {
+    margin: 10px;
+    font-size: 18px;
+}
+
+.left {
+    text-align: left;
+}
+
+.margin-top {
+    margin-top: 5px;
+}
+
+.button {
+    background-color: #689d6a;
+    width: 100px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: .2s;
+    color: white;
+    text-decoration: none;
+}
+
+.button:hover {
+    background-color: #8ec07c;
+    cursor: pointer;
+}
+
+.flex {
+    display: flex;
+}
+
+#links {
+    display: flex;
+}
+
+#github {
+    margin-left: 20px;
+}
+
+#github-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
