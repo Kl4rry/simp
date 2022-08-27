@@ -9,6 +9,6 @@ pub fn get_icon() -> Icon {
         .decode()
         .unwrap()
         .into_rgba8();
-
-    Icon::from_rgba(image.to_vec(), image.width(), image.height()).unwrap()
+    let (width, height) = image.dimensions();
+    Icon::from_rgba(image.into_vec(), width, height).unwrap()
 }
