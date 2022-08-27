@@ -4,6 +4,7 @@ version = "2.0.3"
 authors = ["Axel Kappel"]
 edition = "2021"
 license = "Apache-2.0"
+homepage = "https://simp.axelkappel.se"
 description = "The simple image manipulation program"
 repository = "https://github.com/Kl4rry/simp"
 readme = "README.md"
