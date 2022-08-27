@@ -22,6 +22,10 @@ h3 {
     margin-bottom: 0px;
 }
 
+h4 {
+    font-size: 20px;
+}
+
 #deacronym {
     font-size: 25px;
     margin: 0px;
@@ -63,12 +67,6 @@ a:hover {
     margin-right: 40px;
 }
 
-hr {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    color: #a89984;
-}
-
 main {
     max-width: 900px;
     padding: 20px;
@@ -102,8 +100,8 @@ table {
 }
 
 li {
-    margin: 10px;
-    font-size: 18px;
+    margin: 10px 30px;
+    font-size: 14px;
 }
 
 .left {
@@ -156,4 +154,16 @@ footer {
 .copyright {
     text-align: center;
     color: #665c54;
+}
+
+#features {
+    margin-top: 50px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.feature {
+    width: 250px;
+    margin: 0px 10px;
 }
