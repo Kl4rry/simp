@@ -95,13 +95,13 @@ sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xf
 ### Cargo
 
 ```shell
-cargo install simp
+cargo install simp --locked
 ```
 
 ### Latest from github
 
 ```shell
-cargo install --git https://github.com/Kl4rry/simp
+cargo install --git https://github.com/Kl4rry/simp --locked
 ```
 
 The latest bulid is very likely buggy and unfinished.  
