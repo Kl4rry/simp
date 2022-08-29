@@ -19,7 +19,7 @@ pub struct Cache {
 impl Cache {
     pub fn new(max_size: usize) -> Cache {
         Self {
-            lru: Mutex::new(LruCache::new(100)),
+            lru: Mutex::new(LruCache::new(30)),
             total_size: AtomicUsize::new(0),
             max_size,
         }
