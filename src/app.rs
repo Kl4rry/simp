@@ -567,7 +567,6 @@ impl App {
     }
 
     pub fn update(&mut self, display: &Display) -> (bool, Option<Duration>) {
-        self.exit = false;
         self.delay = None;
 
         if let Some(ref mut image) = self.image_view {
