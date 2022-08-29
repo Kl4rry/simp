@@ -270,7 +270,7 @@ impl App {
 
                             VirtualKeyCode::H if self.modifiers.ctrl() => self.help_visible = true,
                             VirtualKeyCode::O if self.modifiers.ctrl() => {
-                                load_image::open(self.proxy.clone(), display)
+                                load_image::open(self.proxy.clone(), display, false)
                             }
                             VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
                                 self.current_filename.clone(),

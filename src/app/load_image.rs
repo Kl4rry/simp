@@ -44,10 +44,15 @@ impl From<std::io::Error> for LoadError {
     }
 }
 
-pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display) {
+pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display, folder: bool) {
     let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
     thread::spawn(move || {
-        if let Some(file) = dialog.pick_file() {
+        let pick = if folder {
+            dialog.pick_folder()
+        } else {
+            dialog.pick_file()
+        };
+        if let Some(file) = pick {
             let _ = proxy.send_event(UserEvent::QueueLoad(file));
         }
     });

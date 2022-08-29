@@ -1,5 +1,6 @@
 use std::{
     collections::HashSet,
+    fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
     thread,
@@ -22,7 +23,7 @@ use super::{
 use crate::{
     app::undo_stack::UndoStack,
     rect::Rect,
-    util::{Image, ImageData, UserEvent},
+    util::{extensions::EXTENSIONS, Image, ImageData, UserEvent},
     vec2::Vec2,
 };
 
@@ -282,7 +283,34 @@ impl OpQueue {
         let proxy = self.proxy.clone();
         let loading_info = self.loading_info.clone();
         thread::spawn(move || {
-            let res = load_uncached(&path_buf);
+            let mut path = path_buf.clone();
+            if path.is_dir() {
+                let mut paths = Vec::new();
+                if let Ok(dir) = fs::read_dir(&path) {
+                    for entry in dir.flatten() {
+                        if let Ok(file_type) = entry.file_type() {
+                            if file_type.is_file() {
+                                let path = entry.path();
+                                match path.extension() {
+                                    Some(ext)
+                                        if EXTENSIONS.contains(
+                                            &*ext.to_string_lossy().to_ascii_lowercase(),
+                                        ) =>
+                                    {
+                                        paths.push(path);
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(p) = paths.into_iter().next() {
+                    path = p;
+                }
+            }
+
+            let res = load_uncached(&path);
             let mut guard = loading_info.lock().unwrap();
             guard.loading.remove(&path_buf);
             guard.target_file = None;
@@ -291,7 +319,7 @@ impl OpQueue {
                 Ok(images) => {
                     let images = Arc::new(RwLock::new(images));
                     cache.put(path_buf.clone(), images.clone());
-                    proxy.send_output(Output::ImageLoaded(images, Some(path_buf)));
+                    proxy.send_output(Output::ImageLoaded(images, Some(path)));
                 }
                 Err(error) => {
                     proxy.send_output(Output::Done);

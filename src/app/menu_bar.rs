@@ -11,7 +11,12 @@ impl App {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
                     if ui.button("Open").clicked() {
-                        load_image::open(self.proxy.clone(), display);
+                        load_image::open(self.proxy.clone(), display, false);
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Open folder").clicked() {
+                        load_image::open(self.proxy.clone(), display, true);
                         ui.close_menu();
                     }
 
