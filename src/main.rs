@@ -3,7 +3,7 @@
 #![warn(clippy::all)]
 
 use std::{
-    env, panic,
+    env, fs, panic,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -178,11 +178,15 @@ impl WindowHandler {
 
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
-        let _ = msgbox::create(
-            "Error",
-            &format!("panic occurred: {}", panic_info),
-            msgbox::IconType::Error,
-        );
+        let dirs = directories::UserDirs::new();
+        let mut path = PathBuf::from("/panic.txt");
+        if let Some(dirs) = dirs {
+            if let Some(desktop) = dirs.desktop_dir() {
+                path = desktop.to_path_buf();
+                path.push("panic.txt");
+            }
+        }
+        let _ = fs::write(path, format!("{:?}", panic_info));
         std::process::exit(1);
     }));
 

@@ -1,5 +1,3 @@
-use std::thread;
-
 use egui::{menu, Button, TopBottomPanel};
 use glium::Display;
 
@@ -245,16 +243,7 @@ impl App {
                     }
 
                     if ui.button("About").clicked() {
-                        let about = format!(
-                            "{}\n{}\n{}\n{}",
-                            env!("CARGO_PKG_NAME"),
-                            env!("CARGO_PKG_DESCRIPTION"),
-                            &format!("Version: {}", env!("CARGO_PKG_VERSION")),
-                            &format!("Commit: {}", env!("GIT_HASH")),
-                        );
-                        thread::spawn(move || {
-                            msgbox::create("About", &about, msgbox::IconType::Info).unwrap()
-                        });
+                        self.about_visible = true;
                         ui.close_menu();
                     }
                 });
