@@ -21,11 +21,11 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Supported Platforms
 
-| OS      |                                                      Support                                                       |
-| ------- | :----------------------------------------------------------------------------------------------------------------: |
-| Windows |                      Windows is the most well tested as it is where most development is done.                      |
-| Linux   | I test on Arch + Kde some of the time and it is always built for ubuntu in CLI so it should work most of the time. |
-| MacOS   |                  I cannot test MacOS as i don't have a Mac but it should atleast always compile.                   |
+| OS      | Support |
+| ------- | :-----: |
+| Windows | Windows is the most well tested as it is where most development is done.    |
+| Linux   | I test on Arch + Kde some of the time and it is always built for ubuntu in CLI so it should work most of the time.      |
+| MacOS   | I cannot test MacOS as i don't have a Mac but it should atleast always compile.    |
 
 ## Supported Codecs
 
@@ -86,6 +86,9 @@ System dependencies are only required at compile time.
 ```shell
 sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
 ```
+
+### dav1d
+The dav1d library is required to be installed to build with AVIF support.
 
 ## Installation
 
