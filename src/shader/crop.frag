@@ -15,7 +15,14 @@ vec3 inverseGamma(vec3 color, float gamma) {
     return pow(color, vec3(gamma));
 }
 
+vec4 blend(vec4 base, vec4 top) {
+	vec3 rgb = base.rgb * (1 - top.a) + top.a * top.rgb;
+	float alpha = base.a + top.a * (1 - base.a);
+	return vec4(rgb, alpha);
+}
+
 void main() {
+	color = vec4(0, 0, 0, 0);
 	float x = gl_FragCoord.x;
 	float y = size.y - gl_FragCoord.y;
 
@@ -44,7 +51,8 @@ void main() {
 
 	if(x < start.x || x > end.x || y < start.y || y > end.y) {
 		if(!line) {
-			color = transparent;
+			vec4 dark = vec4(0.0, 0.0, 0.0, 0.5);
+			color = blend(color, dark);
 		}
 	} else {
 		color = transparent;
@@ -62,7 +70,7 @@ void main() {
 			if(diff < radius - 1) {
 				color = blue;
 			} else {
-				color = vec4(blue.rgb, radius - diff);
+				color = blend(color, vec4(blue.rgb, radius - diff));
 			}
 		}
 	}

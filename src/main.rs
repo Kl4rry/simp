@@ -186,6 +186,7 @@ fn main() {
                 path.push("panic.txt");
             }
         }
+        eprintln!("{:?}", panic_info);
         let _ = fs::write(path, format!("{:?}", panic_info));
         std::process::exit(1);
     }));
