@@ -769,8 +769,6 @@ impl App {
                             ui.end_row();
                             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                                 ui.label("Height: ");
-                                // stupid space to prevent even stupider linebreak in button text
-                                ui.add_space(0.0);
                             });
                             ui.text_edit_singleline(&mut view.crop.height);
                             ui.end_row();
@@ -816,7 +814,7 @@ impl App {
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),
                                 |ui| {
-                                    if ui.add(Button::new("Cancel")).clicked() {
+                                    if ui.add(Button::new("Cancel").wrap(false)).clicked() {
                                         cancel = true;
                                     }
                                 },
@@ -825,7 +823,7 @@ impl App {
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),
                                 |ui| {
-                                    if ui.add(Button::new("Crop")).clicked() {
+                                    if ui.add(Button::new("Crop").wrap(false)).clicked() {
                                         crop = Some(*rect);
                                         cancel = true;
                                     }

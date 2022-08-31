@@ -10,10 +10,12 @@ impl App {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
-                    if ui.button("Open").clicked() {
+                    let res = ui.button("Open");
+                    if res.clicked() {
                         load_image::open(self.proxy.clone(), display, false);
                         ui.close_menu();
                     }
+                    res.on_hover_text_at_pointer("Ctrl + O");
 
                     if ui.button("Open folder").clicked() {
                         load_image::open(self.proxy.clone(), display, true);
