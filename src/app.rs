@@ -262,7 +262,7 @@ impl App {
                             VirtualKeyCode::Delete => {
                                 if let Some(ref view) = self.image_view {
                                     if let Some(ref path) = view.path {
-                                        delete(path.clone(), self.proxy.clone());
+                                        delete(path.clone(), self.proxy.clone(), display);
                                     }
                                 }
                             }
@@ -951,16 +951,15 @@ impl App {
     }
 }
 
-pub fn delete(path: PathBuf, proxy: EventLoopProxy<UserEvent>) {
+pub fn delete(path: PathBuf, proxy: EventLoopProxy<UserEvent>, display: &Display) {
+    let dialog = rfd::MessageDialog::new()
+        .set_parent(display.gl_window().window())
+        .set_level(rfd::MessageLevel::Warning)
+        .set_title("Move to trash")
+        .set_description("Are you sure you want to move this to trash?")
+        .set_buttons(rfd::MessageButtons::YesNo);
     thread::spawn(move || {
-        let dialog = rfd::MessageDialog::new()
-            .set_level(rfd::MessageLevel::Warning)
-            .set_title("Move to trash")
-            .set_description("Are you sure you want to move this to trash?")
-            .set_buttons(rfd::MessageButtons::YesNo)
-            .show();
-
-        if dialog {
+        if dialog.show() {
             let _ = proxy.send_event(UserEvent::QueueDelete(path));
         }
     });
