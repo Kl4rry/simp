@@ -61,8 +61,6 @@ pub struct App {
     help_visible: bool,
     color_visible: bool,
     metadata_visible: bool,
-    about_visible: bool,
-    error: Option<String>,
 }
 
 impl App {
@@ -218,7 +216,14 @@ impl App {
                 self.queue(Op::Delete(path.to_path_buf()));
             }
             UserEvent::ErrorMessage(error) => {
-                self.error = Some(error.to_string());
+                let dialog = rfd::MessageDialog::new()
+                    .set_parent(display.gl_window().window())
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_title("About")
+                    .set_description(error)
+                    .set_buttons(rfd::MessageButtons::Ok);
+
+                thread::spawn(move || dialog.show());
             }
             UserEvent::Exit => self.exit = true,
             UserEvent::Output(output) => {
@@ -422,8 +427,6 @@ impl App {
         self.color_ui(ctx);
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
-        self.about_ui(ctx);
-        self.error_ui(ctx);
     }
 
     pub fn main_area(&mut self, _display: &Display, ctx: &egui::Context) {
@@ -736,48 +739,6 @@ impl App {
         }
     }
 
-    fn about_ui(&mut self, ctx: &egui::Context) {
-        if self.about_visible {
-            let mut closed = false;
-            egui::Window::new("About")
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut self.about_visible)
-                .show(ctx, |ui| {
-                    let about = format!(
-                        "{}\n{}\n{}\n{}",
-                        env!("CARGO_PKG_NAME"),
-                        env!("CARGO_PKG_DESCRIPTION"),
-                        &format!("Version: {}", env!("CARGO_PKG_VERSION")),
-                        &format!("Commit: {}", env!("GIT_HASH")),
-                    );
-                    ui.label(RichText::new(about).size(14.0));
-                    closed = ui.button("Ok").clicked();
-                });
-            if closed {
-                self.about_visible = false;
-            }
-        }
-    }
-
-    fn error_ui(&mut self, ctx: &egui::Context) {
-        if let Some(error) = &self.error {
-            let mut closed = false;
-            let mut open = true;
-            egui::Window::new("Error")
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut open)
-                .show(ctx, |ui| {
-                    ui.label(RichText::new(error).size(18.0));
-                    closed = ui.button("Ok").clicked();
-                });
-            if closed && !open {
-                self.error = None;
-            }
-        }
-    }
-
     fn crop_ui(&mut self, ctx: &egui::Context) {
         let mut crop = None;
         if let Some(ref mut view) = self.image_view {
@@ -945,8 +906,6 @@ impl App {
             help_visible: false,
             color_visible: false,
             metadata_visible: false,
-            about_visible: false,
-            error: None,
         }
     }
 }

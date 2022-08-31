@@ -1,3 +1,5 @@
+use std::thread;
+
 use egui::{menu, Button, TopBottomPanel};
 use glium::Display;
 
@@ -243,7 +245,22 @@ impl App {
                     }
 
                     if ui.button("About").clicked() {
-                        self.about_visible = true;
+                        let about = format!(
+                            "{}\n{}\n{}\n{}",
+                            env!("CARGO_PKG_NAME"),
+                            env!("CARGO_PKG_DESCRIPTION"),
+                            &format!("Version: {}", env!("CARGO_PKG_VERSION")),
+                            &format!("Commit: {}", env!("GIT_HASH")),
+                        );
+
+                        let dialog = rfd::MessageDialog::new()
+                            .set_parent(display.gl_window().window())
+                            .set_level(rfd::MessageLevel::Info)
+                            .set_title("About")
+                            .set_description(&about)
+                            .set_buttons(rfd::MessageButtons::Ok);
+
+                        thread::spawn(move || dialog.show());
                         ui.close_menu();
                     }
                 });
