@@ -140,7 +140,7 @@ impl WindowHandler {
                     let size = Vec2::new(width as f32, height as f32);
 
                     if let Some(image) = app.image_view.as_mut() {
-                        image.render(&mut target, size);
+                        image.render(&mut target, &display, size);
                     }
 
                     egui.paint(&display, &mut target);

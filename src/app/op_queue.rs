@@ -257,7 +257,7 @@ impl OpQueue {
     }
 
     pub fn undo_stack(&self) -> &UndoStack {
-        &&self.stack
+        &self.stack
     }
 
     fn load(&self, path_buf: PathBuf, use_cache: bool, edited_prompt: bool) {

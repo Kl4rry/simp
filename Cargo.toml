@@ -27,6 +27,7 @@ libwebp = { version = "0.1.2", features = ["static"] }
 lru = "0.7.8"
 nanoid = "0.4.0"
 num-traits = "0.2.15"
+once_cell = "1.14.0"
 psd = "0.3.3"
 rawloader = "0.37.0"
 resvg = "0.22.0"

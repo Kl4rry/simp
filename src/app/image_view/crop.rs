@@ -3,6 +3,7 @@ use glium::{
     implement_vertex, index::PrimitiveType, uniform, Blend, Display, DrawParameters, IndexBuffer,
     Program, Surface, VertexBuffer,
 };
+use once_cell::sync::OnceCell;
 
 use crate::{rect::Rect, vec2::Vec2};
 
@@ -34,21 +35,10 @@ pub struct Crop {
     dragging: bool,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
-    shader: Box<Program>,
 }
 
 impl Crop {
     pub fn new(display: &Display) -> Self {
-        let shader = Box::new(
-            Program::from_source(
-                display,
-                include_str!("../../shader/crop.vert"),
-                include_str!("../../shader/crop.frag"),
-                None,
-            )
-            .unwrap(),
-        );
-
         let shape = [
             Vertex::new(-1.0, 1.0),
             Vertex::new(-1.0, -1.0),
@@ -76,7 +66,6 @@ impl Crop {
             dragging: false,
             vertices,
             indices,
-            shader,
         }
     }
 
@@ -87,6 +76,7 @@ impl Crop {
     pub fn render(
         &self,
         target: &mut glium::Frame,
+        display: &Display,
         window_size: Vec2<f32>,
         position: Vec2<f32>,
         image_size: Vec2<f32>,
@@ -96,18 +86,34 @@ impl Crop {
             let start = position - (image_size / 2.0) * scale + rect.position * scale;
             let end = position - (image_size / 2.0) * scale + (rect.position + rect.size) * scale;
 
-            target
-                .draw(
-                    &self.vertices,
-                    &self.indices,
-                    &self.shader,
-                    &uniform! { start: start, end: end, size: *window_size },
-                    &DrawParameters {
-                        blend: Blend::alpha_blending(),
-                        ..DrawParameters::default()
-                    },
-                )
-                .unwrap();
+            thread_local! {
+                pub static PROGRAM: OnceCell<Program> = OnceCell::new();
+            }
+
+            PROGRAM.with(|f| {
+                let shader = f.get_or_init(|| {
+                    Program::from_source(
+                        display,
+                        include_str!("../../shader/crop.vert"),
+                        include_str!("../../shader/crop.frag"),
+                        None,
+                    )
+                    .unwrap()
+                });
+
+                target
+                    .draw(
+                        &self.vertices,
+                        &self.indices,
+                        shader,
+                        &uniform! { start: start, end: end, size: *window_size },
+                        &DrawParameters {
+                            blend: Blend::alpha_blending(),
+                            ..DrawParameters::default()
+                        },
+                    )
+                    .unwrap();
+            });
         }
     }
 

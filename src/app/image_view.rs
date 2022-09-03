@@ -21,6 +21,7 @@ use glium::{
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
 use image::{DynamicImage, GenericImageView};
+use once_cell::sync::OnceCell;
 
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
@@ -68,11 +69,9 @@ pub struct ImageView {
     pub grayscale: bool,
     pub invert: bool,
     pub crop: Crop,
-    shader: Box<Program>,
     vertices: VertexBuffer<Vertex>,
     indices: IndexBuffer<u8>,
     texture: SrgbTexture2d,
-    texture_cords: (Vec2<f32>, Vec2<f32>, Vec2<f32>, Vec2<f32>),
     sampler: SamplerBehavior,
 }
 
@@ -81,25 +80,6 @@ impl ImageView {
         let frames = &image_data.frames;
         let image = frames[0].buffer();
         let (width, height) = image.dimensions();
-        let texture_cords = (
-            Vec2::new(0.0, 0.0),
-            Vec2::new(0.0, 1.0),
-            Vec2::new(1.0, 0.0),
-            Vec2::new(1.0, 1.0),
-        );
-        let shape = vec![
-            Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
-            Vertex::new(0.0, height as f32, texture_cords.1.x(), texture_cords.1.y()),
-            Vertex::new(width as f32, 0.0, texture_cords.2.x(), texture_cords.2.y()),
-            Vertex::new(
-                width as f32,
-                height as f32,
-                texture_cords.3.x(),
-                texture_cords.3.y(),
-            ),
-        ];
-        let index_buffer = &[0, 1, 2, 2, 1, 3];
-
         let texture = get_texture(image, display);
 
         let sampler = SamplerBehavior {
@@ -120,19 +100,10 @@ impl ImageView {
             horizontal_flip: false,
             vertical_flip: false,
             crop: Crop::new(display),
-            shader: Box::new(
-                Program::from_source(
-                    display,
-                    include_str!("../shader/image.vert"),
-                    include_str!("../shader/image.frag"),
-                    None,
-                )
+            vertices: get_vertex_buffer(display, width as f32, height as f32),
+            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &[0, 1, 2, 2, 1, 3])
                 .unwrap(),
-            ),
-            vertices: VertexBuffer::new(display, &shape).unwrap(),
-            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer).unwrap(),
             texture,
-            texture_cords,
             sampler,
             path,
             hue: 0.0,
@@ -156,7 +127,7 @@ impl ImageView {
         (pre_rotation * rotation) * post_rotation
     }
 
-    pub fn render(&self, target: &mut glium::Frame, size: Vec2<f32>) {
+    pub fn render(&self, target: &mut glium::Frame, display: &Display, size: Vec2<f32>) {
         let ortho: Matrix4<f32> = Ortho {
             left: 0.0,
             right: size.x(),
@@ -176,32 +147,55 @@ impl ImageView {
 
         let raw: [[f32; 4]; 4] = matrix.into();
 
-        #[rustfmt::skip]
-        target
-            .draw(
-                &self.vertices,
-                &self.indices,
-                &self.shader,
-                &uniform! {
-                    matrix: raw,
-                    tex: Sampler(&self.texture, self.sampler),
-                    size: size,
-                    hue: self.hue,
-                    contrast: self.contrast,
-                    brightness: self.brightness,
-                    saturation: self.saturation,
-                    grayscale: self.grayscale,
-                    invert: self.invert
-                },
-                &DrawParameters {
-                    blend: Blend::alpha_blending(),
-                    ..DrawParameters::default()
-                },
-            )
-            .unwrap();
+        thread_local! {
+            pub static PROGRAM: OnceCell<Program> = OnceCell::new();
+        }
 
-        self.crop
-            .render(target, size, self.position, self.rotated_size(), self.scale);
+        PROGRAM.with(|f| {
+            let shader = f.get_or_init(|| {
+                Program::from_source(
+                    display,
+                    include_str!("../shader/image.vert"),
+                    include_str!("../shader/image.frag"),
+                    None,
+                )
+                .unwrap()
+            });
+
+            target
+                .draw(
+                    &self.vertices,
+                    &self.indices,
+                    shader,
+                    &uniform! {
+                        matrix: raw,
+                        tex: Sampler(&self.texture, self.sampler),
+                        size: size,
+                        hue: self.hue,
+                        contrast: self.contrast,
+                        brightness: self.brightness,
+                        saturation: self.saturation,
+                        grayscale: self.grayscale,
+                        invert: self.invert,
+                        flip_horizontal: self.horizontal_flip,
+                        flip_vertical: self.vertical_flip,
+                    },
+                    &DrawParameters {
+                        blend: Blend::alpha_blending(),
+                        ..DrawParameters::default()
+                    },
+                )
+                .unwrap();
+        });
+
+        self.crop.render(
+            target,
+            display,
+            size,
+            self.position,
+            self.rotated_size(),
+            self.scale,
+        );
     }
 
     pub fn scaled(&self) -> Vec2<f32> {
@@ -238,18 +232,12 @@ impl ImageView {
         size
     }
 
-    pub fn flip_horizontal(&mut self, display: &Display) {
+    pub fn flip_horizontal(&mut self) {
         self.horizontal_flip = !self.horizontal_flip;
-        mem::swap(&mut self.texture_cords.0, &mut self.texture_cords.2);
-        mem::swap(&mut self.texture_cords.1, &mut self.texture_cords.3);
-        self.update_vertex_data(display);
     }
 
-    pub fn flip_vertical(&mut self, display: &Display) {
+    pub fn flip_vertical(&mut self) {
         self.vertical_flip = !self.vertical_flip;
-        mem::swap(&mut self.texture_cords.0, &mut self.texture_cords.1);
-        mem::swap(&mut self.texture_cords.2, &mut self.texture_cords.3);
-        self.update_vertex_data(display);
     }
 
     pub fn animate(&mut self, display: &Display) -> Option<Duration> {
@@ -288,7 +276,7 @@ impl ImageView {
             let mut new_frames = Vec::new();
             let guard = image_data.read().unwrap();
             let frames = &guard.frames;
-            for frame in &*frames {
+            for frame in frames {
                 let buffer = match rotation {
                     0 => frame.buffer().clone(),
                     1 => frame.buffer().rotate90(),
@@ -314,9 +302,10 @@ impl ImageView {
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
         let mut guard = self.image_data.write().unwrap();
         mem::swap(&mut Arc::make_mut(&mut *guard).frames, frames);
+        let (width, height) = guard.frames[0].buffer().dimensions();
         drop(guard);
         self.update_image_data(display);
-        self.update_vertex_data(display);
+        self.vertices = get_vertex_buffer(display, width as f32, height as f32);
     }
 
     fn update_image_data(&mut self, display: &Display) {
@@ -325,31 +314,6 @@ impl ImageView {
         let image = frames[self.index].buffer();
         self.size = Vec2::new(image.width() as f32, image.height() as f32);
         self.texture = get_texture(image, display);
-    }
-
-    fn update_vertex_data(&mut self, display: &Display) {
-        let shape = vec![
-            Vertex::new(0.0, 0.0, self.texture_cords.0.x(), self.texture_cords.0.y()),
-            Vertex::new(
-                0.0,
-                self.size.y(),
-                self.texture_cords.1.x(),
-                self.texture_cords.1.y(),
-            ),
-            Vertex::new(
-                self.size.x(),
-                0.0,
-                self.texture_cords.2.x(),
-                self.texture_cords.2.y(),
-            ),
-            Vertex::new(
-                self.size.x(),
-                self.size.y(),
-                self.texture_cords.3.x(),
-                self.texture_cords.3.y(),
-            ),
-        ];
-        self.vertices = VertexBuffer::new(display, &shape).unwrap();
     }
 
     pub fn rotation(&self) -> i32 {
@@ -449,4 +413,25 @@ fn get_texture(image: &DynamicImage, display: &Display) -> SrgbTexture2d {
             SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
         }
     }
+}
+
+fn get_vertex_buffer(display: &Display, width: f32, height: f32) -> VertexBuffer<Vertex> {
+    let texture_cords = (
+        Vec2::new(0.0, 0.0),
+        Vec2::new(0.0, 1.0),
+        Vec2::new(1.0, 0.0),
+        Vec2::new(1.0, 1.0),
+    );
+    let shape = vec![
+        Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
+        Vertex::new(0.0, height as f32, texture_cords.1.x(), texture_cords.1.y()),
+        Vertex::new(width as f32, 0.0, texture_cords.2.x(), texture_cords.2.y()),
+        Vertex::new(
+            width as f32,
+            height as f32,
+            texture_cords.3.x(),
+            texture_cords.3.y(),
+        ),
+    ];
+    VertexBuffer::new(display, &shape).unwrap()
 }

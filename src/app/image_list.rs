@@ -49,7 +49,7 @@ impl ImageList {
     }
 
     pub fn change_dir(&mut self, path: impl AsRef<Path>) {
-        let path_buf = Path::new("./").join(path.as_ref()).to_path_buf();
+        let path_buf = Path::new("./").join(path.as_ref());
         let mut dir_path = path_buf.clone();
         dir_path.pop();
 

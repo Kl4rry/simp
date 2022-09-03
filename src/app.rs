@@ -106,11 +106,11 @@ impl App {
                 self.largest_fit();
             }
             Output::FlipHorizontal => {
-                self.image_view.as_mut().unwrap().flip_horizontal(display);
+                self.image_view.as_mut().unwrap().flip_horizontal();
                 stack.push(UndoFrame::FlipHorizontal);
             }
             Output::FlipVertical => {
-                self.image_view.as_mut().unwrap().flip_vertical(display);
+                self.image_view.as_mut().unwrap().flip_vertical();
                 stack.push(UndoFrame::FlipVertical);
             }
             Output::Rotate(dir) => {
@@ -152,10 +152,10 @@ impl App {
                             self.image_view.as_mut().unwrap().rotate(-*rot);
                         }
                         UndoFrame::FlipHorizontal => {
-                            self.image_view.as_mut().unwrap().flip_horizontal(display);
+                            self.image_view.as_mut().unwrap().flip_horizontal();
                         }
                         UndoFrame::FlipVertical => {
-                            self.image_view.as_mut().unwrap().flip_vertical(display);
+                            self.image_view.as_mut().unwrap().flip_vertical();
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();
@@ -181,10 +181,10 @@ impl App {
                             self.image_view.as_mut().unwrap().rotate(*rot);
                         }
                         UndoFrame::FlipHorizontal => {
-                            self.image_view.as_mut().unwrap().flip_horizontal(display);
+                            self.image_view.as_mut().unwrap().flip_horizontal();
                         }
                         UndoFrame::FlipVertical => {
-                            self.image_view.as_mut().unwrap().flip_vertical(display);
+                            self.image_view.as_mut().unwrap().flip_vertical();
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();

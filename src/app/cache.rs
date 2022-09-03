@@ -61,7 +61,7 @@ impl Cache {
         self.lru
             .lock()
             .unwrap()
-            .pop(&path.canonicalize().unwrap_or(path.clone()));
+            .pop(&path.canonicalize().unwrap_or_else(|_| path.clone()));
     }
 
     #[allow(clippy::ptr_arg)]
@@ -69,7 +69,7 @@ impl Cache {
         self.lru
             .lock()
             .unwrap()
-            .get(&path.canonicalize().unwrap_or(path.clone()))
+            .get(&path.canonicalize().unwrap_or_else(|_| path.clone()))
             .cloned()
     }
 
@@ -78,7 +78,7 @@ impl Cache {
         self.lru
             .lock()
             .unwrap()
-            .contains(&path.canonicalize().unwrap_or(path.clone()))
+            .contains(&path.canonicalize().unwrap_or_else(|_| path.clone()))
     }
 
     pub fn clear(&self) {

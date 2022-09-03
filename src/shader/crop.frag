@@ -51,7 +51,7 @@ void main() {
 
 	if(x < start.x || x > end.x || y < start.y || y > end.y) {
 		if(!line) {
-			vec4 dark = vec4(0.0, 0.0, 0.0, 0.5);
+			vec4 dark = vec4(0.0, 0.0, 0.0, 0.7);
 			color = blend(color, dark);
 		}
 	} else {
