@@ -112,4 +112,4 @@ You can always also just grab the latest binary from actions build artifacts.
 Just download the exe from the releases tab. No actual installation is required.
 
 ### The name
-It's a acronym (S)imple (i)mage (m)anipulation (p)rogram.
+It's an acronym (S)imple (i)mage (m)anipulation (p)rogram.
