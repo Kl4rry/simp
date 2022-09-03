@@ -307,6 +307,7 @@ impl OpQueue {
                         }
                     }
                 }
+                paths.sort();
                 if let Some(p) = paths.into_iter().next() {
                     path = p;
                 }
