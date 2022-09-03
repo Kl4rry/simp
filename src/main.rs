@@ -125,7 +125,12 @@ impl WindowHandler {
                     display.gl_window().window().request_redraw();
                     glutin::event_loop::ControlFlow::Poll
                 } else if let Some(delay) = delay {
-                    ControlFlow::WaitUntil(Instant::now() + delay)
+                    let smaller = if delay < repaint_after {
+                        delay
+                    } else {
+                        repaint_after
+                    };
+                    ControlFlow::WaitUntil(Instant::now() + smaller)
                 } else {
                     ControlFlow::WaitUntil(Instant::now() + Duration::from_secs(1))
                 };
