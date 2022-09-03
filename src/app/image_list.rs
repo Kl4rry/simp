@@ -49,9 +49,12 @@ impl ImageList {
     }
 
     pub fn change_dir(&mut self, path: impl AsRef<Path>) {
-        let path_buf = Path::new("./").join(path.as_ref());
+        let path_buf = path.as_ref().to_path_buf();
         let mut dir_path = path_buf.clone();
         dir_path.pop();
+        if dir_path == Path::new("") {
+            dir_path = PathBuf::from(".");
+        }
 
         if let Some(ref p) = self.path {
             if *p == dir_path && self.list.lock().unwrap().is_some() {
