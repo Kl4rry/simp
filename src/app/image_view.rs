@@ -20,7 +20,7 @@ use glium::{
     uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
     Blend, IndexBuffer, Surface, VertexBuffer,
 };
-use image::{imageops::rotate180_in_place, DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImageView};
 
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
@@ -56,7 +56,7 @@ pub struct ImageView {
     pub scale: f32,
     rotation: i32,
     pub path: Option<PathBuf>,
-    pub image_data: Arc<RwLock<ImageData>>,
+    pub image_data: Arc<RwLock<Arc<ImageData>>>,
     pub last_frame: Instant,
     pub index: usize,
     pub horizontal_flip: bool,
@@ -77,13 +77,8 @@ pub struct ImageView {
 }
 
 impl ImageView {
-    pub fn new(
-        display: &Display,
-        image_data: Arc<RwLock<ImageData>>,
-        path: Option<PathBuf>,
-    ) -> Self {
-        let guard = image_data.read().unwrap();
-        let frames = &guard.frames;
+    pub fn new(display: &Display, image_data: Arc<ImageData>, path: Option<PathBuf>) -> Self {
+        let frames = &image_data.frames;
         let image = frames[0].buffer();
         let (width, height) = image.dimensions();
         let texture_cords = (
@@ -107,8 +102,6 @@ impl ImageView {
 
         let texture = get_texture(image, display);
 
-        drop(guard);
-
         let sampler = SamplerBehavior {
             magnify_filter: MagnifySamplerFilter::Nearest,
             minify_filter: MinifySamplerFilter::LinearMipmapLinear,
@@ -121,7 +114,7 @@ impl ImageView {
             position: Vec2::default(),
             scale: 1.0,
             rotation: 0,
-            image_data,
+            image_data: Arc::new(RwLock::new(image_data)),
             last_frame: Instant::now(),
             index: 0,
             horizontal_flip: false,
@@ -293,26 +286,18 @@ impl ImageView {
         let old_rotation = self.rotation;
         thread::spawn(move || {
             let mut new_frames = Vec::new();
-            let mut guard = image_data.write().unwrap();
-            let frames = &mut guard.frames;
-            for frame in &mut *frames {
-                match rotation {
-                    0 => (),
-                    1 => {
-                        let buffer = frame.buffer().rotate90();
-                        *frame.buffer_mut() = buffer;
-                    }
-                    2 => {
-                        rotate180_in_place(frame.buffer_mut());
-                    }
-                    3 => {
-                        let buffer = frame.buffer().rotate270();
-                        *frame.buffer_mut() = buffer;
-                    }
+            let guard = image_data.read().unwrap();
+            let frames = &guard.frames;
+            for frame in &*frames {
+                let buffer = match rotation {
+                    0 => frame.buffer().clone(),
+                    1 => frame.buffer().rotate90(),
+                    2 => frame.buffer().rotate180(),
+                    3 => frame.buffer().rotate270(),
                     _ => unreachable!(),
-                }
+                };
 
-                let image = frame.buffer().crop_imm(
+                let image = buffer.crop_imm(
                     cut.x() as u32,
                     cut.y() as u32,
                     cut.width() as u32,
@@ -328,7 +313,7 @@ impl ImageView {
 
     pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
         let mut guard = self.image_data.write().unwrap();
-        mem::swap(&mut guard.frames, frames);
+        mem::swap(&mut Arc::make_mut(&mut *guard).frames, frames);
         drop(guard);
         self.update_image_data(display);
         self.update_vertex_data(display);

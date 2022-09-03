@@ -4,18 +4,17 @@ use egui::{menu, Button, TopBottomPanel};
 use glium::Display;
 
 use super::{delete, load_image, new_window, op_queue::Op, save_image, App};
+use crate::util::UserEvent;
 
 impl App {
     pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
-                    let res = ui.button("Open");
-                    if res.clicked() {
+                    if ui.button("Open").clicked() {
                         load_image::open(self.proxy.clone(), display, false);
                         ui.close_menu();
                     }
-                    res.on_hover_text_at_pointer("Ctrl + O");
 
                     if ui.button("Open folder").clicked() {
                         load_image::open(self.proxy.clone(), display, true);
@@ -55,7 +54,7 @@ impl App {
                     ui.separator();
 
                     if ui.button("Exit").clicked() {
-                        self.exit = true;
+                        let _ = self.proxy.send_event(UserEvent::Exit);
                     }
                 });
 

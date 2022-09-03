@@ -2,7 +2,7 @@ use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex, RwLock,
+        Arc, Mutex,
     },
 };
 
@@ -11,7 +11,7 @@ use lru::LruCache;
 use crate::util::ImageData;
 
 pub struct Cache {
-    lru: Mutex<LruCache<PathBuf, Arc<RwLock<ImageData>>>>,
+    lru: Mutex<LruCache<PathBuf, Arc<ImageData>>>,
     total_size: AtomicUsize,
     max_size: usize,
 }
@@ -25,10 +25,9 @@ impl Cache {
         }
     }
 
-    pub fn put(&self, path: PathBuf, image: Arc<RwLock<ImageData>>) {
+    pub fn put(&self, path: PathBuf, mut image: Arc<ImageData>) {
+        Arc::make_mut(&mut image);
         let size: usize = image
-            .read()
-            .unwrap()
             .frames
             .iter()
             .map(|image| image.buffer().as_bytes().len())
@@ -43,8 +42,6 @@ impl Cache {
             match removed {
                 Some((_, value)) => {
                     let removed: usize = value
-                        .read()
-                        .unwrap()
                         .frames
                         .iter()
                         .map(|image| image.buffer().as_bytes().len())
@@ -56,22 +53,32 @@ impl Cache {
         }
 
         self.total_size.fetch_add(size, Ordering::SeqCst);
-        guard.put(path, image);
+        guard.put(path.canonicalize().unwrap_or(path), image);
     }
 
     #[allow(clippy::ptr_arg)]
     pub fn pop(&self, path: &PathBuf) {
-        self.lru.lock().unwrap().pop(path);
+        self.lru
+            .lock()
+            .unwrap()
+            .pop(&path.canonicalize().unwrap_or(path.clone()));
     }
 
     #[allow(clippy::ptr_arg)]
-    pub fn get(&self, path: &PathBuf) -> Option<Arc<RwLock<ImageData>>> {
-        self.lru.lock().unwrap().get(path).cloned()
+    pub fn get(&self, path: &PathBuf) -> Option<Arc<ImageData>> {
+        self.lru
+            .lock()
+            .unwrap()
+            .get(&path.canonicalize().unwrap_or(path.clone()))
+            .cloned()
     }
 
     #[allow(clippy::ptr_arg)]
     pub fn contains(&self, path: &PathBuf) -> bool {
-        self.lru.lock().unwrap().contains(path)
+        self.lru
+            .lock()
+            .unwrap()
+            .contains(&path.canonicalize().unwrap_or(path.clone()))
     }
 
     pub fn clear(&self) {

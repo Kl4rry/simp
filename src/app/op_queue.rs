@@ -2,7 +2,7 @@ use std::{
     collections::HashSet,
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
     thread,
 };
 
@@ -14,6 +14,7 @@ use image::{
     },
     DynamicImage,
 };
+use rfd::MessageDialog;
 
 use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{
@@ -57,7 +58,7 @@ pub enum Op {
 }
 
 pub enum Output {
-    ImageLoaded(Arc<RwLock<ImageData>>, Option<PathBuf>),
+    ImageLoaded(Arc<ImageData>, Option<PathBuf>),
     Rotate(i32),
     FlipHorizontal,
     FlipVertical,
@@ -67,7 +68,7 @@ pub enum Output {
     Undo,
     Redo,
     Close,
-
+    Saved,
     // these are just used to indicate that it is done
     Done,
 }
@@ -118,11 +119,11 @@ impl OpQueue {
             self.working = true;
             match op {
                 Op::LoadPath(path, use_cache) => {
-                    self.load(path, use_cache);
+                    self.load(path, use_cache, self.stack.is_edited());
                 }
                 Op::Next => match self.image_list.next() {
                     Some(path) => {
-                        self.load(path, true);
+                        self.load(path, true, self.stack.is_edited());
                     }
                     None => {
                         self.proxy.send_output(Output::Done);
@@ -130,7 +131,7 @@ impl OpQueue {
                 },
                 Op::Prev => match self.image_list.prev() {
                     Some(path) => {
-                        self.load(path, true);
+                        self.load(path, true, self.stack.is_edited());
                     }
                     None => {
                         self.proxy.send_output(Output::Done);
@@ -235,7 +236,7 @@ impl OpQueue {
                 Op::Delete(path) => match trash::delete(&path) {
                     Ok(_) => match self.image_list.trash(&path) {
                         Some(path) => {
-                            self.load(path, true);
+                            self.load(path, true, false);
                         }
                         None => {
                             self.proxy.send_output(Output::Close);
@@ -255,7 +256,11 @@ impl OpQueue {
         &mut self.stack
     }
 
-    fn load(&self, path_buf: PathBuf, use_cache: bool) {
+    pub fn undo_stack(&self) -> &UndoStack {
+        &&self.stack
+    }
+
+    fn load(&self, path_buf: PathBuf, use_cache: bool, edited_prompt: bool) {
         {
             let mut guard = self.loading_info.lock().unwrap();
             guard.target_file = Some(path_buf.clone());
@@ -270,14 +275,11 @@ impl OpQueue {
             self.cache.pop(&path_buf);
         }
 
-        if let Some(images) = self.cache.get(&path_buf) {
-            let mut guard = self.loading_info.lock().unwrap();
-            guard.loading.remove(&path_buf);
-            guard.target_file = None;
-            self.proxy
-                .send_output(Output::ImageLoaded(images, Some(path_buf)));
-            return;
-        }
+        let dialog = if edited_prompt {
+            Some(get_unsaved_changes_dialog())
+        } else {
+            None
+        };
 
         let cache = self.cache.clone();
         let proxy = self.proxy.clone();
@@ -310,6 +312,21 @@ impl OpQueue {
                 }
             }
 
+            if let Some(dialog) = dialog {
+                if !dialog.show() {
+                    proxy.send_output(Output::Done);
+                    return;
+                }
+            }
+
+            if let Some(images) = cache.get(&path_buf) {
+                let mut guard = loading_info.lock().unwrap();
+                guard.loading.remove(&path_buf);
+                guard.target_file = None;
+                proxy.send_output(Output::ImageLoaded(images, Some(path_buf)));
+                return;
+            }
+
             let res = load_uncached(&path);
             let mut guard = loading_info.lock().unwrap();
             guard.loading.remove(&path_buf);
@@ -317,7 +334,7 @@ impl OpQueue {
 
             match res {
                 Ok(images) => {
-                    let images = Arc::new(RwLock::new(images));
+                    let images = Arc::new(images);
                     cache.put(path_buf.clone(), images.clone());
                     proxy.send_output(Output::ImageLoaded(images, Some(path)));
                 }
@@ -366,7 +383,7 @@ pub fn prefetch(
 
         match res {
             Ok(images) => {
-                let images = Arc::new(RwLock::new(images));
+                let images = Arc::new(images);
                 cache.put(path_buf.clone(), images.clone());
                 if guard.target_file.as_ref() == Some(&path_buf) {
                     proxy.send_output(Output::ImageLoaded(images, Some(path_buf.clone())));
@@ -383,4 +400,12 @@ pub fn prefetch(
             guard.target_file = None;
         }
     });
+}
+
+pub fn get_unsaved_changes_dialog() -> MessageDialog {
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_title("Unsaved changes")
+        .set_description("You have unsaved changes are you sure you want to close this image?")
+        .set_buttons(rfd::MessageButtons::OkCancel)
 }

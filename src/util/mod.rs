@@ -97,6 +97,7 @@ pub enum UserEvent {
     Exit,
 }
 
+#[derive(Debug, Clone)]
 pub struct ImageData {
     pub frames: Vec<Image>,
     pub metadata: Vec<(String, String)>,

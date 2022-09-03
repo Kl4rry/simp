@@ -41,7 +41,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
     mut path: PathBuf,
-    image_data: Arc<RwLock<ImageData>>,
+    image_data: Arc<RwLock<Arc<ImageData>>>,
     rotation: i32,
     horizontal_flip: bool,
     vertical_flip: bool,
@@ -102,7 +102,7 @@ pub fn save(
             }
         };
 
-        proxy.send_output(Output::Done);
+        proxy.send_output(Output::Saved);
         if let Err(error) = res {
             let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
         }

@@ -1,4 +1,13 @@
-use std::{path::PathBuf, process::Command, thread, time::Duration};
+use std::{
+    path::PathBuf,
+    process::Command,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
 use glium::{
@@ -39,13 +48,13 @@ mod cache;
 mod resize;
 use resize::Resize;
 
-use self::undo_stack::UndoFrame;
+use self::{op_queue::get_unsaved_changes_dialog, undo_stack::UndoFrame};
 
 const TOP_BAR_SIZE: f32 = 26.0;
 const BOTTOM_BAR_SIZE: f32 = 27.0;
 
 pub struct App {
-    exit: bool,
+    exit: Arc<AtomicBool>,
     delay: Option<Duration>,
     pub image_view: Option<Box<ImageView>>,
     pub size: Vec2<f32>,
@@ -199,6 +208,9 @@ impl App {
                 self.op_queue.image_list.clear();
                 self.op_queue.cache.clear();
             }
+            Output::Saved => {
+                stack.set_saved();
+            }
             // indicates that the operation is done with no output
             Output::Done => (),
         }
@@ -225,7 +237,19 @@ impl App {
 
                 thread::spawn(move || dialog.show());
             }
-            UserEvent::Exit => self.exit = true,
+            UserEvent::Exit => {
+                let exit = self.exit.clone();
+                let dialog = get_unsaved_changes_dialog();
+                if self.op_queue.undo_stack().is_edited() {
+                    thread::spawn(move || {
+                        if dialog.show() {
+                            exit.store(true, Ordering::Relaxed);
+                        }
+                    });
+                } else {
+                    exit.store(true, Ordering::Relaxed);
+                }
+            }
             UserEvent::Output(output) => {
                 if let Some(output) = output.take() {
                     self.op_queue.set_working(false);
@@ -281,7 +305,9 @@ impl App {
                                 self.proxy.clone(),
                                 display,
                             ),
-                            VirtualKeyCode::W if self.modifiers.ctrl() => self.exit = true,
+                            VirtualKeyCode::W if self.modifiers.ctrl() => {
+                                let _ = self.proxy.send_event(UserEvent::Exit);
+                            }
                             VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
                             VirtualKeyCode::F => {
@@ -617,7 +643,7 @@ impl App {
             }
         }
 
-        (self.exit, self.delay)
+        (self.exit.load(Ordering::Relaxed), self.delay)
     }
 
     pub fn resize_ui(&mut self, ctx: &egui::Context) {
@@ -888,7 +914,7 @@ impl App {
 
     pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
         App {
-            exit: false,
+            exit: Arc::new(AtomicBool::new(false)),
             delay: None,
             image_view: None,
             size: Vec2::from(size),

@@ -108,6 +108,7 @@ impl WindowHandler {
             display,
             mut egui,
             mut app,
+            proxy,
             ..
         } = self;
 
@@ -154,7 +155,9 @@ impl WindowHandler {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..
-                } => *control_flow = ControlFlow::Exit,
+                } => {
+                    let _ = proxy.send_event(UserEvent::Exit);
+                }
                 Event::LoopDestroyed => {
                     let window_context = display.gl_window();
                     let window = window_context.window();
