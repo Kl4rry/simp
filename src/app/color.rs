@@ -14,7 +14,7 @@ impl App {
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("color grid").show(ui, |ui| {
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Hue: ");
                         });
                         ui.add(Slider::new(
@@ -22,7 +22,7 @@ impl App {
                             0.0..=180.0,
                         ));
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Contrast: ");
                         });
                         ui.add(Slider::new(
@@ -30,7 +30,7 @@ impl App {
                             -100.0..=100.0,
                         ));
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Brightness: ");
                         });
                         ui.add(Slider::new(
@@ -38,7 +38,7 @@ impl App {
                             -100.0..=100.0,
                         ));
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Saturation: ");
                         });
                         ui.add(Slider::new(
@@ -46,12 +46,12 @@ impl App {
                             -100.0..=100.0,
                         ));
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Grayscale: ");
                         });
                         ui.checkbox(&mut self.image_view.as_mut().unwrap().grayscale, "");
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Invert: ");
                         });
                         ui.checkbox(&mut self.image_view.as_mut().unwrap().invert, "");

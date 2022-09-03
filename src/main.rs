@@ -13,7 +13,7 @@ use glium::{
     glutin::{
         self,
         event::{Event, WindowEvent},
-        event_loop::{ControlFlow, EventLoop, EventLoopProxy},
+        event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
         window::WindowBuilder,
     },
     Display, Surface,
@@ -47,7 +47,7 @@ impl WindowHandler {
     pub fn new() -> Self {
         let config: Config = confy::load("simp").unwrap_or_default();
 
-        let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
+        let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
         let proxy = event_loop.create_proxy();
         let context = glutin::ContextBuilder::new()
             .with_vsync(true)
@@ -75,7 +75,7 @@ impl WindowHandler {
             App::new(proxy.clone(), [size.width as f32, size.height as f32])
         };
 
-        let egui = egui_glium::EguiGlium::new(&display);
+        let egui = egui_glium::EguiGlium::new(&display, &event_loop);
 
         display.gl_window().window().set_visible(true);
 
@@ -114,14 +114,14 @@ impl WindowHandler {
 
         event_loop.run(move |event, _, control_flow| {
             let mut redraw = || {
-                let needs_repaint = egui.run(&display, |egui_ctx| {
+                let repaint_after = egui.run(&display, |egui_ctx| {
                     app.handle_ui(&display, egui_ctx);
                 });
 
                 let (exit, delay) = app.update(&display);
                 *control_flow = if exit {
                     ControlFlow::Exit
-                } else if needs_repaint {
+                } else if repaint_after.is_zero() {
                     display.gl_window().window().request_redraw();
                     glutin::event_loop::ControlFlow::Poll
                 } else if let Some(delay) = delay {
@@ -133,7 +133,7 @@ impl WindowHandler {
                 {
                     let mut target = display.draw();
 
-                    target.clear_color_srgb(0.172, 0.172, 0.172, 1.0);
+                    target.clear_color(0.172, 0.172, 0.172, 1.0);
 
                     // draw things behind egui here
                     let (width, height) = display.get_framebuffer_dimensions();

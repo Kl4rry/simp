@@ -475,7 +475,7 @@ impl App {
 
     fn bottom_bar(&mut self, ctx: &egui::Context) {
         TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-            ui.with_layout(egui::Layout::left_to_right(), |ui| {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                 if self.image_view.is_some() {
                     ui.add_enabled_ui(
                         self.view_available() && !self.image_view.as_ref().unwrap().cropping(),
@@ -657,12 +657,12 @@ impl App {
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("resize grid").show(ui, |ui| {
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Width: ");
                         });
                         let w_focus = ui.text_edit_singleline(&mut self.resize.width).has_focus();
                         ui.end_row();
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Height: ");
                         });
                         let h_focus = ui.text_edit_singleline(&mut self.resize.height).has_focus();
@@ -671,13 +671,13 @@ impl App {
                         self.resize.width.retain(|c| c.is_ascii_digit());
                         self.resize.height.retain(|c| c.is_ascii_digit());
 
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Maintain aspect ratio: ");
                         });
                         ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
                         ui.end_row();
 
-                        ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Resample: ");
                         });
                         let selected = &mut self.resize.resample;
@@ -777,23 +777,23 @@ impl App {
                     .resizable(false)
                     .show(ctx, |ui| {
                         egui::Grid::new("crop grid").show(ui, |ui| {
-                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                                 ui.label("X: ");
                             });
                             ui.text_edit_singleline(&mut view.crop.x);
                             ui.end_row();
-                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                                 ui.label("Y: ");
                             });
                             ui.text_edit_singleline(&mut view.crop.y);
                             ui.end_row();
 
-                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                                 ui.label("Width: ");
                             });
                             ui.text_edit_singleline(&mut view.crop.width);
                             ui.end_row();
-                            ui.with_layout(egui::Layout::right_to_left(), |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                                 ui.label("Height: ");
                             });
                             ui.text_edit_singleline(&mut view.crop.height);
