@@ -285,23 +285,24 @@ impl App {
                 });
 
                 menu::menu_button(ui, "Help", |ui| {
-                    if ui.button("Repository").clicked() {
+                    if ui.add(MenuButton::new("Repository")).clicked() {
                         webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
                         ui.close_menu();
                     }
 
-                    if ui.button("Report Bug").clicked() {
+                    if ui.add(MenuButton::new("Report Bug")).clicked() {
                         webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
                         ui.close_menu();
                     }
 
                     ui.separator();
 
-                    if ui.button("Help").clicked() {
+                    if ui.add(MenuButton::new("Help").tip("Ctrl + H")).clicked() {
                         self.help_visible = true;
+                        ui.close_menu();
                     }
 
-                    if ui.button("About").clicked() {
+                    if ui.add(MenuButton::new("About")).clicked() {
                         let about = format!(
                             "{}\n{}\n{}\n{}",
                             env!("CARGO_PKG_NAME"),
