@@ -56,27 +56,31 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Keybinds
 
-| Action       | Input                |
-| ------------ | :------------------- |
-| Open image   | Ctrl + O             |
-| Save as      | Ctrl + S             |
-| Reload image | F5                   |
-| New window   | Ctrl + N             |
-| Undo         | Ctrl + Z             |
-| Redo         | Ctrl + Y             |
-| Copy         | Ctrl + C             |
-| Paste        | Ctrl + V             |
-| Resize       | Ctrl + R             |
-| Rotate left  | Q                    |
-| Rotate right | E                    |
-| Zoom in      | - or Mousewheel up   |
-| Zoom out     | + or Mousewheel down |
-| Best fit     | B                    |
-| Largest fit  | L                    |
-| Crop         | Ctrl + X             |
-| Fullscreen   | F11 or F             |
-| Delete image | Delete               |
-| 1 - 9        | 100% - 900% Zoom     |
+| Action         | Input                |
+| -------------- | :------------------- |
+| Open image     | Ctrl + O             |
+| Save as        | Ctrl + S             |
+| Reload image   | F5                   |
+| New window     | Ctrl + N             |
+| Undo           | Ctrl + Z             |
+| Redo           | Ctrl + Y             |
+| Copy           | Ctrl + C             |
+| Paste          | Ctrl + V             |
+| Resize         | Ctrl + R             |
+| Rotate left    | Q                    |
+| Rotate right   | E                    |
+| Zoom in        | - or Mousewheel up   |
+| Zoom out       | + or Mousewheel down |
+| Best fit       | B                    |
+| Largest fit    | L                    |
+| Crop           | Ctrl + X             |
+| Fullscreen     | F11 or F             |
+| Delete image   | Delete               |
+| 1 - 9          | 100% - 900% Zoom     |
+| Previous image | A or Left arrow      |
+| Next image     | D or Right arrow     |
+
+
 
 ## System dependencies
 

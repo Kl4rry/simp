@@ -36,6 +36,8 @@ impl App {
                                 ("F11 or F", "Fullscreen"),
                                 ("Delete image", "Delete"),
                                 ("1 - 9", "100% - 900% Zoom"),
+                                ("Previous image", "A or Left Arrow"),
+                                ("Next image", "A or Right Arrow"),
                             ];
 
                             ui.label(RichText::new("Action").strong());
