@@ -31,9 +31,9 @@ impl App {
                                 ("Zoom in", "- or Mousewheel up"),
                                 ("Zoom out", "+ or Mousewheel down"),
                                 ("Best fit", "B"),
-                                ("Largest fit", "F"),
+                                ("Largest fit", "L"),
                                 ("Crop", "Ctrl + X"),
-                                ("F11", "Fullscreen"),
+                                ("F11 or F", "Fullscreen"),
                                 ("Delete image", "Delete"),
                                 ("1 - 9", "100% - 900% Zoom"),
                             ];

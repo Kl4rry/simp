@@ -310,7 +310,7 @@ impl App {
                             }
                             VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
-                            VirtualKeyCode::F => {
+                            VirtualKeyCode::L => {
                                 self.largest_fit();
                             }
                             VirtualKeyCode::B => {
@@ -381,7 +381,7 @@ impl App {
                                 self.queue(Op::Close);
                             }
 
-                            VirtualKeyCode::F11 => {
+                            VirtualKeyCode::F11 | VirtualKeyCode::F => {
                                 let window_context = display.gl_window();
                                 let window = window_context.window();
                                 let fullscreen = window.fullscreen();

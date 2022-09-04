@@ -1,28 +1,34 @@
 use std::thread;
 
-use egui::{menu, Button, TopBottomPanel};
+use egui::{menu, TopBottomPanel};
 use glium::Display;
 
 use super::{delete, load_image, new_window, op_queue::Op, save_image, App};
 use crate::util::UserEvent;
+
+mod menu_button;
+use menu_button::MenuButton;
 
 impl App {
     pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
-                    if ui.button("Open").clicked() {
+                    if ui.add(MenuButton::new("Open").tip("Ctrl + O")).clicked() {
                         load_image::open(self.proxy.clone(), display, false);
                         ui.close_menu();
                     }
 
-                    if ui.button("Open folder").clicked() {
+                    if ui.add(MenuButton::new("Open folder")).clicked() {
                         load_image::open(self.proxy.clone(), display, true);
                         ui.close_menu();
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Save as"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Save as").tip("Ctrl + S"),
+                        )
                         .clicked()
                     {
                         save_image::open(
@@ -35,32 +41,43 @@ impl App {
 
                     ui.separator();
 
-                    if ui.button("New Window").clicked() {
+                    if ui
+                        .add(MenuButton::new("New Window").tip("Ctrl + N"))
+                        .clicked()
+                    {
                         new_window();
                         ui.close_menu();
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Refresh"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Reload").tip("F5"),
+                        )
                         .clicked()
                     {
-                        if let Some(ref path) = self.image_view.as_ref().unwrap().path {
-                            let buf = path.to_path_buf();
-                            self.queue(Op::LoadPath(buf, false));
-                        }
+                        save_image::open(
+                            self.current_filename.clone(),
+                            self.proxy.clone(),
+                            display,
+                        );
                         ui.close_menu();
                     }
 
                     ui.separator();
 
-                    if ui.button("Exit").clicked() {
+                    if ui.add(MenuButton::new("Exit").tip("Ctrl + W")).clicked() {
                         let _ = self.proxy.send_event(UserEvent::Exit);
+                        ui.close_menu();
                     }
                 });
 
                 menu::menu_button(ui, "Edit", |ui| {
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Undo"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Undo").tip("Ctrl + Z"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Undo);
@@ -68,7 +85,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Redo"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Redo").tip("Ctrl + Y"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Redo);
@@ -78,7 +98,10 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Copy"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Copy").tip("Ctrl + C"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Copy);
@@ -86,7 +109,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(!self.op_queue.working(), Button::new("Paste"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Paste").tip("Ctrl + V"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Paste);
@@ -96,7 +122,10 @@ impl App {
 
                 menu::menu_button(ui, "Image", |ui| {
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Rotate Left"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Rotate Left").tip("Q"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Rotate(-1));
@@ -104,7 +133,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Rotate Right"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Rotate Right").tip("E"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::Rotate(1));
@@ -114,7 +146,10 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Flip Horizontal"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Flip Horizontal"),
+                        )
                         .clicked()
                     {
                         self.queue(Op::FlipHorizontal);
@@ -122,7 +157,7 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Flip Vertical"))
+                        .add_enabled(self.view_available(), MenuButton::new("Flip Vertical"))
                         .clicked()
                     {
                         self.queue(Op::FlipVertical);
@@ -132,7 +167,10 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Zoom in"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Zoom in").tip("+"),
+                        )
                         .clicked()
                     {
                         self.zoom(1.0, self.size / 2.0);
@@ -140,7 +178,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Zoom out"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Zoom out").tip("-"),
+                        )
                         .clicked()
                     {
                         self.zoom(-1.0, self.size / 2.0);
@@ -150,7 +191,10 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Best fit"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Best fit").tip("B"),
+                        )
                         .clicked()
                     {
                         self.best_fit();
@@ -158,7 +202,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Largest fit"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Largest fit").tip("L"),
+                        )
                         .clicked()
                     {
                         self.largest_fit();
@@ -168,7 +215,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Color"))
+                        .add_enabled(self.image_view.is_some(), MenuButton::new("Color"))
                         .clicked()
                     {
                         self.color_visible = true;
@@ -176,7 +223,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.view_available(), Button::new("Crop"))
+                        .add_enabled(
+                            self.view_available(),
+                            MenuButton::new("Crop").tip("Ctrl + X"),
+                        )
                         .clicked()
                     {
                         self.image_view.as_mut().unwrap().start_crop();
@@ -184,7 +234,10 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Resize"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Resize").tip("Ctrl + R"),
+                        )
                         .clicked()
                     {
                         self.resize.visible = true;
@@ -205,7 +258,7 @@ impl App {
                                     .unwrap()
                                     .metadata
                                     .is_empty(),
-                            Button::new("Metadata"),
+                            MenuButton::new("Metadata"),
                         )
                         .clicked()
                     {
@@ -216,7 +269,10 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), Button::new("Delete"))
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            MenuButton::new("Delete").tip("Delete"),
+                        )
                         .clicked()
                     {
                         if let Some(ref view) = self.image_view {

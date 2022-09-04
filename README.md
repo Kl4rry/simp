@@ -22,7 +22,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 ## Supported Platforms
 
 | OS      | Support                                                                       |
-| ------- | ---------------------------------------------------------------------------- |
+| ------- | ----------------------------------------------------------------------------- |
 | Windows | Primary development platform and the most well tested.                        |
 | Linux   | Arch + Kde is semi regularly tested and it always compiles for ubuntu in cli. |
 | MacOS   | MacOS compiles but is not well tested.                                        |
@@ -72,9 +72,9 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Zoom in      | - or Mousewheel up   |
 | Zoom out     | + or Mousewheel down |
 | Best fit     | B                    |
-| Largest fit  | F                    |
+| Largest fit  | L                    |
 | Crop         | Ctrl + X             |
-| F11          | Fullscreen           |
+| Fullscreen   | F11 or F             |
 | Delete image | Delete               |
 | 1 - 9        | 100% - 900% Zoom     |
 
