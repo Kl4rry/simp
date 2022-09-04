@@ -892,9 +892,10 @@ impl App {
 
     pub fn best_fit(&mut self) {
         if let Some(ref mut view) = self.image_view {
+            let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / view.size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / view.size.y()
+                self.size.x() / size.x(),
+                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
             );
             view.scale = min!(scaling, 1.0);
             view.position = self.size / 2.0;
@@ -903,9 +904,10 @@ impl App {
 
     pub fn largest_fit(&mut self) {
         if let Some(ref mut view) = self.image_view {
+            let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / view.size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / view.size.y()
+                self.size.x() / size.x(),
+                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
             );
             view.scale = scaling;
             view.position = self.size / 2.0;
