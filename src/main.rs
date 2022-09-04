@@ -109,7 +109,6 @@ impl WindowHandler {
             mut egui,
             mut app,
             proxy,
-            ..
         } = self;
 
         event_loop.run(move |event, _, control_flow| {
@@ -169,6 +168,7 @@ impl WindowHandler {
                     let data = Config {
                         maximized: window.is_maximized(),
                     };
+                    window.set_visible(false);
                     confy::store("simp", data).unwrap();
                 }
                 Event::WindowEvent { event, .. } => {
