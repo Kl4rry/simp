@@ -1,4 +1,4 @@
-# Simp  
+# Simp
 
 Simp is a fast and simple GPU-accelerated image manipulation program.
 
@@ -6,18 +6,18 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Goals
 
-* Support of as many image formats as possible.
-* 60 Hz. Avoid blocking for more than 16ms.
-* Flicker free redrawing.
-* Smooth resizing.
-* Always use GPU-acceleration where possible.
-* Desktop OS support.
-* Basic image manipulation.
+- Support of as many image formats as possible.
+- 60 Hz. Avoid blocking for more than 16ms.
+- Flicker free redrawing.
+- Smooth resizing.
+- Always use GPU-acceleration where possible.
+- Desktop OS support.
+- Basic image manipulation.
 
 ### Non Goals
 
-* Powerful image manipulation (I am not making the next photoshop)
-* Web/Mobile platform support.
+- Powerful image manipulation (I am not making the next photoshop)
+- Web/Mobile platform support.
 
 ## Supported Platforms
 
@@ -29,8 +29,8 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Supported Codecs
 
-| Format    | Decoding                                                             | Encoding                               |
-| --------- | -------------------------------------------------------------------- | -------------------------------------- |
+| Format    | Decoding                                                              | Encoding                                |
+| --------- | --------------------------------------------------------------------- | --------------------------------------- |
 | PNG       | ✅                                                                    | ✅                                      |
 | JPEG      | ✅ Baseline and progressive                                           | ✅ Baseline                             |
 | GIF       | ✅                                                                    | ✅                                      |
@@ -50,7 +50,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | OpenEXR   | ✅ Rgb32F, Rgba32F (no dwa compression)                               | ✅ Rgb32F, Rgba32F (no dwa compression) |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
-2. SVGs are rastarized because Simp is primarly a bitmap image editor.
+2. SVGs are rastarized because Simp is primarily a bitmap image editor.
 3. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 4. HEIF/HEIC is not supported because it is currently very hard to link libheif on windows.
 
@@ -80,18 +80,18 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Previous image | A or Left arrow      |
 | Next image     | D or Right arrow     |
 
-
-
 ## System dependencies
 
 System dependencies are only required at compile time.
 
 ### Linux
+
 ```shell
 sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
 ```
 
 ### dav1d
+
 The dav1d library is required to be installed to build with AVIF support.
 
 ## Installation
@@ -108,7 +108,7 @@ cargo install simp --locked
 cargo install --git https://github.com/Kl4rry/simp --locked
 ```
 
-The latest bulid is very likely buggy and unfinished.  
+The latest build is very likely buggy and unfinished.
 You can always also just grab the latest binary from actions build artifacts.
 
 ### Manual
@@ -116,4 +116,5 @@ You can always also just grab the latest binary from actions build artifacts.
 Just download the exe from the releases tab. No actual installation is required.
 
 ### The name
+
 It's an acronym (S)imple (i)mage (m)anipulation (p)rogram.
