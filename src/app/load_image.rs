@@ -89,12 +89,9 @@ pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
     let mut metadata = Vec::new();
     if let Ok(exif) = rexif::parse_buffer_quiet(&bytes).0 {
         for entry in exif.entries {
-            use ExifTag::*;
-            const HIDDEN_TAGS: &[ExifTag] = &[MakerNote];
-            if ExifTag::UnknownToMe != entry.tag && !HIDDEN_TAGS.contains(&entry.tag) {
+            if ExifTag::UnknownToMe != entry.tag {
                 let text = entry.value_more_readable;
-                let short = if text.len() > 20 { &text[..20] } else { &text };
-                metadata.push((entry.tag.to_string(), short.to_string()));
+                metadata.push((entry.tag.to_string(), text.to_string()));
             }
         }
     }
