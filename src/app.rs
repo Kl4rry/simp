@@ -50,6 +50,12 @@ use resize::Resize;
 
 use self::{op_queue::get_unsaved_changes_dialog, undo_stack::UndoFrame};
 
+enum ResizeMode {
+    Original,
+    BestFit,
+    LargestFit,
+}
+
 const TOP_BAR_SIZE: f32 = 26.0;
 const BOTTOM_BAR_SIZE: f32 = 27.0;
 
@@ -67,6 +73,7 @@ pub struct App {
     current_filename: String,
     op_queue: OpQueue,
     resize: Resize,
+    resize_mode: ResizeMode,
     help_visible: bool,
     color_visible: bool,
     metadata_visible: bool,
@@ -276,6 +283,16 @@ impl App {
             WindowEvent::Resized(size) => {
                 *self.size.mut_x() = size.width as f32;
                 *self.size.mut_y() = size.height as f32;
+
+                match self.resize_mode {
+                    ResizeMode::Original => {}
+                    ResizeMode::LargestFit => {
+                        self.largest_fit();
+                    }
+                    ResizeMode::BestFit => {
+                        self.best_fit();
+                    }
+                }
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_position.set_x(position.x as f32);
@@ -408,6 +425,7 @@ impl App {
                                     self.top_bar_size = 0.0;
                                     self.bottom_bar_size = 0.0;
                                 }
+                                self.largest_fit();
                             }
                             VirtualKeyCode::Escape => {
                                 if self.view_available()
@@ -899,6 +917,7 @@ impl App {
                 let mouse_to_center = image.position - mouse_position;
                 image.position -= mouse_to_center * (old_scale - image.scale) / old_scale;
             }
+            self.resize_mode = ResizeMode::Original;
         }
     }
 
@@ -911,6 +930,7 @@ impl App {
             );
             view.scale = min!(scaling, 1.0);
             view.position = self.size / 2.0;
+            self.resize_mode = ResizeMode::BestFit;
         }
     }
 
@@ -923,6 +943,7 @@ impl App {
             );
             view.scale = scaling;
             view.position = self.size / 2.0;
+            self.resize_mode = ResizeMode::LargestFit;
         }
     }
 
@@ -944,6 +965,7 @@ impl App {
             help_visible: false,
             color_visible: false,
             metadata_visible: false,
+            resize_mode: ResizeMode::Original,
         }
     }
 }
