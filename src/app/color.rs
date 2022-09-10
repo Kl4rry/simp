@@ -76,6 +76,7 @@ impl App {
                                 if ui
                                     .add_enabled(self.view_available(), Button::new("Apply"))
                                     .clicked()
+                                    || self.enter
                                 {
                                     let view = self.image_view.as_ref().unwrap();
                                     let hue = view.hue;
@@ -93,6 +94,7 @@ impl App {
                                         invert,
                                     });
                                     closed = true;
+                                    self.enter = false;
                                 }
                             },
                         );

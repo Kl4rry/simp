@@ -77,6 +77,7 @@ pub struct App {
     help_visible: bool,
     color_visible: bool,
     metadata_visible: bool,
+    enter: bool,
 }
 
 impl App {
@@ -313,7 +314,7 @@ impl App {
                 self.op_queue.cache.clear();
                 self.queue(Op::LoadPath(path.to_path_buf(), true));
             }
-            WindowEvent::KeyboardInput { input, .. } if !self.resize.visible => {
+            WindowEvent::KeyboardInput { input, .. } => {
                 if let Some(key) = input.virtual_keycode {
                     match input.state {
                         ElementState::Pressed => match key {
@@ -432,15 +433,14 @@ impl App {
                                     && self.image_view.as_ref().unwrap().cropping()
                                 {
                                     self.image_view.as_mut().unwrap().cancel_crop();
-                                } else {
-                                    let window_context = display.gl_window();
-                                    let window = window_context.window();
-                                    let fullscreen = window.fullscreen();
-                                    if fullscreen.is_some() {
-                                        window.set_fullscreen(None);
-                                        self.fullscreen = false;
-                                    }
                                 }
+                                self.help_visible = false;
+                                self.color_visible = false;
+                                self.metadata_visible = false;
+                                self.resize.visible = false;
+                            }
+                            VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
+                                self.enter = true
                             }
                             _ => (),
                         },
@@ -448,7 +448,7 @@ impl App {
                     }
                 }
             }
-            WindowEvent::ReceivedCharacter(c) if !self.resize.visible => match c {
+            WindowEvent::ReceivedCharacter(c) => match c {
                 '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                     if let Some(ref mut view) = self.image_view {
                         let zoom = c.to_digit(10).unwrap() as f32;
@@ -673,6 +673,7 @@ impl App {
             }
         }
 
+        self.enter = false;
         (self.exit.load(Ordering::Relaxed), self.delay)
     }
 
@@ -778,6 +779,7 @@ impl App {
                                         Button::new("Resize"),
                                     )
                                     .clicked()
+                                    || self.enter
                                 {
                                     let width = width.unwrap();
                                     let height = height.unwrap();
@@ -786,6 +788,7 @@ impl App {
                                         self.resize.resample,
                                     ));
                                     resized = true;
+                                    self.enter = false;
                                 }
                             },
                         );
@@ -879,9 +882,12 @@ impl App {
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),
                                 |ui| {
-                                    if ui.add(Button::new("Crop").wrap(false)).clicked() {
+                                    if ui.add(Button::new("Crop").wrap(false)).clicked()
+                                        || self.enter
+                                    {
                                         crop = Some(*rect);
                                         cancel = true;
+                                        self.enter = false;
                                     }
                                 },
                             );
@@ -966,6 +972,7 @@ impl App {
             color_visible: false,
             metadata_visible: false,
             resize_mode: ResizeMode::Original,
+            enter: false,
         }
     }
 }
