@@ -1,5 +1,4 @@
 use std::{
-    path::PathBuf,
     process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -318,6 +317,7 @@ impl App {
                 if let Some(key) = input.virtual_keycode {
                     match input.state {
                         ElementState::Pressed => match key {
+                            #[cfg(feature = "trash")]
                             VirtualKeyCode::Delete => {
                                 if let Some(ref view) = self.image_view {
                                     if let Some(ref path) = view.path {
@@ -977,7 +977,8 @@ impl App {
     }
 }
 
-pub fn delete(path: PathBuf, proxy: EventLoopProxy<UserEvent>, display: &Display) {
+#[cfg(feature = "trash")]
+pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, display: &Display) {
     let dialog = rfd::MessageDialog::new()
         .set_parent(display.gl_window().window())
         .set_level(rfd::MessageLevel::Warning)

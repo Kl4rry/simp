@@ -3,7 +3,7 @@ use std::thread;
 use egui::{menu, TopBottomPanel};
 use glium::Display;
 
-use super::{delete, load_image, new_window, op_queue::Op, save_image, App};
+use super::{load_image, new_window, op_queue::Op, save_image, App};
 use crate::util::UserEvent;
 
 mod menu_button;
@@ -266,21 +266,23 @@ impl App {
                         ui.close_menu();
                     }
 
-                    ui.separator();
-
-                    if ui
-                        .add_enabled(
-                            self.image_view.is_some(),
-                            MenuButton::new("Delete").tip("Delete"),
-                        )
-                        .clicked()
+                    #[cfg(feature = "trash")]
                     {
-                        if let Some(ref view) = self.image_view {
-                            if let Some(ref path) = view.path {
-                                delete(path.clone(), self.proxy.clone(), display);
+                        ui.separator();
+                        if ui
+                            .add_enabled(
+                                self.image_view.is_some(),
+                                MenuButton::new("Delete").tip("Delete"),
+                            )
+                            .clicked()
+                        {
+                            if let Some(ref view) = self.image_view {
+                                if let Some(ref path) = view.path {
+                                    super::delete(path.clone(), self.proxy.clone(), display);
+                                }
                             }
+                            ui.close_menu();
                         }
-                        ui.close_menu();
                     }
                 });
 
