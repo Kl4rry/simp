@@ -26,6 +26,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Windows | Primary development platform and the most well tested.                        |
 | Linux   | Arch + Kde is semi regularly tested and it always compiles for ubuntu in cli. |
 | MacOS   | MacOS compiles but is not well tested.                                        |
+| NetBSD  | Native package available.                                                     |
 
 ## Supported Codecs
 
@@ -100,6 +101,12 @@ The dav1d library is required to be installed to build with AVIF support.
 
 ```shell
 cargo install simp --locked
+```
+
+### NetBSD
+A pre-compiled binary is available from the official repositories. To install it, simply run:
+```
+pkgin install simp
 ```
 
 ### Latest from github
