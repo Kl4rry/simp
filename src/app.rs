@@ -90,7 +90,7 @@ impl App {
             Output::ImageLoaded(image_data, path) => {
                 stack.clear();
                 self.current_filename = if let Some(path) = &path {
-                    self.op_queue.image_list.change_dir(&path);
+                    self.op_queue.image_list.change_dir(path);
                     path.file_name().unwrap().to_str().unwrap().to_string()
                 } else {
                     String::new()
@@ -526,7 +526,7 @@ impl App {
 
                     let g = image.image_data.read();
                     let buf = g.as_ref().unwrap().frames[0].buffer();
-                    let color_space = match buf {
+                    let mut color_space = match buf {
                         DynamicImage::ImageLuma8(_) => "Luma8",
                         DynamicImage::ImageLumaA8(_) => "LumaA8",
                         DynamicImage::ImageRgb8(_) => "Rgb8",
@@ -538,7 +538,7 @@ impl App {
                         DynamicImage::ImageRgb32F(_) => "Rgb32F",
                         DynamicImage::ImageRgba32F(_) => "Rgba32F",
                         _ => panic!("Unknown color space name. This is a bug."),
-                    };
+                    }.to_string();
 
                     {
                         let pos = (((self.mouse_position
@@ -616,12 +616,17 @@ impl App {
                                 DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
                                 _ => panic!("Unknown color space name. This is a bug."),
                             };
-                            ui.label(format!("{}: {}", color_space, color_str));
-                            return;
+                            color_space = format!("{}: {}", color_space, color_str);
                         }
                         ui.label(color_space);
                     }
                 }
+                
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if self.op_queue.working() {
+                        ui.add(egui::widgets::Spinner::new().size(14.0));
+                    }
+                });
             });
         });
     }
