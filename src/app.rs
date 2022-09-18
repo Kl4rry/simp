@@ -919,7 +919,7 @@ impl App {
             image.scale += image.scale * zoom as f32 / 10.0;
 
             let new_size = image.scaled();
-            if (new_size.x() < 100.0 || new_size.y() < 100.0)
+            if (new_size.x() < 1.0 || new_size.y() < 1.0)
                 && old_scale >= image.scale
                 && image.scale < 1.0
             {
