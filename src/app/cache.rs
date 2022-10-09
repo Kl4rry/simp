@@ -1,4 +1,5 @@
 use std::{
+    num::NonZeroUsize,
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -19,7 +20,7 @@ pub struct Cache {
 impl Cache {
     pub fn new(max_size: usize) -> Cache {
         Self {
-            lru: Mutex::new(LruCache::new(30)),
+            lru: Mutex::new(LruCache::new(NonZeroUsize::new(30).unwrap())),
             total_size: AtomicUsize::new(0),
             max_size,
         }

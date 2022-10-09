@@ -916,7 +916,7 @@ impl App {
     fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {
         if let Some(ref mut image) = self.image_view {
             let old_scale = image.scale;
-            image.scale += image.scale * zoom as f32 / 10.0;
+            image.scale += image.scale * zoom / 10.0;
 
             let new_size = image.scaled();
             if (new_size.x() < 1.0 || new_size.y() < 1.0)

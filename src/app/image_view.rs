@@ -424,14 +424,9 @@ fn get_vertex_buffer(display: &Display, width: f32, height: f32) -> VertexBuffer
     );
     let shape = vec![
         Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
-        Vertex::new(0.0, height as f32, texture_cords.1.x(), texture_cords.1.y()),
-        Vertex::new(width as f32, 0.0, texture_cords.2.x(), texture_cords.2.y()),
-        Vertex::new(
-            width as f32,
-            height as f32,
-            texture_cords.3.x(),
-            texture_cords.3.y(),
-        ),
+        Vertex::new(0.0, height, texture_cords.1.x(), texture_cords.1.y()),
+        Vertex::new(width, 0.0, texture_cords.2.x(), texture_cords.2.y()),
+        Vertex::new(width, height, texture_cords.3.x(), texture_cords.3.y()),
     ];
     VertexBuffer::new(display, &shape).unwrap()
 }

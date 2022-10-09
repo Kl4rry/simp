@@ -45,7 +45,7 @@ pub struct WindowHandler {
 
 impl WindowHandler {
     pub fn new() -> Self {
-        let config: Config = confy::load("simp").unwrap_or_default();
+        let config: Config = confy::load("simp", None).unwrap_or_default();
 
         let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
         let proxy = event_loop.create_proxy();
@@ -169,7 +169,7 @@ impl WindowHandler {
                         maximized: window.is_maximized(),
                     };
                     window.set_visible(false);
-                    confy::store("simp", data).unwrap();
+                    confy::store("simp", None, data).unwrap();
                 }
                 Event::WindowEvent { event, .. } => {
                     if !egui.on_event(&event) || matches!(event, WindowEvent::MouseWheel { .. }) {
