@@ -621,7 +621,6 @@ impl App {
                         ui.label(color_space);
                     }
                 }
-                
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if self.op_queue.working() {
                         ui.add(egui::widgets::Spinner::new().size(14.0));

@@ -45,7 +45,17 @@ impl From<std::io::Error> for LoadError {
 }
 
 pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display, folder: bool) {
-    let dialog = rfd::FileDialog::new().set_parent(display.gl_window().window());
+    let ext: Vec<_> = EXTENSIONS.iter().copied().collect();
+    let raw: Vec<_> = RAW.iter().copied().collect();
+    let dialog = rfd::FileDialog::new()
+        .set_parent(display.gl_window().window())
+        .add_filter("All", &ext)
+        .add_filter("png", &["png", "apng"])
+        .add_filter("svg", &["svg"])
+        .add_filter("jpeg", &["jpg", "jpeg", "jpe", "jif", "jfif"])
+        .add_filter("Photoshop", &["psd"])
+        .add_filter("Animated", &["apng", "gif", "webp"])
+        .add_filter("Raw", &raw);
     thread::spawn(move || {
         let pick = if folder {
             dialog.pick_folder()
