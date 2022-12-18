@@ -9,7 +9,7 @@ use image::{
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
 use resvg::usvg_text_layout::TreeTextToPath;
-use usvg::{FitTo, Options, Tree};
+use usvg::{FitTo, Options, ScreenSize, Tree};
 
 use crate::util::Image;
 
@@ -135,12 +135,16 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     };
     tree.convert_text(&fontdb, true);
 
-    let size = tree.size.to_screen_size();
+    let mut size = tree.size.to_screen_size();
+    while size.width() < 1000 || size.height() < 1000 {
+        size = ScreenSize::new(size.width() * 2, size.height() * 2).unwrap();
+    }
+
     let mut pix_map = tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
 
     resvg::render(
         &tree,
-        FitTo::Original,
+        FitTo::Size(size.width(), size.height()),
         tiny_skia::Transform::identity(),
         pix_map.as_mut(),
     )?;
