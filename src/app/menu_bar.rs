@@ -6,20 +6,20 @@ use glium::Display;
 use super::{load_image, new_window, op_queue::Op, save_image, App};
 use crate::util::UserEvent;
 
-mod menu_button;
-use menu_button::MenuButton;
-
 impl App {
     pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
-                    if ui.add(MenuButton::new("Open").tip("Ctrl + O")).clicked() {
+                    if ui
+                        .add(egui::Button::new("Open").shortcut_text("Ctrl + O"))
+                        .clicked()
+                    {
                         load_image::open(self.proxy.clone(), display, false);
                         ui.close_menu();
                     }
 
-                    if ui.add(MenuButton::new("Open folder")).clicked() {
+                    if ui.add(egui::Button::new("Open folder")).clicked() {
                         load_image::open(self.proxy.clone(), display, true);
                         ui.close_menu();
                     }
@@ -27,7 +27,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Save as").tip("Ctrl + S"),
+                            egui::Button::new("Save as").shortcut_text("Ctrl + S"),
                         )
                         .clicked()
                     {
@@ -42,7 +42,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add(MenuButton::new("New Window").tip("Ctrl + N"))
+                        .add(egui::Button::new("New Window").shortcut_text("Ctrl + N"))
                         .clicked()
                     {
                         new_window();
@@ -52,7 +52,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Reload").tip("F5"),
+                            egui::Button::new("Reload").shortcut_text("F5"),
                         )
                         .clicked()
                     {
@@ -66,7 +66,10 @@ impl App {
 
                     ui.separator();
 
-                    if ui.add(MenuButton::new("Exit").tip("Ctrl + W")).clicked() {
+                    if ui
+                        .add(egui::Button::new("Exit").shortcut_text("Ctrl + W"))
+                        .clicked()
+                    {
                         let _ = self.proxy.send_event(UserEvent::Exit);
                         ui.close_menu();
                     }
@@ -76,7 +79,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Undo").tip("Ctrl + Z"),
+                            egui::Button::new("Undo").shortcut_text("Ctrl + Z"),
                         )
                         .clicked()
                     {
@@ -87,7 +90,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Redo").tip("Ctrl + Y"),
+                            egui::Button::new("Redo").shortcut_text("Ctrl + Y"),
                         )
                         .clicked()
                     {
@@ -100,7 +103,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Copy").tip("Ctrl + C"),
+                            egui::Button::new("Copy").shortcut_text("Ctrl + C"),
                         )
                         .clicked()
                     {
@@ -111,7 +114,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Paste").tip("Ctrl + V"),
+                            egui::Button::new("Paste").shortcut_text("Ctrl + V"),
                         )
                         .clicked()
                     {
@@ -124,7 +127,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Rotate Left").tip("Q"),
+                            egui::Button::new("Rotate Left").shortcut_text("Q"),
                         )
                         .clicked()
                     {
@@ -135,7 +138,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Rotate Right").tip("E"),
+                            egui::Button::new("Rotate Right").shortcut_text("E"),
                         )
                         .clicked()
                     {
@@ -148,7 +151,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Flip Horizontal"),
+                            egui::Button::new("Flip Horizontal"),
                         )
                         .clicked()
                     {
@@ -157,7 +160,7 @@ impl App {
                     }
 
                     if ui
-                        .add_enabled(self.view_available(), MenuButton::new("Flip Vertical"))
+                        .add_enabled(self.view_available(), egui::Button::new("Flip Vertical"))
                         .clicked()
                     {
                         self.queue(Op::FlipVertical);
@@ -169,7 +172,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Zoom in").tip("+"),
+                            egui::Button::new("Zoom in").shortcut_text("+"),
                         )
                         .clicked()
                     {
@@ -180,7 +183,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Zoom out").tip("-"),
+                            egui::Button::new("Zoom out").shortcut_text("-"),
                         )
                         .clicked()
                     {
@@ -193,7 +196,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Best fit").tip("B"),
+                            egui::Button::new("Best fit").shortcut_text("B"),
                         )
                         .clicked()
                     {
@@ -204,7 +207,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Largest fit").tip("L"),
+                            egui::Button::new("Largest fit").shortcut_text("L"),
                         )
                         .clicked()
                     {
@@ -215,7 +218,7 @@ impl App {
                     ui.separator();
 
                     if ui
-                        .add_enabled(self.image_view.is_some(), MenuButton::new("Color"))
+                        .add_enabled(self.image_view.is_some(), egui::Button::new("Color"))
                         .clicked()
                     {
                         self.color_visible = true;
@@ -225,7 +228,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.view_available(),
-                            MenuButton::new("Crop").tip("Ctrl + X"),
+                            egui::Button::new("Crop").shortcut_text("Ctrl + X"),
                         )
                         .clicked()
                     {
@@ -236,7 +239,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            MenuButton::new("Resize").tip("Ctrl + R"),
+                            egui::Button::new("Resize").shortcut_text("Ctrl + R"),
                         )
                         .clicked()
                     {
@@ -258,7 +261,7 @@ impl App {
                                     .unwrap()
                                     .metadata
                                     .is_empty(),
-                            MenuButton::new("Metadata"),
+                            egui::Button::new("Metadata"),
                         )
                         .clicked()
                     {
@@ -272,7 +275,7 @@ impl App {
                         if ui
                             .add_enabled(
                                 self.image_view.is_some(),
-                                MenuButton::new("Delete").tip("Delete"),
+                                egui::Button::new("Delete").shortcut_text("Delete"),
                             )
                             .clicked()
                         {
@@ -287,24 +290,27 @@ impl App {
                 });
 
                 menu::menu_button(ui, "Help", |ui| {
-                    if ui.add(MenuButton::new("Repository")).clicked() {
+                    if ui.add(egui::Button::new("Repository")).clicked() {
                         webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
                         ui.close_menu();
                     }
 
-                    if ui.add(MenuButton::new("Report Bug")).clicked() {
+                    if ui.add(egui::Button::new("Report Bug")).clicked() {
                         webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
                         ui.close_menu();
                     }
 
                     ui.separator();
 
-                    if ui.add(MenuButton::new("Help").tip("Ctrl + H")).clicked() {
+                    if ui
+                        .add(egui::Button::new("Help").shortcut_text("Ctrl + H"))
+                        .clicked()
+                    {
                         self.help_visible = true;
                         ui.close_menu();
                     }
 
-                    if ui.add(MenuButton::new("About")).clicked() {
+                    if ui.add(egui::Button::new("About")).clicked() {
                         let about = format!(
                             "{}\n{}\n{}\n{}",
                             env!("CARGO_PKG_NAME"),

@@ -172,10 +172,14 @@ impl WindowHandler {
                     confy::store("simp", None, data).unwrap();
                 }
                 Event::WindowEvent { event, .. } => {
-                    if !egui.on_event(&event) || matches!(event, WindowEvent::MouseWheel { .. }) {
+                    let res = egui.on_event(&event);
+                    if !res.consumed || matches!(event, WindowEvent::MouseWheel { .. }) {
                         app.handle_window_event(&display, &event);
                     }
-                    display.gl_window().window().request_redraw();
+
+                    if res.repaint {
+                        display.gl_window().window().request_redraw();
+                    }
                 }
                 Event::UserEvent(mut event) => app.handle_user_event(&display, &mut event),
                 _ => display.gl_window().window().request_redraw(),
@@ -190,12 +194,11 @@ fn main() {
         let mut path = PathBuf::from("/panic.txt");
         if let Some(dirs) = dirs {
             if let Some(desktop) = dirs.desktop_dir() {
-                path = desktop.to_path_buf();
-                path.push("panic.txt");
+                path = desktop.to_path_buf().join("panic.txt");
             }
         }
-        eprintln!("{:?}", panic_info);
-        let _ = fs::write(path, format!("{:?}", panic_info));
+        eprintln!("{panic_info:?}");
+        let _ = fs::write(path, format!("{panic_info:?}"));
         std::process::exit(1);
     }));
 

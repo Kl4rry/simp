@@ -472,12 +472,13 @@ impl App {
             ctx.output().cursor_icon = CursorIcon::Progress;
         }
 
+        self.main_area(display, ctx);
+
         if !self.fullscreen {
             self.menu_bar(display, ctx);
             self.bottom_bar(ctx);
         }
 
-        self.main_area(display, ctx);
         self.resize_ui(ctx);
         self.help_ui(ctx);
         self.color_ui(ctx);
@@ -616,7 +617,7 @@ impl App {
                                 DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
                                 _ => panic!("Unknown color space name. This is a bug."),
                             };
-                            color_space = format!("{}: {}", color_space, color_str);
+                            color_space = format!("{color_space}: {color_str}");
                         }
                         ui.label(color_space);
                     }

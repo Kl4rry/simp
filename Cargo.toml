@@ -12,13 +12,14 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arboard = "3.1.0"
+arboard = "3.2.0"
 cgmath = { version = "0.18.0", features = ["swizzle"] }
 confy = "0.5.0"
 ctrlc = "3.2.0"
 directories = "4.0.1"
-egui = "0.19.0"
-egui_glium = "0.19.0"
+egui = "0.20.0"
+egui_glium = "0.20.0"
+fontdb = "0.10.0"
 glium = "0.32.1"
 image = { version = "0.24.2", features = ["exr"] }
 imagepipe = "0.5.0"
@@ -30,13 +31,13 @@ num-traits = "0.2.15"
 once_cell = "1.14.0"
 psd = "0.3.3"
 rawloader = "0.37.0"
-resvg = "0.23.0"
+resvg = "0.28.0"
 rexif = "0.7.3"
 rfd = "0.10.0"
 serde = { version = "1", features = ["derive"] }
-tiny-skia = "0.6.0"
-trash = { version = "2.0", optional = true }
-usvg = "0.23.0"
+tiny-skia = "0.8.2"
+trash = { version = "3.0", optional = true }
+usvg = "0.28.0"
 webbrowser = "0.8.0"
 webp-animation = "0.7.0"
 

@@ -1,5 +1,6 @@
 use std::{io::Cursor, time::Duration};
 
+use fontdb::Database;
 use image::{
     codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder},
     io::Reader as ImageReader,
@@ -7,7 +8,8 @@ use image::{
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use usvg::{fontdb::Database, FitTo, Options, Tree};
+use resvg::usvg_text_layout::TreeTextToPath;
+use usvg::{FitTo, Options, Tree};
 
 use crate::util::Image;
 
@@ -126,19 +128,15 @@ pub fn load_un_detectable_raster(bytes: &[u8]) -> Option<Vec<Image>> {
 pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let mut fontdb = Database::new();
     fontdb.load_system_fonts();
-    let options = Options {
-        fontdb,
-        ..Options::default()
-    };
+    let options = Options::default();
 
-    let tree = match Tree::from_data(bytes, &options.to_ref()) {
-        Ok(tree) => tree,
-        Err(_) => return None,
+    let Ok(mut tree) = Tree::from_data(bytes, &options) else {
+        return None;
     };
+    tree.convert_text(&fontdb, true);
 
-    let svg = tree.svg_node();
-    let mut pix_map =
-        tiny_skia::Pixmap::new(svg.size.width() as u32, svg.size.height() as u32).unwrap();
+    let size = tree.size.to_screen_size();
+    let mut pix_map = tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
 
     resvg::render(
         &tree,
