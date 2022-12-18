@@ -167,21 +167,18 @@ pub fn load_psd(bytes: &[u8]) -> Option<Vec<Image>> {
 }
 
 pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
-    let raw = match rawloader::decode(&mut Cursor::new(bytes)) {
-        Ok(raw) => raw,
-        Err(_) => return None,
+    let Ok(raw) = rawloader::decode(&mut Cursor::new(bytes)) else {
+        return None;
     };
 
     let source = ImageSource::Raw(raw);
-    let mut pipeline = match Pipeline::new_from_source(source) {
-        Ok(pipeline) => pipeline,
-        Err(_) => return None,
+    let Ok(mut pipeline) = Pipeline::new_from_source(source) else {
+        return None;
     };
 
     pipeline.run(None);
-    let image = match pipeline.output_8bit(None) {
-        Ok(image) => image,
-        Err(_) => return None,
+    let Ok(image) = pipeline.output_8bit(None) else {
+        return None;
     };
 
     let image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
@@ -190,12 +187,7 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
         image.data,
     );
 
-    let image = match image {
-        Some(image) => image,
-        None => return None,
-    };
-
-    let dyn_img = image::DynamicImage::ImageRgb8(image);
+    let dyn_img = image::DynamicImage::ImageRgb8(image?);
     let rgba_image: ImageBuffer<Rgba<u8>, Vec<u8>> = dyn_img.into_rgba8();
     Some(vec![Image::from(rgba_image)])
 }
