@@ -103,6 +103,11 @@ The dav1d library is required to be installed to build with AVIF support.
 cargo install simp --locked
 ```
 
+### Arch
+```shell
+yay -S simp
+```
+
 ### NetBSD
 A pre-compiled binary is available from the official repositories. To install it, simply run:
 ```
