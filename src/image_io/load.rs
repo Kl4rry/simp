@@ -181,17 +181,16 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
     };
 
     pipeline.run(None);
-    let Ok(image) = pipeline.output_8bit(None) else {
+    let Ok(image) = pipeline.output_16bit(None) else {
         return None;
     };
 
-    let image = ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(
+    let image = ImageBuffer::<Rgb<u16>, Vec<u16>>::from_raw(
         image.width as u32,
         image.height as u32,
         image.data,
     );
 
-    let dyn_img = image::DynamicImage::ImageRgb8(image?);
-    let rgba_image: ImageBuffer<Rgba<u8>, Vec<u8>> = dyn_img.into_rgba8();
-    Some(vec![Image::from(rgba_image)])
+    let image = image::DynamicImage::ImageRgb16(image?);
+    Some(vec![Image::new(image)])
 }
