@@ -9,6 +9,7 @@ description = "The simple image manipulation program"
 repository = "https://github.com/Kl4rry/simp"
 categories = ["multimedia::images", "multimedia::encoding"]
 readme = "README.md"
+exclude = ["images", ".github"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
