@@ -121,6 +121,13 @@ impl App {
                         self.queue(Op::Paste);
                         ui.close_menu();
                     }
+
+                    ui.separator();
+
+                    if ui.add(egui::Button::new("Preferences")).clicked() {
+                        self.preferences_visible = true;
+                        ui.close_menu();
+                    }
                 });
 
                 menu::menu_button(ui, "Image", |ui| {

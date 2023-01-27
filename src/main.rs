@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![warn(rust_2018_idioms)]
 #![warn(clippy::all)]
 
 use std::{
@@ -21,7 +20,11 @@ use glium::{
 use serde::{Deserialize, Serialize};
 
 mod app;
-use app::{op_queue::Op, App};
+use app::{
+    op_queue::Op,
+    preferences::{Preferences, PREFERENCES},
+    App,
+};
 mod icon;
 mod vec2;
 use vec2::Vec2;
@@ -33,6 +36,7 @@ mod image_io;
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Config {
     maximized: bool,
+    preferences: Preferences,
 }
 
 pub struct WindowHandler {
@@ -167,6 +171,7 @@ impl WindowHandler {
                     let window = window_context.window();
                     let data = Config {
                         maximized: window.is_maximized(),
+                        preferences: PREFERENCES.lock().unwrap().clone(),
                     };
                     window.set_visible(false);
                     confy::store("simp", None, data).unwrap();

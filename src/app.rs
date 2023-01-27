@@ -47,7 +47,9 @@ mod cache;
 mod resize;
 use resize::Resize;
 
-use self::{op_queue::get_unsaved_changes_dialog, undo_stack::UndoFrame};
+pub mod preferences;
+
+use self::{op_queue::get_unsaved_changes_dialog, preferences::PREFERENCES, undo_stack::UndoFrame};
 
 enum ResizeMode {
     Original,
@@ -76,6 +78,7 @@ pub struct App {
     help_visible: bool,
     color_visible: bool,
     metadata_visible: bool,
+    preferences_visible: bool,
     enter: bool,
 }
 
@@ -305,7 +308,10 @@ impl App {
                         MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
                     };
 
-                    self.zoom(scroll, self.mouse_position);
+                    self.zoom(
+                        scroll * PREFERENCES.lock().unwrap().zoom_speed,
+                        self.mouse_position,
+                    );
                 }
             }
             WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
@@ -480,6 +486,7 @@ impl App {
         }
 
         self.resize_ui(ctx);
+        self.preferences_ui(ctx);
         self.help_ui(ctx);
         self.color_ui(ctx);
         self.metadata_ui(ctx);
@@ -976,6 +983,7 @@ impl App {
             help_visible: false,
             color_visible: false,
             metadata_visible: false,
+            preferences_visible: false,
             resize_mode: ResizeMode::Original,
             enter: false,
         }

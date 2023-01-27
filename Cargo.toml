@@ -58,8 +58,12 @@ ProductName = "Simp"
 [profile.release]
 lto = "thin"
 strip = true
+panic = "abort"
 
 [profile.dev]
+panic = "abort"
+
+[profile.dev.package."*"]
 opt-level = 3
 
 [features]

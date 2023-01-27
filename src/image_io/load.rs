@@ -11,7 +11,7 @@ use psd::Psd;
 use resvg::usvg_text_layout::TreeTextToPath;
 use usvg::{FitTo, Options, ScreenSize, Tree};
 
-use crate::util::Image;
+use crate::{app::preferences::PREFERENCES, util::Image};
 
 pub fn decode_images<T, E>(frames: T) -> Vec<Image>
 where
@@ -136,7 +136,8 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     tree.convert_text(&fontdb, true);
 
     let mut size = tree.size.to_screen_size();
-    while size.width() < 1000 || size.height() < 1000 {
+    let min_size = PREFERENCES.lock().unwrap().min_svg_size;
+    while size.width() < min_size || size.height() < min_size {
         size = ScreenSize::new(size.width() * 2, size.height() * 2).unwrap();
     }
 
