@@ -133,7 +133,7 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let Ok(mut tree) = Tree::from_data(bytes, &options) else {
         return None;
     };
-    tree.convert_text(&fontdb, true);
+    tree.convert_text(&fontdb);
 
     let mut size = tree.size.to_screen_size();
     let min_size = PREFERENCES.lock().unwrap().min_svg_size;
