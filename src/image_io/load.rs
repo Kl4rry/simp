@@ -8,8 +8,8 @@ use image::{
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use resvg::usvg_text_layout::TreeTextToPath;
-use usvg::{FitTo, Options, ScreenSize, Tree};
+use resvg::FitTo;
+use usvg::{Options, ScreenSize, Tree, TreeParsing, TreeTextToPath};
 
 use crate::{app::preferences::PREFERENCES, util::Image};
 
