@@ -15,15 +15,15 @@ use crate::{
 #[derive(Debug)]
 pub enum LoadError {
     Io(std::io::Error),
-    Decoding(PathBuf),
+    Decoding(String),
 }
 
 impl fmt::Display for LoadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             LoadError::Io(ref e) => e.fmt(f),
-            LoadError::Decoding(ref path_buf) => {
-                write!(f, "error decoding image: {:?}", path_buf.to_string_lossy())
+            LoadError::Decoding(ref source) => {
+                write!(f, "error decoding image: {:?}", source)
             }
         }
     }
@@ -71,8 +71,16 @@ pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display, folder: bool) {
 pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
     let path_buf = path.as_ref().to_path_buf();
     let bytes = fs::read(&path_buf)?;
+    load_from_bytes(&bytes, Some(path_buf))
+}
 
+pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageData, LoadError> {
+    let source = path_buf
+        .as_ref()
+        .map(|path| path.to_string_lossy().into())
+        .unwrap_or_else(|| String::from("from stdin"));
     let extension = path_buf
+        .unwrap_or_default()
         .extension()
         .unwrap_or_default()
         .to_string_lossy()
@@ -111,5 +119,6 @@ pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
             return Ok(ImageData::new(image, metadata));
         }
     }
-    Err(LoadError::Decoding(path_buf))
+
+    Err(LoadError::Decoding(source))
 }

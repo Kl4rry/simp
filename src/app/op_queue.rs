@@ -18,8 +18,12 @@ use rfd::MessageDialog;
 
 use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{
-    cache::Cache, clipboard, image_list::ImageList, image_view::ImageView,
-    load_image::load_uncached, save_image,
+    cache::Cache,
+    clipboard,
+    image_list::ImageList,
+    image_view::ImageView,
+    load_image::{load_from_bytes, load_uncached},
+    save_image,
 };
 use crate::{
     app::undo_stack::UndoStack,
@@ -33,6 +37,7 @@ mod imageops;
 #[derive(Debug)]
 pub enum Op {
     LoadPath(PathBuf, bool),
+    LoadBytes(Vec<u8>),
     Next,
     Prev,
     Save(PathBuf),
@@ -121,6 +126,8 @@ impl OpQueue {
                 Op::LoadPath(path, use_cache) => {
                     self.load(path, use_cache, self.stack.is_edited());
                 }
+                Op::LoadBytes(bytes) => self.load_from_bytes(bytes),
+
                 Op::Next => match self.image_list.next() {
                     Some(path) => {
                         self.load(path, true, self.stack.is_edited());
@@ -343,6 +350,24 @@ impl OpQueue {
                     let images = Arc::new(images);
                     cache.put(path_buf.clone(), images.clone());
                     proxy.send_output(Output::ImageLoaded(images, Some(path)));
+                }
+                Err(error) => {
+                    proxy.send_output(Output::Done);
+                    let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
+                }
+            };
+        });
+    }
+
+    // should only be used to load first image from stdin
+    fn load_from_bytes(&self, bytes: Vec<u8>) {
+        let proxy = self.proxy.clone();
+        thread::spawn(move || {
+            let res = load_from_bytes(&bytes, None);
+            match res {
+                Ok(images) => {
+                    let images = Arc::new(images);
+                    proxy.send_output(Output::ImageLoaded(images, None));
                 }
                 Err(error) => {
                     proxy.send_output(Output::Done);

@@ -2869,6 +2869,7 @@ name = "simp"
 version = "3.3.1"
 dependencies = [
  "arboard",
+ "atty",
  "cgmath",
  "confy",
  "ctrlc",
