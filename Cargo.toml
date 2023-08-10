@@ -16,6 +16,7 @@ exclude = ["images", ".github"]
 arboard = "3.2.0"
 atty = "0.2.14"
 cgmath = { version = "0.18.0", features = ["swizzle"] }
+clap = "4.3.21"
 confy = "0.5.0"
 ctrlc = "3.2.0"
 directories = "5.0.0"

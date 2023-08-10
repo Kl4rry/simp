@@ -105,7 +105,7 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
     }
 
     let mut metadata = Vec::new();
-    if let Ok(exif) = rexif::parse_buffer_quiet(&bytes).0 {
+    if let Ok(exif) = rexif::parse_buffer_quiet(bytes).0 {
         for entry in exif.entries {
             if ExifTag::UnknownToMe != entry.tag {
                 let text = entry.value_more_readable;
@@ -115,7 +115,7 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
     }
 
     for loader in loaders {
-        if let Some(image) = loader(&bytes) {
+        if let Some(image) = loader(bytes) {
             return Ok(ImageData::new(image, metadata));
         }
     }

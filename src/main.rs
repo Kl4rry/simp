@@ -2,7 +2,7 @@
 #![warn(clippy::all)]
 
 use std::{
-    env, fs, panic,
+    fs, panic,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -207,23 +207,30 @@ fn main() {
         std::process::exit(1);
     }));
 
-    let mut buffer = Vec::new();
+    let matches = clap::Command::new(env!("CARGO_PKG_NAME"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .arg(clap::Arg::new("FILE").help("Load this file").index(1))
+        .get_matches();
 
+    let path: Option<&String> = matches.get_one("FILE");
+
+    let mut buffer = Vec::new();
     if !atty::is(atty::Stream::Stdin) {
         use std::io::{stdin, Read};
         let _ = stdin().read_to_end(&mut buffer);
     }
 
-    let mut system = WindowHandler::new();
+    let mut window_handler = WindowHandler::new();
 
-    let mut args: Vec<String> = env::args().collect();
     if !buffer.is_empty() {
-        system.app.queue(Op::LoadBytes(buffer));
-    } else if args.len() > 1 {
-        if let Some(arg) = args.pop() {
-            system.app.queue(Op::LoadPath(PathBuf::from(arg), true))
-        }
+        window_handler.app.queue(Op::LoadBytes(buffer));
+    } else if let Some(path) = path {
+        window_handler
+            .app
+            .queue(Op::LoadPath(PathBuf::from(path), true))
     }
 
-    system.main_loop();
+    window_handler.main_loop();
 }
