@@ -8,8 +8,7 @@ use image::{
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use resvg::FitTo;
-use usvg::{Options, ScreenSize, Tree, TreeParsing, TreeTextToPath};
+use resvg::usvg::{Options, Tree, TreeParsing, TreeTextToPath};
 
 use crate::{app::preferences::PREFERENCES, util::Image};
 
@@ -134,21 +133,25 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
         return None;
     };
     tree.convert_text(&fontdb);
+    let rtree = resvg::Tree::from_usvg(&tree);
+    let size = rtree.size.to_int_size();
 
-    let mut size = tree.size.to_screen_size();
-    let min_size = PREFERENCES.lock().unwrap().min_svg_size;
-    while size.width() < min_size || size.height() < min_size {
-        size = ScreenSize::new(size.width() * 2, size.height() * 2).unwrap();
-    }
+    let min_size = PREFERENCES.lock().unwrap().min_svg_size.max(100);
+    let smaller_axis = size.width().min(size.height());
+    let size = if smaller_axis < min_size {
+        let scale_factor = min_size as f32 / smaller_axis as f32;
+        size.scale_by(scale_factor).unwrap_or(size)
+    } else {
+        size
+    };
 
-    let mut pix_map = tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
+    let transform = resvg::tiny_skia::Transform::from_scale(
+        size.width() as f32 / rtree.size.width() as f32,
+        size.height() as f32 / rtree.size.height() as f32,
+    );
 
-    resvg::render(
-        &tree,
-        FitTo::Size(size.width(), size.height()),
-        tiny_skia::Transform::identity(),
-        pix_map.as_mut(),
-    )?;
+    let mut pix_map = resvg::tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
+    rtree.render(transform, &mut pix_map.as_mut());
 
     let width = pix_map.width();
     let height = pix_map.height();
