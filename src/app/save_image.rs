@@ -10,7 +10,10 @@ use image::{
     ImageOutputFormat,
 };
 
-use super::op_queue::{Output, UserEventLoopProxyExt};
+use super::{
+    op_queue::{Output, UserEventLoopProxyExt},
+    preferences::PREFERENCES,
+};
 use crate::{
     image_io::save::{exr, farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
@@ -80,9 +83,11 @@ pub fn save(
 
         let res = match ext.as_str() {
             "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
-            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
-                save_with_format(path, &frames[0], ImageOutputFormat::Jpeg(100))
-            }
+            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => save_with_format(
+                path,
+                &frames[0],
+                ImageOutputFormat::Jpeg(PREFERENCES.lock().unwrap().jpeg_quality),
+            ),
             "ico" => save_with_format(path, &frames[0], ImageOutputFormat::Ico),
             "tga" => save_with_format(path, &frames[0], ImageOutputFormat::Tga),
             "ff" | "farbfeld" => farbfeld(path, &frames[0]),

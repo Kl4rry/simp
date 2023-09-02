@@ -11,10 +11,12 @@ use image::{
     },
     EncodableLayout, Frame, GenericImageView, ImageEncoder, ImageError, ImageOutputFormat,
 };
-use libwebp::WebPEncodeLosslessRGBA;
-use webp_animation::{Encoder, EncoderOptions, EncodingConfig};
+use webp_animation::prelude::*;
 
-use crate::util::{HasAlpha, Image};
+use crate::{
+    app::preferences::PREFERENCES,
+    util::{HasAlpha, Image},
+};
 
 type SaveResult<T> = Result<T, SaveError>;
 
@@ -162,11 +164,22 @@ pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
 
 #[inline]
 pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
+    let preferences = PREFERENCES.lock().unwrap();
+    let lossy = preferences.webp_lossy;
+    let quality = preferences.webp_quality;
+    drop(preferences);
+
+    let encoding_type = if lossy {
+        EncodingType::Lossy(LossyEncodingConfig::default())
+    } else {
+        EncodingType::Lossless
+    };
     let config = EncodingConfig {
-        encoding_type: webp_animation::prelude::EncodingType::Lossless,
-        quality: 100.0,
+        encoding_type,
+        quality,
         method: 6,
     };
+
     let dimensions = images[0].buffer().dimensions();
     let options = EncoderOptions {
         encoding_config: Some(config),
@@ -191,12 +204,28 @@ pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<
 #[inline]
 pub fn webp(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
     let (width, height) = image.buffer().dimensions();
-    let webp_data = WebPEncodeLosslessRGBA(
-        &image.buffer().to_rgba8().into_raw(),
-        width,
-        height,
-        width * 4,
-    )?;
+
+    let preferences = PREFERENCES.lock().unwrap();
+    let lossy = preferences.webp_lossy;
+    let quality = preferences.webp_quality;
+    drop(preferences);
+
+    let webp_data = if lossy {
+        libwebp::WebPEncodeLosslessRGBA(
+            &image.buffer().to_rgba8().into_raw(),
+            width,
+            height,
+            width * 4,
+        )?
+    } else {
+        libwebp::WebPEncodeRGBA(
+            &image.buffer().to_rgba8().into_raw(),
+            width,
+            height,
+            width * 4,
+            quality,
+        )?
+    };
 
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;

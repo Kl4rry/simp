@@ -49,7 +49,8 @@ pub struct WindowHandler {
 
 impl WindowHandler {
     pub fn new() -> Self {
-        let config: Config = confy::load("simp", None).unwrap_or_default();
+        let mut config: Config = confy::load("simp", None).unwrap_or_default();
+        config.preferences.clamp();
 
         let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
         let proxy = event_loop.create_proxy();

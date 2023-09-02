@@ -146,8 +146,8 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     };
 
     let transform = resvg::tiny_skia::Transform::from_scale(
-        size.width() as f32 / rtree.size.width() as f32,
-        size.height() as f32 / rtree.size.height() as f32,
+        size.width() as f32 / rtree.size.width(),
+        size.height() as f32 / rtree.size.height(),
     );
 
     let mut pix_map = resvg::tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
