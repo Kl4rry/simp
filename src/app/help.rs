@@ -31,13 +31,13 @@ impl App {
                                 ("Zoom in", "- or Mousewheel up"),
                                 ("Zoom out", "+ or Mousewheel down"),
                                 ("Best fit", "B"),
-                                ("Largest fit", "L"),
+                                ("Largest fit", "M"),
                                 ("Crop", "Ctrl + X"),
                                 ("F11 or F", "Fullscreen"),
                                 ("Delete image", "Delete"),
                                 ("1 - 9", "100% - 900% Zoom"),
-                                ("Previous image", "A or Left Arrow"),
-                                ("Next image", "A or Right Arrow"),
+                                ("Previous image", "A or L or Left Arrow"),
+                                ("Next image", "D or H or Right Arrow"),
                             ];
 
                             ui.label(RichText::new("Action").strong());

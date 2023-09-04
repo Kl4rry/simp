@@ -214,7 +214,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            egui::Button::new("Largest fit").shortcut_text("L"),
+                            egui::Button::new("Largest fit").shortcut_text("M"),
                         )
                         .clicked()
                     {

@@ -346,7 +346,7 @@ impl App {
                             }
                             VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
 
-                            VirtualKeyCode::L => {
+                            VirtualKeyCode::M => {
                                 self.largest_fit();
                             }
                             VirtualKeyCode::B => {
@@ -398,7 +398,7 @@ impl App {
                                 self.resize.visible = true;
                             }
 
-                            VirtualKeyCode::Left | VirtualKeyCode::D => {
+                            VirtualKeyCode::Left | VirtualKeyCode::D | VirtualKeyCode::H => {
                                 if self.view_available()
                                     && !self.image_view.as_ref().unwrap().cropping()
                                 {
@@ -406,7 +406,7 @@ impl App {
                                 }
                             }
 
-                            VirtualKeyCode::Right | VirtualKeyCode::A => {
+                            VirtualKeyCode::Right | VirtualKeyCode::A | VirtualKeyCode::L => {
                                 if self.view_available()
                                     && !self.image_view.as_ref().unwrap().cropping()
                                 {
