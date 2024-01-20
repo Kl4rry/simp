@@ -21,7 +21,6 @@ use vec2::Vec2;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
-    platform::windows::WindowBuilderExtWindows,
     window::{Window, WindowBuilder},
 };
 mod image_io;
@@ -70,19 +69,14 @@ impl WindowHandler {
 
         let size = window.inner_size();
 
-        /*#[cfg(windows)]
+        #[cfg(windows)]
         let instance_descriptor = wgpu::InstanceDescriptor {
             backends: wgpu::Backends::GL,
             ..Default::default()
-        };*/
-
-        //#[cfg(not(windows))]
-        let instance_descriptor = wgpu::InstanceDescriptor::default();
-
-        let instance_descriptor = wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::DX12,
-            ..Default::default()
         };
+
+        #[cfg(not(windows))]
+        let instance_descriptor = wgpu::InstanceDescriptor::default();
 
         let instance = wgpu::Instance::new(instance_descriptor);
         let surface = unsafe { instance.create_surface(&window).unwrap() };
