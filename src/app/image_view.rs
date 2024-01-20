@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     mem,
     path::PathBuf,
     sync::{Arc, RwLock},
@@ -8,37 +7,34 @@ use std::{
 };
 
 use cgmath::{Deg, Matrix4, Ortho, Vector3, Vector4};
-use glium::{
-    backend::glutin::Display,
-    draw_parameters::DrawParameters,
-    glutin::event_loop::EventLoopProxy,
-    implement_vertex,
-    index::PrimitiveType,
-    program::Program,
-    texture::{ClientFormat, MipmapsOption, RawImage2d, SrgbTexture2d},
-    uniform,
-    uniforms::{MagnifySamplerFilter, MinifySamplerFilter, Sampler, SamplerBehavior},
-    Blend, IndexBuffer, Surface, VertexBuffer,
-};
-use image::{DynamicImage, GenericImageView};
-use once_cell::sync::OnceCell;
+use image::GenericImageView;
+use wgpu::util::DeviceExt;
+use winit::event_loop::EventLoopProxy;
 
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
     max,
     rect::Rect,
-    util::{ColorBits, GetColorBits, Image, ImageData, UserEvent},
+    util::{matrix::OPENGL_TO_WGPU_MATRIX, Image, ImageData, UserEvent},
     vec2::Vec2,
+    WgpuState,
 };
+
+pub mod renderer;
 
 mod crop;
 use crop::Crop;
+
+mod texture;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
     pub position: [f32; 2],
     pub tex_coords: [f32; 2],
 }
+
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
 
 impl Vertex {
     pub fn new(x: f32, y: f32, tex_x: f32, tex_y: f32) -> Self {
@@ -47,9 +43,26 @@ impl Vertex {
             tex_coords: [tex_x, tex_y],
         }
     }
-}
 
-implement_vertex!(Vertex, position, tex_coords);
+    pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+            ],
+        }
+    }
+}
 
 pub struct ImageView {
     pub size: Vec2<f32>,
@@ -69,25 +82,26 @@ pub struct ImageView {
     pub grayscale: bool,
     pub invert: bool,
     pub crop: Crop,
-    vertices: VertexBuffer<Vertex>,
-    indices: IndexBuffer<u8>,
-    texture: SrgbTexture2d,
-    sampler: SamplerBehavior,
+    vertices: wgpu::Buffer,
+    indices: wgpu::Buffer,
+    texture: texture::Texture,
 }
 
 impl ImageView {
-    pub fn new(display: &Display, image_data: Arc<ImageData>, path: Option<PathBuf>) -> Self {
+    pub fn new(wgpu: &WgpuState, image_data: Arc<ImageData>, path: Option<PathBuf>) -> Self {
         let frames = &image_data.frames;
         let image = frames[0].buffer();
         let (width, height) = image.dimensions();
-        let texture = get_texture(image, display);
+        let texture = texture::Texture::from_image(&wgpu.device, &wgpu.queue, image, None);
 
-        let sampler = SamplerBehavior {
-            magnify_filter: MagnifySamplerFilter::Nearest,
-            minify_filter: MinifySamplerFilter::LinearMipmapLinear,
-            max_anisotropy: 8,
-            ..Default::default()
-        };
+        let indices: &[u32] = &[0, 1, 2, 2, 1, 3];
+        let indices = wgpu
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Image Index Buffer"),
+                contents: bytemuck::cast_slice(indices),
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            });
 
         Self {
             size: Vec2::new(width as f32, height as f32),
@@ -99,12 +113,10 @@ impl ImageView {
             index: 0,
             horizontal_flip: false,
             vertical_flip: false,
-            crop: Crop::new(display),
-            vertices: get_vertex_buffer(display, width as f32, height as f32),
-            indices: IndexBuffer::new(display, PrimitiveType::TrianglesList, &[0, 1, 2, 2, 1, 3])
-                .unwrap(),
+            crop: Crop::new(wgpu),
+            vertices: get_vertex_buffer(wgpu, width as f32, height as f32),
+            indices,
             texture,
-            sampler,
             path,
             hue: 0.0,
             contrast: 0.0,
@@ -127,7 +139,7 @@ impl ImageView {
         (pre_rotation * rotation) * post_rotation
     }
 
-    pub fn render(&self, target: &mut glium::Frame, display: &Display, size: Vec2<f32>) {
+    pub fn get_uniforms(&self, size: Vec2<f32>) -> renderer::Uniform {
         let ortho: Matrix4<f32> = Ortho {
             left: 0.0,
             right: size.x(),
@@ -143,59 +155,29 @@ impl ImageView {
         let translation = Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
 
         let rotation = self.get_rotation_mat();
-        let matrix = ortho * translation * scale * rotation;
+        let matrix = OPENGL_TO_WGPU_MATRIX * ortho * translation * scale * rotation;
 
-        let raw: [[f32; 4]; 4] = matrix.into();
-
-        thread_local! {
-            pub static PROGRAM: OnceCell<Program> = OnceCell::new();
-        }
-
-        PROGRAM.with(|f| {
-            let shader = f.get_or_init(|| {
-                Program::from_source(
-                    display,
-                    include_str!("../shader/image.vert"),
-                    include_str!("../shader/image.frag"),
-                    None,
-                )
-                .unwrap()
-            });
-
-            target
-                .draw(
-                    &self.vertices,
-                    &self.indices,
-                    shader,
-                    &uniform! {
-                        matrix: raw,
-                        tex: Sampler(&self.texture, self.sampler),
-                        size: size,
-                        hue: self.hue,
-                        contrast: self.contrast,
-                        brightness: self.brightness,
-                        saturation: self.saturation,
-                        grayscale: self.grayscale,
-                        invert: self.invert,
-                        flip_horizontal: self.horizontal_flip,
-                        flip_vertical: self.vertical_flip,
-                    },
-                    &DrawParameters {
-                        blend: Blend::alpha_blending(),
-                        ..DrawParameters::default()
-                    },
-                )
-                .unwrap();
-        });
-
-        self.crop.render(
-            target,
-            display,
+        renderer::Uniform {
+            matrix,
+            flip_horizontal: self.horizontal_flip as u32,
+            flip_vertical: self.vertical_flip as u32,
             size,
-            self.position,
-            self.rotated_size(),
-            self.scale,
-        );
+            padding: Default::default(),
+            hue: self.hue,
+            contrast: self.contrast,
+            brightness: self.brightness,
+            saturation: self.saturation,
+            grayscale: self.grayscale as u32,
+            invert: self.invert as u32,
+        }
+    }
+
+    pub fn get_buffers(&self) -> (&wgpu::Buffer, &wgpu::Buffer) {
+        (&self.vertices, &self.indices)
+    }
+
+    pub fn get_texture(&self) -> &texture::Texture {
+        &self.texture
     }
 
     pub fn scaled(&self) -> Vec2<f32> {
@@ -240,7 +222,7 @@ impl ImageView {
         self.vertical_flip = !self.vertical_flip;
     }
 
-    pub fn animate(&mut self, display: &Display) -> Option<Duration> {
+    pub fn animate(&mut self, wgpu: &WgpuState) -> Duration {
         let guard = self.image_data.read().unwrap();
         let frames = &guard.frames;
         if frames.len() > 1 {
@@ -255,16 +237,16 @@ impl ImageView {
                 }
 
                 drop(guard);
-                self.update_image_data(display);
+                self.update_image_data(wgpu);
 
                 self.last_frame = now;
 
-                Some(delay)
+                delay
             } else {
-                Some(delay - time_passed)
+                delay - time_passed
             }
         } else {
-            None
+            Duration::MAX
         }
     }
 
@@ -299,21 +281,21 @@ impl ImageView {
         });
     }
 
-    pub fn swap_frames(&mut self, frames: &mut Vec<Image>, display: &Display) {
+    pub fn swap_frames(&mut self, wgpu: &WgpuState, frames: &mut Vec<Image>) {
         let mut guard = self.image_data.write().unwrap();
         mem::swap(&mut Arc::make_mut(&mut *guard).frames, frames);
         let (width, height) = guard.frames[0].buffer().dimensions();
         drop(guard);
-        self.update_image_data(display);
-        self.vertices = get_vertex_buffer(display, width as f32, height as f32);
+        self.update_image_data(wgpu);
+        self.vertices = get_vertex_buffer(wgpu, width as f32, height as f32);
     }
 
-    fn update_image_data(&mut self, display: &Display) {
+    fn update_image_data(&mut self, wgpu: &WgpuState) {
         let guard = self.image_data.read().unwrap();
         let frames = &guard.frames;
         let image = frames[self.index].buffer();
         self.size = Vec2::new(image.width() as f32, image.height() as f32);
-        self.texture = get_texture(image, display);
+        self.texture = texture::Texture::from_image(&wgpu.device, &wgpu.queue, image, None);
     }
 
     pub fn rotation(&self) -> i32 {
@@ -378,120 +360,24 @@ impl ImageView {
     }
 }
 
-fn get_texture(image: &DynamicImage, display: &Display) -> SrgbTexture2d {
-    let (width, height) = image.dimensions();
-
-    match image {
-        DynamicImage::ImageRgb8(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::U8U8U8,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        DynamicImage::ImageRgba8(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::U8U8U8U8,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        DynamicImage::ImageRgb16(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::U16U16U16,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        DynamicImage::ImageRgba16(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::U16U16U16U16,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        DynamicImage::ImageRgb32F(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::F32F32F32,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        DynamicImage::ImageRgba32F(buffer) => {
-            let data = Cow::Borrowed(&buffer.as_raw()[..]);
-            let raw = RawImage2d {
-                data,
-                width,
-                height,
-                format: ClientFormat::F32F32F32F32,
-            };
-            SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps).unwrap()
-        }
-        image => match image.get_color_bits() {
-            ColorBits::U8 => {
-                let data = Cow::Owned(image.to_rgba8().into_raw());
-                let raw = RawImage2d {
-                    data,
-                    width,
-                    height,
-                    format: ClientFormat::U8U8U8U8,
-                };
-                SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps)
-                    .unwrap()
-            }
-            ColorBits::U16 => {
-                let data = Cow::Owned(image.to_rgba16().into_raw());
-                let raw = RawImage2d {
-                    data,
-                    width,
-                    height,
-                    format: ClientFormat::U16U16U16U16,
-                };
-                SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps)
-                    .unwrap()
-            }
-            ColorBits::F32 => {
-                let data = Cow::Owned(image.to_rgba32f().into_raw());
-                let raw = RawImage2d {
-                    data,
-                    width,
-                    height,
-                    format: ClientFormat::U16U16U16U16,
-                };
-                SrgbTexture2d::with_mipmaps(display, raw, MipmapsOption::AutoGeneratedMipmaps)
-                    .unwrap()
-            }
-        },
-    }
-}
-
-fn get_vertex_buffer(display: &Display, width: f32, height: f32) -> VertexBuffer<Vertex> {
+fn get_vertex_buffer(wgpu: &WgpuState, width: f32, height: f32) -> wgpu::Buffer {
     let texture_cords = (
-        Vec2::new(0.0, 0.0),
-        Vec2::new(0.0, 1.0),
-        Vec2::new(1.0, 0.0),
         Vec2::new(1.0, 1.0),
+        Vec2::new(1.0, 0.0),
+        Vec2::new(0.0, 1.0),
+        Vec2::new(0.0, 0.0),
     );
-    let shape = vec![
+    let shape = [
         Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
         Vertex::new(0.0, height, texture_cords.1.x(), texture_cords.1.y()),
         Vertex::new(width, 0.0, texture_cords.2.x(), texture_cords.2.y()),
         Vertex::new(width, height, texture_cords.3.x(), texture_cords.3.y()),
     ];
-    VertexBuffer::new(display, &shape).unwrap()
+
+    wgpu.device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Image Vertex Buffer"),
+            contents: bytemuck::cast_slice(shape.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX,
+        })
 }

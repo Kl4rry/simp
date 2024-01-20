@@ -1,13 +1,12 @@
 use std::thread;
 
 use egui::{menu, TopBottomPanel};
-use glium::Display;
 
 use super::{load_image, new_window, op_queue::Op, save_image, App};
-use crate::util::UserEvent;
+use crate::{util::UserEvent, WgpuState};
 
 impl App {
-    pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
+    pub fn menu_bar(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
@@ -15,12 +14,12 @@ impl App {
                         .add(egui::Button::new("Open").shortcut_text("Ctrl + O"))
                         .clicked()
                     {
-                        load_image::open(self.proxy.clone(), display, false);
+                        load_image::open(self.proxy.clone(), wgpu, false);
                         ui.close_menu();
                     }
 
                     if ui.add(egui::Button::new("Open folder")).clicked() {
-                        load_image::open(self.proxy.clone(), display, true);
+                        load_image::open(self.proxy.clone(), wgpu, true);
                         ui.close_menu();
                     }
 
@@ -31,11 +30,7 @@ impl App {
                         )
                         .clicked()
                     {
-                        save_image::open(
-                            self.current_filename.clone(),
-                            self.proxy.clone(),
-                            display,
-                        );
+                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu);
                         ui.close_menu();
                     }
 
@@ -56,11 +51,7 @@ impl App {
                         )
                         .clicked()
                     {
-                        save_image::open(
-                            self.current_filename.clone(),
-                            self.proxy.clone(),
-                            display,
-                        );
+                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu);
                         ui.close_menu();
                     }
 
@@ -288,7 +279,7 @@ impl App {
                         {
                             if let Some(ref view) = self.image_view {
                                 if let Some(ref path) = view.path {
-                                    super::delete(path.clone(), self.proxy.clone(), display);
+                                    super::delete(path.clone(), self.proxy.clone(), wgpu);
                                 }
                             }
                             ui.close_menu();
@@ -327,7 +318,7 @@ impl App {
                         );
 
                         let dialog = rfd::MessageDialog::new()
-                            .set_parent(display.gl_window().window())
+                            .set_parent(&wgpu.window)
                             .set_level(rfd::MessageLevel::Info)
                             .set_title("About")
                             .set_description(&about)

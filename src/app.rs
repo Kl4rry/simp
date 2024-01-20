@@ -9,17 +9,15 @@ use std::{
 };
 
 use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
-use glium::{
-    backend::glutin::Display,
-    glutin::{
-        event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
-        event_loop::EventLoopProxy,
-        window::Fullscreen,
-    },
-};
 use image::{imageops::FilterType, DynamicImage};
+use winit::{
+    event::{ElementState, MouseScrollDelta, WindowEvent},
+    event_loop::EventLoopProxy,
+    keyboard::{KeyCode, ModifiersState, PhysicalKey},
+    window::Fullscreen,
+};
 
-use crate::{min, util::UserEvent, vec2::Vec2};
+use crate::{min, util::UserEvent, vec2::Vec2, WgpuState};
 
 pub mod image_view;
 use image_view::ImageView;
@@ -62,7 +60,8 @@ const BOTTOM_BAR_SIZE: f32 = 27.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
-    delay: Option<Duration>,
+    delay: Duration,
+    pub image_render: image_view::renderer::Renderer,
     pub image_view: Option<Box<ImageView>>,
     size: Vec2<f32>,
     fullscreen: bool,
@@ -87,7 +86,7 @@ impl App {
         !self.op_queue.working() && self.image_view.is_some()
     }
 
-    pub fn handle_output(&mut self, display: &Display, output: Output) {
+    pub fn handle_output(&mut self, wgpu: &WgpuState, output: Output) {
         let stack = self.op_queue.undo_stack_mut();
         match output {
             Output::ImageLoaded(image_data, path) => {
@@ -99,18 +98,15 @@ impl App {
                     String::new()
                 };
 
-                let view = Box::new(ImageView::new(display, image_data, path));
+                let view = Box::new(ImageView::new(wgpu, image_data, path));
                 self.resize
                     .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
                 self.image_view = Some(view);
 
-                let window_context = display.gl_window();
-                let window = window_context.window();
-
                 if self.current_filename.is_empty() {
-                    window.set_title("Simp");
+                    wgpu.window.set_title("Simp");
                 } else {
-                    window.set_title(&self.current_filename.to_string());
+                    wgpu.window.set_title(&self.current_filename.to_string());
                 }
 
                 self.largest_fit();
@@ -141,13 +137,13 @@ impl App {
             }
             Output::Resize(mut frames) => {
                 if let Some(ref mut view) = self.image_view {
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Resize(frames));
                 }
             }
             Output::Color(mut frames) => {
                 if let Some(ref mut view) = self.image_view {
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Color(frames));
                     view.hue = 0.0;
                     view.contrast = 0.0;
@@ -155,14 +151,13 @@ impl App {
                     view.brightness = 0.0;
                     view.grayscale = false;
                     view.invert = false;
-                    let window = display.gl_window();
-                    window.window().request_redraw();
+                    wgpu.window.request_redraw();
                 }
             }
             Output::Crop(mut frames, rotation) => {
                 if let Some(ref mut view) = self.image_view {
                     view.set_rotation(0);
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Crop { frames, rotation })
                 }
             }
@@ -181,16 +176,16 @@ impl App {
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                             view.swap_rotation(rotation);
                         }
                         UndoFrame::Resize(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                         UndoFrame::Color(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                     }
                 }
@@ -210,16 +205,16 @@ impl App {
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                             view.swap_rotation(rotation);
                         }
                         UndoFrame::Resize(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                         UndoFrame::Color(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                     }
                 }
@@ -238,7 +233,7 @@ impl App {
         }
     }
 
-    pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
+    pub fn handle_user_event(&mut self, wgpu: &WgpuState, event: &mut UserEvent) {
         match event {
             UserEvent::QueueLoad(path) => {
                 self.queue(Op::LoadPath(path.to_path_buf(), false));
@@ -251,7 +246,7 @@ impl App {
             }
             UserEvent::ErrorMessage(error) => {
                 let dialog = rfd::MessageDialog::new()
-                    .set_parent(display.gl_window().window())
+                    .set_parent(&wgpu.window)
                     .set_level(rfd::MessageLevel::Error)
                     .set_title("About")
                     .set_description(error)
@@ -275,28 +270,17 @@ impl App {
             UserEvent::Output(output) => {
                 if let Some(output) = output.take() {
                     self.op_queue.set_working(false);
-                    self.handle_output(display, output);
+                    self.handle_output(wgpu, output);
                 }
+            }
+            UserEvent::RepaintRequest(request_repaint_info) => {
+                self.delay = self.delay.min(request_repaint_info.delay);
             }
         };
     }
 
-    pub fn handle_window_event(&mut self, display: &Display, event: &WindowEvent<'_>) {
+    pub fn handle_window_event(&mut self, wgpu: &WgpuState, event: &WindowEvent) {
         match event {
-            WindowEvent::Resized(size) => {
-                *self.size.mut_x() = size.width as f32;
-                *self.size.mut_y() = size.height as f32;
-
-                match self.resize_mode {
-                    ResizeMode::Original => {}
-                    ResizeMode::LargestFit => {
-                        self.largest_fit();
-                    }
-                    ResizeMode::BestFit => {
-                        self.best_fit();
-                    }
-                }
-            }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_position.set_x(position.x as f32);
                 self.mouse_position.set_y(position.y as f32);
@@ -314,57 +298,63 @@ impl App {
                     );
                 }
             }
-            WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
+            WindowEvent::ModifiersChanged(state) => self.modifiers = state.state(),
             WindowEvent::DroppedFile(path) => {
                 self.op_queue.cache.clear();
                 self.queue(Op::LoadPath(path.to_path_buf(), true));
             }
-            WindowEvent::KeyboardInput { input, .. } => {
-                if let Some(key) = input.virtual_keycode {
-                    match input.state {
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let PhysicalKey::Code(key) = event.physical_key {
+                    match event.state {
                         ElementState::Pressed => match key {
                             #[cfg(feature = "trash")]
-                            VirtualKeyCode::Delete => {
+                            KeyCode::Delete => {
                                 if let Some(ref view) = self.image_view {
                                     if let Some(ref path) = view.path {
-                                        delete(path.clone(), self.proxy.clone(), display);
+                                        delete(path.clone(), self.proxy.clone(), wgpu);
                                     }
                                 }
                             }
 
-                            VirtualKeyCode::H if self.modifiers.ctrl() => self.help_visible = true,
-                            VirtualKeyCode::O if self.modifiers.ctrl() => {
-                                load_image::open(self.proxy.clone(), display, false)
+                            KeyCode::KeyH if self.modifiers.contains(ModifiersState::CONTROL) => {
+                                self.help_visible = true
                             }
-                            VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
-                                self.current_filename.clone(),
-                                self.proxy.clone(),
-                                display,
-                            ),
-                            VirtualKeyCode::W if self.modifiers.ctrl() => {
+                            KeyCode::KeyO if self.modifiers.contains(ModifiersState::CONTROL) => {
+                                load_image::open(self.proxy.clone(), wgpu, false)
+                            }
+                            KeyCode::KeyS if self.modifiers.contains(ModifiersState::CONTROL) => {
+                                save_image::open(
+                                    self.current_filename.clone(),
+                                    self.proxy.clone(),
+                                    wgpu,
+                                )
+                            }
+                            KeyCode::KeyW if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 let _ = self.proxy.send_event(UserEvent::Exit);
                             }
-                            VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
+                            KeyCode::KeyN if self.modifiers.contains(ModifiersState::CONTROL) => {
+                                new_window()
+                            }
 
-                            VirtualKeyCode::M => {
+                            KeyCode::KeyM => {
                                 self.largest_fit();
                             }
-                            VirtualKeyCode::B => {
+                            KeyCode::KeyB => {
                                 self.best_fit();
                             }
 
-                            VirtualKeyCode::Q => {
+                            KeyCode::KeyQ => {
                                 if self.image_view.is_some() {
                                     self.queue(Op::Rotate(-1))
                                 }
                             }
-                            VirtualKeyCode::E => {
+                            KeyCode::KeyE => {
                                 if self.image_view.is_some() {
                                     self.queue(Op::Rotate(1))
                                 }
                             }
 
-                            VirtualKeyCode::F5 => {
+                            KeyCode::F5 => {
                                 if let Some(image) = self.image_view.as_ref() {
                                     if let Some(path) = &image.path {
                                         let buf = path.to_path_buf();
@@ -373,32 +363,32 @@ impl App {
                                 }
                             }
 
-                            VirtualKeyCode::C if self.modifiers.ctrl() => {
+                            KeyCode::KeyC if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 if self.view_available() {
                                     self.queue(Op::Copy);
                                 }
                             }
-                            VirtualKeyCode::V if self.modifiers.ctrl() => {
+                            KeyCode::KeyV if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 if !self.op_queue.working() {
                                     self.queue(Op::Paste);
                                 }
                             }
-                            VirtualKeyCode::X if self.modifiers.ctrl() => {
+                            KeyCode::KeyX if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 self.image_view.as_mut().unwrap().start_crop()
                             }
 
-                            VirtualKeyCode::Z if self.modifiers.ctrl() => {
+                            KeyCode::KeyZ if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 self.queue(Op::Undo);
                             }
-                            VirtualKeyCode::Y if self.modifiers.ctrl() => {
+                            KeyCode::KeyY if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 self.queue(Op::Redo);
                             }
 
-                            VirtualKeyCode::R if self.modifiers.ctrl() => {
+                            KeyCode::KeyR if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 self.resize.visible = true;
                             }
 
-                            VirtualKeyCode::Left | VirtualKeyCode::D | VirtualKeyCode::H => {
+                            KeyCode::ArrowLeft | KeyCode::KeyD | KeyCode::KeyH => {
                                 if self.view_available()
                                     && !self.image_view.as_ref().unwrap().cropping()
                                 {
@@ -406,35 +396,34 @@ impl App {
                                 }
                             }
 
-                            VirtualKeyCode::Right | VirtualKeyCode::A | VirtualKeyCode::L => {
+                            KeyCode::ArrowRight | KeyCode::KeyA | KeyCode::KeyL => {
                                 if self.view_available()
                                     && !self.image_view.as_ref().unwrap().cropping()
                                 {
                                     self.queue(Op::Next);
                                 }
                             }
-                            VirtualKeyCode::F4 if self.modifiers.ctrl() => {
+                            KeyCode::F4 if self.modifiers.contains(ModifiersState::CONTROL) => {
                                 self.queue(Op::Close);
                             }
 
-                            VirtualKeyCode::F11 | VirtualKeyCode::F => {
-                                let window_context = display.gl_window();
-                                let window = window_context.window();
-                                let fullscreen = window.fullscreen();
+                            KeyCode::F11 | KeyCode::KeyF => {
+                                let fullscreen = wgpu.window.fullscreen();
                                 if fullscreen.is_some() {
-                                    window.set_fullscreen(None);
+                                    wgpu.window.set_fullscreen(None);
                                     self.fullscreen = false;
                                     self.top_bar_size = TOP_BAR_SIZE;
                                     self.bottom_bar_size = BOTTOM_BAR_SIZE;
                                 } else {
-                                    window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+                                    wgpu.window
+                                        .set_fullscreen(Some(Fullscreen::Borderless(None)));
                                     self.fullscreen = true;
                                     self.top_bar_size = 0.0;
                                     self.bottom_bar_size = 0.0;
                                 }
                                 self.largest_fit();
                             }
-                            VirtualKeyCode::Escape => {
+                            KeyCode::Escape => {
                                 if self.view_available()
                                     && self.image_view.as_ref().unwrap().cropping()
                                 {
@@ -445,15 +434,15 @@ impl App {
                                 self.metadata_visible = false;
                                 self.resize.visible = false;
                             }
-                            VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                                self.enter = true
-                            }
+                            KeyCode::Enter | KeyCode::NumpadEnter => self.enter = true,
                             _ => (),
                         },
                         ElementState::Released => (),
                     }
                 }
             }
+            /*
+            TODO: fix
             WindowEvent::ReceivedCharacter(c) => match c {
                 '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
                     if let Some(ref mut view) = self.image_view {
@@ -468,20 +457,20 @@ impl App {
                     self.zoom(-1.0, self.size / 2.0);
                 }
                 _ => (),
-            },
+            },*/
             _ => (),
         };
     }
 
-    pub fn handle_ui(&mut self, display: &Display, ctx: &egui::Context) {
+    pub fn handle_ui(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         if self.op_queue.working() {
-            ctx.output().cursor_icon = CursorIcon::Progress;
+            ctx.set_cursor_icon(CursorIcon::Progress);
         }
 
-        self.main_area(display, ctx);
+        self.main_area(wgpu, ctx);
 
         if !self.fullscreen {
-            self.menu_bar(display, ctx);
+            self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
         }
 
@@ -493,7 +482,7 @@ impl App {
         self.crop_ui(ctx);
     }
 
-    pub fn main_area(&mut self, _display: &Display, ctx: &egui::Context) {
+    pub fn main_area(&mut self, _wgpu: &WgpuState, ctx: &egui::Context) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             if self.image_view.is_none() {
@@ -638,11 +627,11 @@ impl App {
         });
     }
 
-    pub fn update(&mut self, display: &Display) -> (bool, Option<Duration>) {
-        self.delay = None;
+    pub fn update(&mut self, wgpu: &WgpuState) -> (bool, Duration) {
+        self.delay = Duration::MAX;
 
         if let Some(ref mut image) = self.image_view {
-            update_delay(&mut self.delay, &image.animate(display));
+            self.delay = self.delay.min(image.animate(wgpu));
         }
 
         if let Some(ref mut image) = self.image_view {
@@ -965,10 +954,26 @@ impl App {
         }
     }
 
-    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        *self.size.mut_x() = size.width as f32;
+        *self.size.mut_y() = size.height as f32;
+
+        match self.resize_mode {
+            ResizeMode::Original => {}
+            ResizeMode::LargestFit => {
+                self.largest_fit();
+            }
+            ResizeMode::BestFit => {
+                self.best_fit();
+            }
+        }
+    }
+
+    pub fn new(wgpu: &WgpuState, proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
         App {
             exit: Arc::new(AtomicBool::new(false)),
-            delay: None,
+            delay: Duration::MAX,
+            image_render: image_view::renderer::Renderer::new(wgpu),
             image_view: None,
             size: Vec2::from(size),
             fullscreen: false,
@@ -991,9 +996,9 @@ impl App {
 }
 
 #[cfg(feature = "trash")]
-pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, display: &Display) {
+pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
     let dialog = rfd::MessageDialog::new()
-        .set_parent(display.gl_window().window())
+        .set_parent(&wgpu.window)
         .set_level(rfd::MessageLevel::Warning)
         .set_title("Move to trash")
         .set_description("Are you sure you want to move this to trash?")
@@ -1007,18 +1012,6 @@ pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, displa
 
 fn new_window() {
     let _ = Command::new(std::env::current_exe().unwrap()).spawn();
-}
-
-fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
-    if let Some(ref mut old_time) = old {
-        if let Some(ref new_time) = new {
-            if *old_time > *new_time {
-                *old_time = *new_time;
-            }
-        }
-    } else {
-        *old = *new;
-    }
 }
 
 fn filter_name(filter: &FilterType) -> &'static str {

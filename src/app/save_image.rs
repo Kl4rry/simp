@@ -4,11 +4,11 @@ use std::{
     thread,
 };
 
-use glium::{glutin::event_loop::EventLoopProxy, Display};
 use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageOutputFormat,
 };
+use winit::event_loop::EventLoopProxy;
 
 use super::{
     op_queue::{Output, UserEventLoopProxyExt},
@@ -17,12 +17,13 @@ use super::{
 use crate::{
     image_io::save::{exr, farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
+    WgpuState,
 };
 
-pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
+pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
     let dialog = rfd::FileDialog::new()
         .set_file_name(&name)
-        .set_parent(display.gl_window().window())
+        .set_parent(&wgpu.window)
         .add_filter("PNG", &["png", "apng"])
         .add_filter("JPEG", &["jpg", "jpeg", "jpe", "jif", "jfif"])
         .add_filter("GIF", &["gif"])

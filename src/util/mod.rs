@@ -5,6 +5,7 @@ use image::{Delay, DynamicImage, Frame, ImageBuffer, Luma, LumaA, Primitive, Rgb
 use crate::app::op_queue::Output;
 
 pub mod extensions;
+pub mod matrix;
 
 #[macro_export]
 macro_rules! min {
@@ -94,6 +95,7 @@ pub enum UserEvent {
     QueueSave(PathBuf),
     QueueDelete(PathBuf),
     Output(Option<Output>),
+    RepaintRequest(egui::RequestRepaintInfo),
     Exit,
 }
 

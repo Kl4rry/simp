@@ -1,24 +1,58 @@
+use std::mem;
+
 use egui::{CursorIcon, PointerButton};
-use glium::{
-    implement_vertex, index::PrimitiveType, uniform, Blend, Display, DrawParameters, IndexBuffer,
-    Program, Surface, VertexBuffer,
-};
 use once_cell::sync::OnceCell;
 
-use crate::{rect::Rect, vec2::Vec2};
+use crate::{rect::Rect, vec2::Vec2, WgpuState};
 
-#[derive(Copy, Clone)]
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    pub position: [f32; 2],
+    pub position: Vec2<f32>,
 }
+
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+struct CropInput {
+    start: Vec2<f32>,
+    end: Vec2<f32>,
+    size: Vec2<f32>,
+}
+
+unsafe impl bytemuck::Pod for CropInput {}
+unsafe impl bytemuck::Zeroable for CropInput {}
 
 impl Vertex {
     pub fn new(x: f32, y: f32) -> Self {
-        Self { position: [x, y] }
+        Self {
+            position: Vec2::new(x, y),
+        }
+    }
+
+    pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x2,
+            }],
+        }
     }
 }
 
-implement_vertex!(Vertex, position);
+struct RenderState {
+    pipeline: wgpu::RenderPipeline,
+    uniform_buffer: wgpu::Buffer,
+    uniform_bind_group: wgpu::BindGroup,
+    uniform_bind_group_layout: wgpu::BindGroupLayout,
+    vertices: wgpu::Buffer,
+    indices: wgpu::Buffer,
+}
 
 pub struct Crop {
     pub rect: Option<Rect>,
@@ -33,24 +67,10 @@ pub struct Crop {
     drag_b: bool,
     drag_rem: Vec2<f32>,
     dragging: bool,
-    vertices: VertexBuffer<Vertex>,
-    indices: IndexBuffer<u8>,
 }
 
 impl Crop {
-    pub fn new(display: &Display) -> Self {
-        let shape = [
-            Vertex::new(-1.0, 1.0),
-            Vertex::new(-1.0, -1.0),
-            Vertex::new(1.0, 1.0),
-            Vertex::new(1.0, -1.0),
-        ];
-        let index_buffer = &[0, 1, 2, 2, 1, 3];
-
-        let vertices = VertexBuffer::new(display, &shape).unwrap();
-        let indices =
-            IndexBuffer::new(display, PrimitiveType::TrianglesList, index_buffer).unwrap();
-
+    pub fn new(wgpu: &WgpuState) -> Self {
         Self {
             rect: None,
             x: String::new(),
@@ -64,8 +84,6 @@ impl Crop {
             drag_b: false,
             drag_rem: Vec2::splat(0.0),
             dragging: false,
-            vertices,
-            indices,
         }
     }
 
@@ -75,8 +93,8 @@ impl Crop {
 
     pub fn render(
         &self,
-        target: &mut glium::Frame,
-        display: &Display,
+        wgpu: &WgpuState,
+        rpass: &mut wgpu::RenderPass,
         window_size: Vec2<f32>,
         position: Vec2<f32>,
         image_size: Vec2<f32>,
@@ -87,32 +105,133 @@ impl Crop {
             let end = position - (image_size / 2.0) * scale + (rect.position + rect.size) * scale;
 
             thread_local! {
-                pub static PROGRAM: OnceCell<Program> = OnceCell::new();
+                pub static PIPELINE: OnceCell<RenderState> = OnceCell::new();
             }
 
-            PROGRAM.with(|f| {
-                let shader = f.get_or_init(|| {
-                    Program::from_source(
-                        display,
-                        include_str!("../../shader/crop.vert"),
-                        include_str!("../../shader/crop.frag"),
-                        None,
-                    )
-                    .unwrap()
+            PIPELINE.with(|f| {
+                /*let render_state = f.get_or_init(|| {
+                    let vertex = wgpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("Crop vertex"),
+                        source: wgpu::ShaderSource::Glsl { shader: include_str!("../../shader/crop.vert").into(), stage: wgpu::naga::ShaderStage::Vertex, defines: Default::default() },
+                    });
+
+                    let fragment = wgpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("Crop fragment"),
+                        source: wgpu::ShaderSource::Glsl { shader: include_str!("../../shader/crop.frag").into(), stage: wgpu::naga::ShaderStage::Fragment, defines: Default::default() },
+                    });
+
+                    let uniform_bind_group_layout = wgpu.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                        entries: &[wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
+                        }],
+                        label: Some("camera_bind_group_layout"),
+                    });
+
+                    let render_pipeline_layout = wgpu.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: Some("Render Pipeline Layout"),
+                        bind_group_layouts: &[&uniform_bind_group_layout],
+                        push_constant_ranges: &[],
+                    });
+
+                    let pipeline = wgpu.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                        label: Some("Render Pipeline"),
+                        layout: Some(&render_pipeline_layout),
+                        vertex: wgpu::VertexState {
+                            module: &vertex,
+                            entry_point: "main",
+                            buffers: &[Vertex::desc()],
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: &fragment,
+                            entry_point: "main",
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: wgpu.config.format,
+                                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        primitive: wgpu::PrimitiveState {
+                            topology: wgpu::PrimitiveTopology::TriangleList,
+                            strip_index_format: None,
+                            front_face: wgpu::FrontFace::Ccw,
+                            cull_mode: Some(wgpu::Face::Back),
+                            polygon_mode: wgpu::PolygonMode::Fill,
+                            unclipped_depth: false,
+                            conservative: false,
+                        },
+                        depth_stencil: None,
+                        multisample: wgpu::MultisampleState {
+                            count: 1,
+                            mask: !0,
+                            alpha_to_coverage_enabled: false,
+                        },
+                        multiview: None,
+                    });
+
+                    let crop_unifrom = CropInput {
+                        start: start, end: end, size: window_size,
+                    };
+
+                    let uniform_buffer = wgpu.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Unifrom Buffer"),
+                        contents: bytemuck::cast_slice(&[crop_unifrom]),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    });
+
+                    let uniform_bind_group = wgpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        layout: &uniform_bind_group_layout,
+                        entries: &[wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: uniform_buffer.as_entire_binding(),
+                        }],
+                        label: Some("camera_bind_group"),
+                    });
+
+                    let shape = [
+                        Vertex::new(-1.0, 1.0),
+                        Vertex::new(-1.0, -1.0),
+                        Vertex::new(1.0, 1.0),
+                        Vertex::new(1.0, -1.0),
+                    ];
+                    let index_buffer: [u32; 6] = [0, 1, 2, 2, 1, 3];
+
+                    let vertices = wgpu
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Vertex Buffer"),
+                            contents: bytemuck::cast_slice(&shape),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+
+                    let indices = wgpu
+                        .device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Triangle Index Buffer"),
+                            contents: bytemuck::cast_slice(&index_buffer),
+                            usage: wgpu::BufferUsages::INDEX,
+                        });
+
+                    RenderState { pipeline, uniform_buffer, uniform_bind_group, uniform_bind_group_layout, vertices, indices }
                 });
 
-                target
-                    .draw(
-                        &self.vertices,
-                        &self.indices,
-                        shader,
-                        &uniform! { start: start, end: end, size: *window_size },
-                        &DrawParameters {
-                            blend: Blend::alpha_blending(),
-                            ..DrawParameters::default()
-                        },
-                    )
-                    .unwrap();
+                let crop_unifrom = CropInput {
+                    start: start, end: end, size: window_size,
+                };
+
+                wgpu.queue.write_buffer(&render_state.uniform_buffer, 0, bytemuck::cast_slice(&[crop_unifrom]));
+
+                rpass.set_pipeline(&render_state.pipeline);
+                rpass.set_bind_group(0, &render_state.uniform_bind_group, &[]);
+                rpass.set_vertex_buffer(0, render_state.vertices.slice(..));
+                rpass.set_index_buffer(render_state.indices.slice(..), wgpu::IndexFormat::Uint32);
+                rpass.draw_indexed(0..6, 0, 0..1);*/
             });
         }
     }
@@ -205,19 +324,19 @@ impl Crop {
             }
 
             if t && l {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeNorthWest;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeNorthWest);
             } else if t && r {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeNorthEast;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeNorthEast);
             } else if b && l {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeSouthWest;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeSouthWest);
             } else if b && r {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeSouthEast;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeSouthEast);
             } else if t || b {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeVertical;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeVertical);
             } else if l || r {
-                ui.ctx().output().cursor_icon = CursorIcon::ResizeHorizontal;
+                ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
             } else if m {
-                ui.ctx().output().cursor_icon = CursorIcon::Grabbing;
+                ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
             }
 
             let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
@@ -251,51 +370,51 @@ impl Crop {
                     let (new_pos, new_size) = if self.drag_t && self.drag_l {
                         let new_pos = crop.position + delta;
                         let new_size = crop.size - delta;
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeNorthWest;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeNorthWest);
                         (new_pos, new_size)
                     } else if self.drag_t && self.drag_r {
                         let new_pos = Vec2::new(crop.position.x(), crop.position.y() + delta.y());
                         let new_size =
                             Vec2::new(crop.size.x() + delta.x(), crop.size.y() - delta.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeNorthEast;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeNorthEast);
                         (new_pos, new_size)
                     } else if self.drag_b && self.drag_l {
                         let new_pos = Vec2::new(crop.position.x() + delta.x(), crop.position.y());
                         let new_size =
                             Vec2::new(crop.size.x() - delta.x(), crop.size.y() + delta.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeSouthWest;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeSouthWest);
                         (new_pos, new_size)
                     } else if self.drag_b && self.drag_r {
                         let new_pos = crop.position;
                         let new_size = crop.size + delta;
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeSouthEast;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeSouthEast);
                         (new_pos, new_size)
                     } else if self.drag_t {
                         let new_pos = Vec2::new(crop.position.x(), crop.position.y() + delta.y());
                         let new_size = Vec2::new(crop.size.x(), crop.size.y() - delta.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeVertical;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeVertical);
                         (new_pos, new_size)
                     } else if self.drag_b {
                         let new_pos = Vec2::new(crop.position.x(), crop.position.y());
                         let new_size = Vec2::new(crop.size.x(), crop.size.y() + delta.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeVertical;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeVertical);
                         (new_pos, new_size)
                     } else if self.drag_l {
                         let new_pos = Vec2::new(crop.position.x() + delta.x(), crop.position.y());
                         let new_size = Vec2::new(crop.size.x() - delta.x(), crop.size.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeHorizontal;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
                         (new_pos, new_size)
                     } else if self.drag_r {
                         let new_pos = Vec2::new(crop.position.x(), crop.position.y());
                         let new_size = Vec2::new(crop.size.x() + delta.x(), crop.size.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::ResizeHorizontal;
+                        ui.ctx().set_cursor_icon(CursorIcon::ResizeHorizontal);
                         (new_pos, new_size)
                     } else if self.drag_m {
                         crop.position += delta;
                         let max = (image_size - crop.size).max(0.0, 0.0);
                         *crop.position.mut_x() = crop.position.x().clamp(0.0, max.x());
                         *crop.position.mut_y() = crop.position.y().clamp(0.0, max.y());
-                        ui.ctx().output().cursor_icon = CursorIcon::Grabbing;
+                        ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
                         (crop.position, crop.size)
                     } else {
                         (crop.position, crop.size)

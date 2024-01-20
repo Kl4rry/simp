@@ -2,9 +2,13 @@
 
 out vec4 color;
 
-uniform vec2 start;
-uniform vec2 end;
-uniform vec2 size;
+struct InputUniform {
+	vec2 start;
+	vec2 end;
+	vec2 size;
+}
+
+layout(location = 0) uniform InputUniform input_uniform
 
 const vec4 background_color = vec4(0.0, 0.0, 0.0, 0.5);
 const vec4 transparent = vec4(0.0, 0.0, 0.0, 0.0);
@@ -22,6 +26,10 @@ vec4 blend(vec4 base, vec4 top) {
 }
 
 void main() {
+	vec2 start = input_uniform.start;
+	vec2 end = input_uniform.end;
+	vec2 size = input_uniform.size;
+
 	color = vec4(0, 0, 0, 0);
 	float x = gl_FragCoord.x;
 	float y = size.y - gl_FragCoord.y;

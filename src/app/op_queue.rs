@@ -6,7 +6,6 @@ use std::{
     thread,
 };
 
-use glium::glutin::event_loop::EventLoopProxy;
 use image::{
     imageops::{
         colorops::{contrast_in_place, huerotate_in_place},
@@ -15,6 +14,7 @@ use image::{
     DynamicImage,
 };
 use rfd::MessageDialog;
+use winit::event_loop::EventLoopProxy;
 
 use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{

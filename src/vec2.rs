@@ -4,8 +4,6 @@ use std::{
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
 };
 
-use glium::uniforms::{AsUniformValue, UniformValue};
-
 use crate::max;
 
 #[repr(C)]
@@ -13,6 +11,9 @@ use crate::max;
 pub struct Vec2<T> {
     inner: [T; 2],
 }
+
+unsafe impl bytemuck::Pod for Vec2<f32> {}
+unsafe impl bytemuck::Zeroable for Vec2<f32> {}
 
 impl<T: Copy> Vec2<T> {
     #[inline]
@@ -232,11 +233,5 @@ impl<T> DerefMut for Vec2<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
-    }
-}
-
-impl AsUniformValue for Vec2<f32> {
-    fn as_uniform_value(&self) -> UniformValue<'_> {
-        UniformValue::Vec2(self.inner)
     }
 }

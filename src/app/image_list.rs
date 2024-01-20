@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-use glium::glutin::event_loop::EventLoopProxy;
+use winit::event_loop::EventLoopProxy;
 
 use super::op_queue::{prefetch, LoadingInfo};
 use crate::{

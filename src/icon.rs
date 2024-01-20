@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
-use glium::glutin::window::Icon;
 use image::{io::Reader as ImageReader, ImageFormat};
+use winit::window::Icon;
 
 pub fn get_icon() -> Icon {
     let bytes = include_bytes!("../icon.ico");
