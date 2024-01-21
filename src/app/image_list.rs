@@ -158,7 +158,6 @@ impl ImageList {
 
     /// Removes path from list and returns the path to the new current image in the dir.
     /// Will return None if there are no more images in the current dir.
-    #[cfg(feature = "trash")]
     pub fn trash(&mut self, path: &PathBuf) -> Option<PathBuf> {
         self.cache.pop(path);
         let mut lock = self.list.lock().unwrap();

@@ -267,23 +267,20 @@ impl App {
                         ui.close_menu();
                     }
 
-                    #[cfg(feature = "trash")]
+                    ui.separator();
+                    if ui
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            egui::Button::new("Delete").shortcut_text("Delete"),
+                        )
+                        .clicked()
                     {
-                        ui.separator();
-                        if ui
-                            .add_enabled(
-                                self.image_view.is_some(),
-                                egui::Button::new("Delete").shortcut_text("Delete"),
-                            )
-                            .clicked()
-                        {
-                            if let Some(ref view) = self.image_view {
-                                if let Some(ref path) = view.path {
-                                    super::delete(path.clone(), self.proxy.clone(), wgpu);
-                                }
+                        if let Some(ref view) = self.image_view {
+                            if let Some(ref path) = view.path {
+                                super::delete(path.clone(), self.proxy.clone(), wgpu);
                             }
-                            ui.close_menu();
                         }
+                        ui.close_menu();
                     }
                 });
 

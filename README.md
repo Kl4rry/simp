@@ -73,8 +73,8 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Rotate right   | E                    |
 | Zoom in        | - or Mousewheel up   |
 | Zoom out       | + or Mousewheel down |
-| Best fit       | B                    |
-| Largest fit    | L                    |
+| Best fit       | Ctrl + B             |
+| Largest fit    | Ctrl + L             |
 | Crop           | Ctrl + X             |
 | Fullscreen     | F11 or F             |
 | Delete image   | Delete               |

@@ -1,4 +1,4 @@
-#version 150
+#version 440
 
 out vec4 color;
 
@@ -6,9 +6,9 @@ struct InputUniform {
 	vec2 start;
 	vec2 end;
 	vec2 size;
-}
+};
 
-layout(location = 0) uniform InputUniform input_uniform
+layout(set = 0, binding = 0) uniform InputUniform input_uniform;
 
 const vec4 background_color = vec4(0.0, 0.0, 0.0, 0.5);
 const vec4 transparent = vec4(0.0, 0.0, 0.0, 0.0);
@@ -32,7 +32,7 @@ void main() {
 
 	color = vec4(0, 0, 0, 0);
 	float x = gl_FragCoord.x;
-	float y = size.y - gl_FragCoord.y;
+	float y = gl_FragCoord.y;
 
 	vec2 start_outer = round(start + vec2(-1.1, -1.1));
 	vec2 end_outer = round(end + vec2(1.1, 1.1));

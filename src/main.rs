@@ -21,6 +21,7 @@ use vec2::Vec2;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
+    keyboard::{Key, ModifiersState},
     window::{Window, WindowBuilder},
 };
 mod image_io;
@@ -62,7 +63,7 @@ impl WindowHandler {
             .with_visible(false)
             .with_min_inner_size(winit::dpi::LogicalSize::new(640f64, 400f64))
             .with_inner_size(winit::dpi::LogicalSize::new(1100f64, 720f64))
-            .with_maximized(config.maximized && false)
+            .with_maximized(config.maximized)
             .with_window_icon(Some(icon::get_icon()))
             .build(&event_loop)
             .unwrap();
@@ -94,9 +95,7 @@ impl WindowHandler {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: wgpu::Features::default()
-                        | wgpu::Features::TEXTURE_FORMAT_16BIT_NORM
-                        | wgpu::Features::TEXTURE_BINDING_ARRAY,
+                    features: wgpu::Features::default(),
                     limits: limits.clone(),
                 },
                 None,
@@ -198,28 +197,30 @@ impl WindowHandler {
                         }
                     }
                     WindowEvent::RedrawRequested => {
-                        let raw_input = egui_winit.take_egui_input(&wgpu.window);
-                        let egui_output = egui_winit.egui_ctx().run(raw_input, |ctx| {
-                            app.handle_ui(&wgpu, ctx);
-                        });
-                        egui_winit
-                            .handle_platform_output(&wgpu.window, egui_output.platform_output);
-                        for (id, image_delta) in egui_output.textures_delta.set {
-                            egui_renderer.update_texture(
-                                &wgpu.device,
-                                &wgpu.queue,
-                                id,
-                                &image_delta,
-                            );
-                        }
+                        {
+                            let raw_input = egui_winit.take_egui_input(&wgpu.window);
+                            let egui_output = egui_winit.egui_ctx().run(raw_input, |ctx| {
+                                app.handle_ui(&wgpu, ctx);
+                            });
+                            egui_winit
+                                .handle_platform_output(&wgpu.window, egui_output.platform_output);
+                            for (id, image_delta) in egui_output.textures_delta.set {
+                                egui_renderer.update_texture(
+                                    &wgpu.device,
+                                    &wgpu.queue,
+                                    id,
+                                    &image_delta,
+                                );
+                            }
 
-                        for id in egui_output.textures_delta.free {
-                            egui_renderer.free_texture(&id);
-                        }
+                            for id in egui_output.textures_delta.free {
+                                egui_renderer.free_texture(&id);
+                            }
 
-                        *egui_shapes = egui_winit
-                            .egui_ctx()
-                            .tessellate(egui_output.shapes, wgpu.scale_factor as f32);
+                            *egui_shapes = egui_winit
+                                .egui_ctx()
+                                .tessellate(egui_output.shapes, wgpu.scale_factor as f32);
+                        }
 
                         let (exit, repaint_after) = app.update(&wgpu);
 
@@ -247,7 +248,7 @@ impl WindowHandler {
 
                         {
                             {
-                                let clear_color = ((44 as f64) / 255.0).powf(2.2);
+                                let clear_color = ((44_f64) / 255.0).powf(2.2);
                                 let mut rpass =
                                     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                         label: Some("Image render pass"),
@@ -272,12 +273,26 @@ impl WindowHandler {
                                     });
 
                                 if let Some(image) = app.image_view.as_mut() {
-                                    let uniform = image.get_uniforms(Vec2::new(
+                                    let uniform = image.get_uniform(Vec2::new(
                                         wgpu.config.width as f32,
                                         wgpu.config.height as f32,
                                     ));
-                                    app.image_render.prepare(&wgpu, uniform);
-                                    app.image_render.render(&mut rpass, image);
+                                    app.image_renderer.prepare(&wgpu, uniform);
+                                    app.image_renderer.render(&mut rpass, image);
+
+                                    let window_size = Vec2::new(
+                                        wgpu.config.width as f32,
+                                        wgpu.config.height as f32,
+                                    );
+                                    if let Some(uniform) = image.crop.get_uniform(
+                                        window_size,
+                                        image.position,
+                                        image.rotated_size(),
+                                        image.scale,
+                                    ) {
+                                        app.crop_renderer.prepare(&wgpu, uniform);
+                                        app.crop_renderer.render(&mut rpass);
+                                    }
                                 }
                             }
 
@@ -291,7 +306,7 @@ impl WindowHandler {
                                     &wgpu.device,
                                     &wgpu.queue,
                                     &mut encoder,
-                                    &egui_shapes,
+                                    egui_shapes,
                                     &screen_descriptor,
                                 );
                                 wgpu.queue.submit(cmd_buffers);
@@ -314,7 +329,7 @@ impl WindowHandler {
                                         timestamp_writes: None,
                                     });
 
-                                egui_renderer.render(&mut pass, &egui_shapes, &screen_descriptor);
+                                egui_renderer.render(&mut pass, egui_shapes, &screen_descriptor);
                             }
 
                             wgpu.queue.submit(iter::once(encoder.finish()));
@@ -322,8 +337,28 @@ impl WindowHandler {
                         }
                     }
                     event => {
+                        match &event {
+                            WindowEvent::ModifiersChanged(modifiers) => {
+                                app.modifiers = modifiers.state()
+                            }
+                            WindowEvent::KeyboardInput { event, .. } => {
+                                if app.modifiers.contains(ModifiersState::CONTROL) {
+                                    if let Key::Character(ch) = &event.logical_key {
+                                        match ch.as_str() {
+                                            "v" => app.handle_paste(),
+                                            // Egui crashes for some reason if this is not here
+                                            "+" => return,
+                                            "-" => return,
+                                            _ => (),
+                                        }
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+
                         let res = egui_winit.on_window_event(&wgpu.window, &event);
-                        if !res.consumed || matches!(event, WindowEvent::MouseWheel { .. }) {
+                        if !res.consumed || matches!(event, WindowEvent::ModifiersChanged(_)) {
                             app.handle_window_event(&wgpu, &event);
                         }
 
@@ -348,8 +383,7 @@ impl WindowHandler {
 }
 
 fn main() {
-    // TODO: fix
-    /*panic::set_hook(Box::new(|panic_info| {
+    panic::set_hook(Box::new(|panic_info| {
         let dirs = directories::UserDirs::new();
         let mut path = PathBuf::from("/panic.txt");
         if let Some(dirs) = dirs {
@@ -360,7 +394,7 @@ fn main() {
         eprintln!("{panic_info:?}");
         let _ = fs::write(path, format!("{panic_info:?}"));
         std::process::exit(1);
-    }));*/
+    }));
 
     let matches = clap::Command::new(env!("CARGO_PKG_NAME"))
         .author(env!("CARGO_PKG_AUTHORS"))

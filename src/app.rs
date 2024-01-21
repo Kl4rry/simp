@@ -8,13 +8,10 @@ use std::{
     time::Duration,
 };
 
-use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
+use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
 use image::{imageops::FilterType, DynamicImage};
 use winit::{
-    event::{ElementState, MouseScrollDelta, WindowEvent},
-    event_loop::EventLoopProxy,
-    keyboard::{KeyCode, ModifiersState, PhysicalKey},
-    window::Fullscreen,
+    event::WindowEvent, event_loop::EventLoopProxy, keyboard::ModifiersState, window::Fullscreen,
 };
 
 use crate::{min, util::UserEvent, vec2::Vec2, WgpuState};
@@ -47,7 +44,12 @@ use resize::Resize;
 
 pub mod preferences;
 
-use self::{op_queue::get_unsaved_changes_dialog, preferences::PREFERENCES, undo_stack::UndoFrame};
+use self::{
+    image_view::{crop_renderer, image_renderer},
+    op_queue::get_unsaved_changes_dialog,
+    preferences::PREFERENCES,
+    undo_stack::UndoFrame,
+};
 
 enum ResizeMode {
     Original,
@@ -61,14 +63,15 @@ const BOTTOM_BAR_SIZE: f32 = 27.0;
 pub struct App {
     exit: Arc<AtomicBool>,
     delay: Duration,
-    pub image_render: image_view::renderer::Renderer,
+    pub image_renderer: image_renderer::Renderer,
+    pub crop_renderer: crop_renderer::Renderer,
     pub image_view: Option<Box<ImageView>>,
+    pub modifiers: ModifiersState,
     size: Vec2<f32>,
     fullscreen: bool,
     top_bar_size: f32,
     bottom_bar_size: f32,
     proxy: EventLoopProxy<UserEvent>,
-    modifiers: ModifiersState,
     mouse_position: Vec2<f32>,
     current_filename: String,
     op_queue: OpQueue,
@@ -224,6 +227,7 @@ impl App {
                 stack.clear();
                 self.op_queue.image_list.clear();
                 self.op_queue.cache.clear();
+                wgpu.window.set_title("Simp");
             }
             Output::Saved => {
                 stack.set_saved();
@@ -279,185 +283,16 @@ impl App {
         };
     }
 
-    pub fn handle_window_event(&mut self, wgpu: &WgpuState, event: &WindowEvent) {
+    pub fn handle_window_event(&mut self, _wgpu: &WgpuState, event: &WindowEvent) {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_position.set_x(position.x as f32);
                 self.mouse_position.set_y(position.y as f32);
             }
-            WindowEvent::MouseWheel { delta, .. } => {
-                if !self.metadata_visible {
-                    let scroll = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => *y,
-                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
-                    };
-
-                    self.zoom(
-                        scroll * PREFERENCES.lock().unwrap().zoom_speed,
-                        self.mouse_position,
-                    );
-                }
-            }
-            WindowEvent::ModifiersChanged(state) => self.modifiers = state.state(),
             WindowEvent::DroppedFile(path) => {
                 self.op_queue.cache.clear();
                 self.queue(Op::LoadPath(path.to_path_buf(), true));
             }
-            WindowEvent::KeyboardInput { event, .. } => {
-                if let PhysicalKey::Code(key) = event.physical_key {
-                    match event.state {
-                        ElementState::Pressed => match key {
-                            #[cfg(feature = "trash")]
-                            KeyCode::Delete => {
-                                if let Some(ref view) = self.image_view {
-                                    if let Some(ref path) = view.path {
-                                        delete(path.clone(), self.proxy.clone(), wgpu);
-                                    }
-                                }
-                            }
-
-                            KeyCode::KeyH if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.help_visible = true
-                            }
-                            KeyCode::KeyO if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                load_image::open(self.proxy.clone(), wgpu, false)
-                            }
-                            KeyCode::KeyS if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                save_image::open(
-                                    self.current_filename.clone(),
-                                    self.proxy.clone(),
-                                    wgpu,
-                                )
-                            }
-                            KeyCode::KeyW if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                let _ = self.proxy.send_event(UserEvent::Exit);
-                            }
-                            KeyCode::KeyN if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                new_window()
-                            }
-
-                            KeyCode::KeyM => {
-                                self.largest_fit();
-                            }
-                            KeyCode::KeyB => {
-                                self.best_fit();
-                            }
-
-                            KeyCode::KeyQ => {
-                                if self.image_view.is_some() {
-                                    self.queue(Op::Rotate(-1))
-                                }
-                            }
-                            KeyCode::KeyE => {
-                                if self.image_view.is_some() {
-                                    self.queue(Op::Rotate(1))
-                                }
-                            }
-
-                            KeyCode::F5 => {
-                                if let Some(image) = self.image_view.as_ref() {
-                                    if let Some(path) = &image.path {
-                                        let buf = path.to_path_buf();
-                                        self.queue(Op::LoadPath(buf, false));
-                                    }
-                                }
-                            }
-
-                            KeyCode::KeyC if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                if self.view_available() {
-                                    self.queue(Op::Copy);
-                                }
-                            }
-                            KeyCode::KeyV if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                if !self.op_queue.working() {
-                                    self.queue(Op::Paste);
-                                }
-                            }
-                            KeyCode::KeyX if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.image_view.as_mut().unwrap().start_crop()
-                            }
-
-                            KeyCode::KeyZ if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.queue(Op::Undo);
-                            }
-                            KeyCode::KeyY if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.queue(Op::Redo);
-                            }
-
-                            KeyCode::KeyR if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.resize.visible = true;
-                            }
-
-                            KeyCode::ArrowLeft | KeyCode::KeyD | KeyCode::KeyH => {
-                                if self.view_available()
-                                    && !self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.queue(Op::Prev);
-                                }
-                            }
-
-                            KeyCode::ArrowRight | KeyCode::KeyA | KeyCode::KeyL => {
-                                if self.view_available()
-                                    && !self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.queue(Op::Next);
-                                }
-                            }
-                            KeyCode::F4 if self.modifiers.contains(ModifiersState::CONTROL) => {
-                                self.queue(Op::Close);
-                            }
-
-                            KeyCode::F11 | KeyCode::KeyF => {
-                                let fullscreen = wgpu.window.fullscreen();
-                                if fullscreen.is_some() {
-                                    wgpu.window.set_fullscreen(None);
-                                    self.fullscreen = false;
-                                    self.top_bar_size = TOP_BAR_SIZE;
-                                    self.bottom_bar_size = BOTTOM_BAR_SIZE;
-                                } else {
-                                    wgpu.window
-                                        .set_fullscreen(Some(Fullscreen::Borderless(None)));
-                                    self.fullscreen = true;
-                                    self.top_bar_size = 0.0;
-                                    self.bottom_bar_size = 0.0;
-                                }
-                                self.largest_fit();
-                            }
-                            KeyCode::Escape => {
-                                if self.view_available()
-                                    && self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.image_view.as_mut().unwrap().cancel_crop();
-                                }
-                                self.help_visible = false;
-                                self.color_visible = false;
-                                self.metadata_visible = false;
-                                self.resize.visible = false;
-                            }
-                            KeyCode::Enter | KeyCode::NumpadEnter => self.enter = true,
-                            _ => (),
-                        },
-                        ElementState::Released => (),
-                    }
-                }
-            }
-            /*
-            TODO: fix
-            WindowEvent::ReceivedCharacter(c) => match c {
-                '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                    if let Some(ref mut view) = self.image_view {
-                        let zoom = c.to_digit(10).unwrap() as f32;
-                        view.scale = zoom;
-                    }
-                }
-                '+' => {
-                    self.zoom(1.0, self.size / 2.0);
-                }
-                '-' => {
-                    self.zoom(-1.0, self.size / 2.0);
-                }
-                _ => (),
-            },*/
             _ => (),
         };
     }
@@ -482,7 +317,7 @@ impl App {
         self.crop_ui(ctx);
     }
 
-    pub fn main_area(&mut self, _wgpu: &WgpuState, ctx: &egui::Context) {
+    pub fn main_area(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             if self.image_view.is_none() {
@@ -497,6 +332,244 @@ impl App {
             if let Some(ref mut view) = self.image_view {
                 view.handle_drag(ui);
             }
+
+            ui.input_mut(|input| {
+                use egui::{Key::*, KeyboardShortcut};
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Delete,
+                }) {
+                    if let Some(ref view) = self.image_view {
+                        if let Some(ref path) = view.path {
+                            delete(path.clone(), self.proxy.clone(), wgpu);
+                        }
+                    }
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: H,
+                }) {
+                    self.help_visible = true
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: O,
+                }) {
+                    load_image::open(self.proxy.clone(), wgpu, false)
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: S,
+                }) {
+                    save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu)
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Q,
+                }) {
+                    let _ = self.proxy.send_event(UserEvent::Exit);
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: N,
+                }) {
+                    new_window()
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: L,
+                }) {
+                    self.largest_fit();
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: B,
+                }) {
+                    self.best_fit();
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Q,
+                }) && self.image_view.is_some()
+                {
+                    self.queue(Op::Rotate(-1))
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: E,
+                }) && self.image_view.is_some()
+                {
+                    self.queue(Op::Rotate(1))
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: F5,
+                }) {
+                    if let Some(image) = self.image_view.as_ref() {
+                        if let Some(path) = &image.path {
+                            let buf = path.to_path_buf();
+                            self.queue(Op::LoadPath(buf, false));
+                        }
+                    }
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Z,
+                }) {
+                    self.queue(Op::Undo);
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Y,
+                }) {
+                    self.queue(Op::Redo);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: R,
+                }) {
+                    self.resize.visible = true;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: ArrowRight,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: D,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: H,
+                }) && self.view_available()
+                    && !self.image_view.as_ref().unwrap().cropping()
+                {
+                    self.queue(Op::Prev);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: ArrowLeft,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: A,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: L,
+                }) && self.view_available()
+                    && !self.image_view.as_ref().unwrap().cropping()
+                {
+                    self.queue(Op::Next);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: W,
+                }) {
+                    self.queue(Op::Close);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: F11,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: F,
+                }) {
+                    let fullscreen = wgpu.window.fullscreen();
+                    if fullscreen.is_some() {
+                        wgpu.window.set_fullscreen(None);
+                        self.fullscreen = false;
+                        self.top_bar_size = TOP_BAR_SIZE;
+                        self.bottom_bar_size = BOTTOM_BAR_SIZE;
+                    } else {
+                        wgpu.window
+                            .set_fullscreen(Some(Fullscreen::Borderless(None)));
+                        self.fullscreen = true;
+                        self.top_bar_size = 0.0;
+                        self.bottom_bar_size = 0.0;
+                    }
+                    self.largest_fit();
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Escape,
+                }) {
+                    if self.view_available() && self.image_view.as_ref().unwrap().cropping() {
+                        self.image_view.as_mut().unwrap().cancel_crop();
+                    }
+                    self.help_visible = false;
+                    self.color_visible = false;
+                    self.metadata_visible = false;
+                    self.resize.visible = false;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Enter,
+                }) {
+                    self.enter = true;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Plus,
+                }) {
+                    self.zoom(1.0, self.size / 2.0);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Minus,
+                }) {
+                    self.zoom(1.0, self.size / 2.0);
+                }
+
+                self.zoom(
+                    input.scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
+                    self.mouse_position,
+                );
+
+                for event in &input.events {
+                    match event {
+                        Event::Copy => {
+                            if self.view_available() {
+                                self.queue(Op::Copy);
+                            }
+                        }
+                        Event::Cut => {
+                            if self.view_available() {
+                                self.image_view.as_mut().unwrap().start_crop()
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                input
+                    .events
+                    .retain(|e| !matches!(e, Event::Copy | Event::Cut));
+
+                let nums = [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9];
+                for (i, num) in nums.into_iter().enumerate() {
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: num,
+                    }) {
+                        if let Some(ref mut view) = self.image_view {
+                            view.scale = (i + 1) as f32;
+                        }
+                    }
+                }
+            });
         });
     }
 
@@ -969,11 +1042,19 @@ impl App {
         }
     }
 
+    pub fn handle_paste(&mut self) {
+        if !self.op_queue.working() {
+            self.queue(Op::Paste);
+        }
+    }
+
     pub fn new(wgpu: &WgpuState, proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
         App {
             exit: Arc::new(AtomicBool::new(false)),
             delay: Duration::MAX,
-            image_render: image_view::renderer::Renderer::new(wgpu),
+            modifiers: ModifiersState::empty(),
+            image_renderer: image_renderer::Renderer::new(wgpu),
+            crop_renderer: crop_renderer::Renderer::new(wgpu),
             image_view: None,
             size: Vec2::from(size),
             fullscreen: false,
@@ -981,7 +1062,6 @@ impl App {
             bottom_bar_size: BOTTOM_BAR_SIZE,
             op_queue: OpQueue::new(proxy.clone()),
             proxy,
-            modifiers: ModifiersState::empty(),
             mouse_position: Vec2::default(),
             current_filename: String::new(),
             resize: Resize::default(),
@@ -995,7 +1075,6 @@ impl App {
     }
 }
 
-#[cfg(feature = "trash")]
 pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
     let dialog = rfd::MessageDialog::new()
         .set_parent(&wgpu.window)

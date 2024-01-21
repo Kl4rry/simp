@@ -1,4 +1,4 @@
-use std::{borrow::Cow, mem, num::NonZeroU32};
+use std::{borrow::Cow, mem};
 
 use image::GenericImageView;
 
@@ -33,10 +33,10 @@ impl Texture {
             image::DynamicImage::ImageLumaA8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgb8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgba8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.as_bytes().into()),
-            image::DynamicImage::ImageLuma16(_) => (8, wgpu::TextureFormat::Rgba16Unorm, to_u8(img.to_rgba16().into_raw()).into()),
-            image::DynamicImage::ImageLumaA16(_) => (8, wgpu::TextureFormat::Rgba16Unorm, to_u8(img.to_rgba16().into_raw()).into()),
-            image::DynamicImage::ImageRgb16(_) => (8, wgpu::TextureFormat::Rgba16Unorm, to_u8(img.to_rgba16().into_raw()).into()),
-            image::DynamicImage::ImageRgba16(_) => (8, wgpu::TextureFormat::Rgba16Unorm, img.as_bytes().into()),
+            image::DynamicImage::ImageLuma16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageLumaA16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageRgb16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageRgba16(_) => (8, wgpu::TextureFormat::Rgba32Float, img.as_bytes().into()),
             image::DynamicImage::ImageRgb32F(_) => (16, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
             image::DynamicImage::ImageRgba32F(_) => (16, wgpu::TextureFormat::Rgba32Float, img.as_bytes().into()),
             _ => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
@@ -55,7 +55,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[format],
+            view_formats: &[],
         });
 
         queue.write_texture(
@@ -116,17 +116,17 @@ impl Texture {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
                         view_dimension: wgpu::TextureViewDimension::D2,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     },
-                    count: NonZeroU32::new(1),
+                    count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },

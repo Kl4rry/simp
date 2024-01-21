@@ -240,7 +240,6 @@ impl OpQueue {
                 Op::Paste => {
                     clipboard::paste(self.proxy.clone());
                 }
-                #[cfg(feature = "trash")]
                 Op::Delete(path) => match trash::delete(&path) {
                     Ok(_) => match self.image_list.trash(&path) {
                         Some(path) => {
@@ -256,10 +255,6 @@ impl OpQueue {
                             .send_event(UserEvent::ErrorMessage(error.to_string()));
                     }
                 },
-                #[cfg(not(feature = "trash"))]
-                _ => {
-                    let _ = self.proxy.send_output(Output::Done);
-                }
             }
         }
     }

@@ -11,6 +11,7 @@ use image::GenericImageView;
 use wgpu::util::DeviceExt;
 use winit::event_loop::EventLoopProxy;
 
+use self::image_renderer::Vertex;
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
     max,
@@ -20,49 +21,13 @@ use crate::{
     WgpuState,
 };
 
-pub mod renderer;
+pub mod crop_renderer;
+pub mod image_renderer;
 
 mod crop;
 use crop::Crop;
 
 mod texture;
-
-#[derive(Copy, Clone)]
-pub struct Vertex {
-    pub position: [f32; 2],
-    pub tex_coords: [f32; 2],
-}
-
-unsafe impl bytemuck::Pod for Vertex {}
-unsafe impl bytemuck::Zeroable for Vertex {}
-
-impl Vertex {
-    pub fn new(x: f32, y: f32, tex_x: f32, tex_y: f32) -> Self {
-        Self {
-            position: [x, y],
-            tex_coords: [tex_x, tex_y],
-        }
-    }
-
-    pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
-        }
-    }
-}
 
 pub struct ImageView {
     pub size: Vec2<f32>,
@@ -113,7 +78,7 @@ impl ImageView {
             index: 0,
             horizontal_flip: false,
             vertical_flip: false,
-            crop: Crop::new(wgpu),
+            crop: Crop::new(),
             vertices: get_vertex_buffer(wgpu, width as f32, height as f32),
             indices,
             texture,
@@ -139,7 +104,7 @@ impl ImageView {
         (pre_rotation * rotation) * post_rotation
     }
 
-    pub fn get_uniforms(&self, size: Vec2<f32>) -> renderer::Uniform {
+    pub fn get_uniform(&self, size: Vec2<f32>) -> image_renderer::Uniform {
         let ortho: Matrix4<f32> = Ortho {
             left: 0.0,
             right: size.x(),
@@ -157,7 +122,7 @@ impl ImageView {
         let rotation = self.get_rotation_mat();
         let matrix = OPENGL_TO_WGPU_MATRIX * ortho * translation * scale * rotation;
 
-        renderer::Uniform {
+        image_renderer::Uniform {
             matrix,
             flip_horizontal: self.horizontal_flip as u32,
             flip_vertical: self.vertical_flip as u32,

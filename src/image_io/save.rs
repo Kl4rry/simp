@@ -107,12 +107,12 @@ pub fn save_with_format(
 
     if let Err(err) = image.buffer().write_to(&mut BufWriter::new(file), format) {
         let _ = fs::remove_file(&temp_path);
-        return Err(err)?;
+        Err(err)?;
     }
 
     if let Err(err) = fs::rename(&temp_path, path) {
         let _ = fs::remove_file(&temp_path);
-        return Err(err)?;
+        Err(err)?;
     }
 
     Ok(())

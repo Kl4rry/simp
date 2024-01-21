@@ -1,8 +1,47 @@
+use std::mem;
+
 use cgmath::{Matrix4, SquareMatrix};
 use wgpu::util::DeviceExt;
 
-use super::{texture, ImageView, Vertex};
+use super::{texture, ImageView};
 use crate::{vec2::Vec2, WgpuState};
+
+#[derive(Copy, Clone)]
+pub struct Vertex {
+    pub position: [f32; 2],
+    pub tex_coords: [f32; 2],
+}
+
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
+
+impl Vertex {
+    pub fn new(x: f32, y: f32, tex_x: f32, tex_y: f32) -> Self {
+        Self {
+            position: [x, y],
+            tex_coords: [tex_x, tex_y],
+        }
+    }
+
+    pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+            ],
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -54,7 +93,7 @@ impl Uniform {
                 },
                 count: None,
             }],
-            label: Some("image_fragment_bind_group_layout"),
+            label: Some("Image fragment bind group"),
         })
     }
 }
@@ -70,7 +109,7 @@ impl Renderer {
         let render_pipeline_layout =
             wgpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Render Pipeline Layout"),
+                    label: Some("Image render pipeline layout"),
                     bind_group_layouts: &[
                         &Uniform::get_bind_group_layout(&wgpu.device),
                         &texture::Texture::get_bind_group_layout(&wgpu.device),
@@ -103,7 +142,7 @@ impl Renderer {
         let pipeline = wgpu
             .device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
+                label: Some("Image Render Pipeline"),
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
@@ -140,7 +179,7 @@ impl Renderer {
         let uniform_buffer = wgpu
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Uniform Buffer"),
+                label: Some("Vertex uniform buffer"),
                 contents: bytemuck::cast_slice(&[Uniform::default()]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
@@ -152,7 +191,7 @@ impl Renderer {
                 binding: 0,
                 resource: uniform_buffer.as_entire_binding(),
             }],
-            label: Some("Vertex Uniform Bind Group"),
+            label: Some("Vertex uniform bind group"),
         });
 
         Self {
