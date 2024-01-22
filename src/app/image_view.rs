@@ -8,10 +8,9 @@ use std::{
 
 use cgmath::{Deg, Matrix4, Ortho, Vector3, Vector4};
 use image::GenericImageView;
-use wgpu::util::DeviceExt;
 use winit::event_loop::EventLoopProxy;
 
-use self::image_renderer::Vertex;
+use self::mosaic::Mosaic;
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
     max,
@@ -23,6 +22,7 @@ use crate::{
 
 pub mod crop_renderer;
 pub mod image_renderer;
+pub mod mosaic;
 
 mod crop;
 use crop::Crop;
@@ -30,6 +30,7 @@ use crop::Crop;
 mod texture;
 
 pub struct ImageView {
+    pub mosaic: Vec<Mosaic>,
     pub size: Vec2<f32>,
     pub position: Vec2<f32>,
     pub scale: f32,
@@ -47,9 +48,6 @@ pub struct ImageView {
     pub grayscale: bool,
     pub invert: bool,
     pub crop: Crop,
-    vertices: wgpu::Buffer,
-    indices: wgpu::Buffer,
-    texture: texture::Texture,
 }
 
 impl ImageView {
@@ -57,18 +55,10 @@ impl ImageView {
         let frames = &image_data.frames;
         let image = frames[0].buffer();
         let (width, height) = image.dimensions();
-        let texture = texture::Texture::from_image(&wgpu.device, &wgpu.queue, image, None);
-
-        let indices: &[u32] = &[0, 1, 2, 2, 1, 3];
-        let indices = wgpu
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Image Index Buffer"),
-                contents: bytemuck::cast_slice(indices),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-            });
+        let mosaic = Mosaic::from_images(wgpu, image_data.clone());
 
         Self {
+            mosaic,
             size: Vec2::new(width as f32, height as f32),
             position: Vec2::default(),
             scale: 1.0,
@@ -79,9 +69,6 @@ impl ImageView {
             horizontal_flip: false,
             vertical_flip: false,
             crop: Crop::new(),
-            vertices: get_vertex_buffer(wgpu, width as f32, height as f32),
-            indices,
-            texture,
             path,
             hue: 0.0,
             contrast: 0.0,
@@ -137,14 +124,6 @@ impl ImageView {
         }
     }
 
-    pub fn get_buffers(&self) -> (&wgpu::Buffer, &wgpu::Buffer) {
-        (&self.vertices, &self.indices)
-    }
-
-    pub fn get_texture(&self) -> &texture::Texture {
-        &self.texture
-    }
-
     pub fn scaled(&self) -> Vec2<f32> {
         self.size * self.scale
     }
@@ -187,7 +166,7 @@ impl ImageView {
         self.vertical_flip = !self.vertical_flip;
     }
 
-    pub fn animate(&mut self, wgpu: &WgpuState) -> Duration {
+    pub fn animate(&mut self) -> Duration {
         let guard = self.image_data.read().unwrap();
         let frames = &guard.frames;
         if frames.len() > 1 {
@@ -200,9 +179,6 @@ impl ImageView {
                 if self.index >= frames.len() {
                     self.index = 0;
                 }
-
-                drop(guard);
-                self.update_image_data(wgpu);
 
                 self.last_frame = now;
 
@@ -251,16 +227,8 @@ impl ImageView {
         mem::swap(&mut Arc::make_mut(&mut *guard).frames, frames);
         let (width, height) = guard.frames[0].buffer().dimensions();
         drop(guard);
-        self.update_image_data(wgpu);
-        self.vertices = get_vertex_buffer(wgpu, width as f32, height as f32);
-    }
-
-    fn update_image_data(&mut self, wgpu: &WgpuState) {
-        let guard = self.image_data.read().unwrap();
-        let frames = &guard.frames;
-        let image = frames[self.index].buffer();
-        self.size = Vec2::new(image.width() as f32, image.height() as f32);
-        self.texture = texture::Texture::from_image(&wgpu.device, &wgpu.queue, image, None);
+        self.mosaic = Mosaic::from_images(wgpu, self.image_data.read().unwrap().clone());
+        self.size = Vec2::new(width as f32, height as f32);
     }
 
     pub fn rotation(&self) -> i32 {
@@ -323,26 +291,4 @@ impl ImageView {
             self.position += Vec2::from((vec2.x, vec2.y));
         }
     }
-}
-
-fn get_vertex_buffer(wgpu: &WgpuState, width: f32, height: f32) -> wgpu::Buffer {
-    let texture_cords = (
-        Vec2::new(1.0, 1.0),
-        Vec2::new(1.0, 0.0),
-        Vec2::new(0.0, 1.0),
-        Vec2::new(0.0, 0.0),
-    );
-    let shape = [
-        Vertex::new(0.0, 0.0, texture_cords.0.x(), texture_cords.0.y()),
-        Vertex::new(0.0, height, texture_cords.1.x(), texture_cords.1.y()),
-        Vertex::new(width, 0.0, texture_cords.2.x(), texture_cords.2.y()),
-        Vertex::new(width, height, texture_cords.3.x(), texture_cords.3.y()),
-    ];
-
-    wgpu.device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Image Vertex Buffer"),
-            contents: bytemuck::cast_slice(shape.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX,
-        })
 }

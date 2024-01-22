@@ -700,11 +700,11 @@ impl App {
         });
     }
 
-    pub fn update(&mut self, wgpu: &WgpuState) -> (bool, Duration) {
+    pub fn update(&mut self, _wgpu: &WgpuState) -> (bool, Duration) {
         self.delay = Duration::MAX;
 
         if let Some(ref mut image) = self.image_view {
-            self.delay = self.delay.min(image.animate(wgpu));
+            self.delay = self.delay.min(image.animate());
         }
 
         if let Some(ref mut image) = self.image_view {

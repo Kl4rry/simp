@@ -211,13 +211,15 @@ impl Renderer {
         rpass: &mut wgpu::RenderPass<'rpass>,
         image_view: &'rpass ImageView,
     ) {
-        let (vertices, indices) = image_view.get_buffers();
-        let texture = image_view.get_texture();
         rpass.set_pipeline(&self.pipeline);
         rpass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        rpass.set_bind_group(1, &texture.diffuse_bind_group, &[]);
-        rpass.set_vertex_buffer(0, vertices.slice(..));
-        rpass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-        rpass.draw_indexed(0..6, 0, 0..1);
+        let mosaic = &image_view.mosaic[image_view.index];
+        rpass.set_index_buffer(mosaic.indices.slice(..), wgpu::IndexFormat::Uint32);
+
+        for tile in &mosaic.tiles {
+            rpass.set_bind_group(1, &tile.texture.diffuse_bind_group, &[]);
+            rpass.set_vertex_buffer(0, tile.vertices.slice(..));
+            rpass.draw_indexed(0..6, 0, 0..1);
+        }
     }
 }
