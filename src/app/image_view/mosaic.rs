@@ -127,10 +127,10 @@ fn get_vertex_buffer(
         Vec2::new(0.0, 0.0),
     );
     let shape = [
-        Vertex::new(start_x, start_y, texture_cords.0.x(), texture_cords.0.y()),
-        Vertex::new(start_x, end_y, texture_cords.1.x(), texture_cords.1.y()),
-        Vertex::new(end_x, start_y, texture_cords.2.x(), texture_cords.2.y()),
-        Vertex::new(end_x, end_y, texture_cords.3.x(), texture_cords.3.y()),
+        Vertex::new(start_x, start_y, texture_cords.3.x(), texture_cords.3.y()),
+        Vertex::new(start_x, end_y, texture_cords.2.x(), texture_cords.2.y()),
+        Vertex::new(end_x, start_y, texture_cords.1.x(), texture_cords.1.y()),
+        Vertex::new(end_x, end_y, texture_cords.0.x(), texture_cords.0.y()),
     ];
 
     wgpu.device

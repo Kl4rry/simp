@@ -117,21 +117,21 @@ impl App {
             Output::FlipHorizontal => {
                 let view = self.image_view.as_mut().unwrap();
                 if view.rotation() % 2 != 0 {
-                    view.flip_horizontal();
-                    stack.push(UndoFrame::FlipHorizontal);
-                } else {
                     view.flip_vertical();
                     stack.push(UndoFrame::FlipVertical);
+                } else {
+                    view.flip_horizontal();
+                    stack.push(UndoFrame::FlipHorizontal);
                 }
             }
             Output::FlipVertical => {
                 let view = self.image_view.as_mut().unwrap();
                 if view.rotation() % 2 != 0 {
                     view.flip_horizontal();
-                    stack.push(UndoFrame::FlipVertical);
+                    stack.push(UndoFrame::FlipHorizontal);
                 } else {
                     view.flip_vertical();
-                    stack.push(UndoFrame::FlipHorizontal);
+                    stack.push(UndoFrame::FlipVertical);
                 }
             }
             Output::Rotate(dir) => {

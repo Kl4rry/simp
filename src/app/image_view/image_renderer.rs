@@ -49,8 +49,6 @@ pub struct Uniform {
     pub matrix: Matrix4<f32>,
     pub size: Vec2<f32>,
     pub padding: Vec2<f32>, // Padding because glsl is adding dumb padding
-    pub flip_horizontal: u32,
-    pub flip_vertical: u32,
     pub hue: f32,
     pub contrast: f32,
     pub brightness: f32,
@@ -63,8 +61,6 @@ impl Default for Uniform {
     fn default() -> Self {
         Self {
             matrix: Matrix4::identity(),
-            flip_horizontal: Default::default(),
-            flip_vertical: Default::default(),
             size: Default::default(),
             padding: Default::default(),
             hue: Default::default(),
@@ -162,7 +158,7 @@ impl Renderer {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
                     front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Back),
+                    cull_mode: None,
                     polygon_mode: wgpu::PolygonMode::Fill,
                     unclipped_depth: false,
                     conservative: false,

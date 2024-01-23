@@ -6,8 +6,6 @@ layout(location = 0) out vec4 color;
 struct InputUniform {
     mat4 matrix;
     vec2 size;
-    uint flip_horizontal;
-    uint flip_vertical;
     float hue;
     float contrast;
     float brightness;

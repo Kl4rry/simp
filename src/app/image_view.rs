@@ -91,6 +91,22 @@ impl ImageView {
         (pre_rotation * rotation) * post_rotation
     }
 
+    pub fn get_flip_mat(&self) -> Matrix4<f32> {
+        let hori = if self.horizontal_flip { -1.0 } else { 1.0 };
+
+        let vert = if self.vertical_flip { -1.0 } else { 1.0 };
+
+        let flip = Matrix4::from_nonuniform_scale(hori, vert, 1.0);
+        let pre_rotation =
+            Matrix4::from_translation(Vector3::new(self.size.x() / 2.0, self.size.y() / 2.0, 0.0));
+        let post_rotation = Matrix4::from_translation(Vector3::new(
+            -self.size.x() / 2.0,
+            -self.size.y() / 2.0,
+            0.0,
+        ));
+        (pre_rotation * flip) * post_rotation
+    }
+
     pub fn get_uniform(&self, size: Vec2<f32>) -> image_renderer::Uniform {
         let ortho: Matrix4<f32> = Ortho {
             left: 0.0,
@@ -106,13 +122,12 @@ impl ImageView {
         let scale = Matrix4::from_scale(self.scale);
         let translation = Matrix4::from_translation(Vector3::new(position.x(), position.y(), 0.0));
 
+        let flip = self.get_flip_mat();
         let rotation = self.get_rotation_mat();
-        let matrix = OPENGL_TO_WGPU_MATRIX * ortho * translation * scale * rotation;
+        let matrix = OPENGL_TO_WGPU_MATRIX * ortho * translation * scale * flip * rotation;
 
         image_renderer::Uniform {
             matrix,
-            flip_horizontal: self.horizontal_flip as u32,
-            flip_vertical: self.vertical_flip as u32,
             size,
             padding: Default::default(),
             hue: self.hue,
