@@ -217,9 +217,10 @@ impl WindowHandler {
                                 egui_renderer.free_texture(&id);
                             }
 
+                            let pixels_per_point = egui_winit.egui_ctx().pixels_per_point();
                             *egui_shapes = egui_winit
                                 .egui_ctx()
-                                .tessellate(egui_output.shapes, wgpu.scale_factor as f32);
+                                .tessellate(egui_output.shapes, pixels_per_point);
                         }
 
                         let (exit, repaint_after) = app.update(&wgpu);
@@ -346,7 +347,7 @@ impl WindowHandler {
                                     if let Key::Character(ch) = &event.logical_key {
                                         match ch.as_str() {
                                             "v" => app.handle_paste(),
-                                            // Egui crashes for some reason if this is not here
+                                            // Remove the scufffed egui zoom
                                             "+" => return,
                                             "-" => return,
                                             _ => (),
