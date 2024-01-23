@@ -96,6 +96,7 @@ pub enum UserEvent {
     QueueDelete(PathBuf),
     Output(Option<Output>),
     RepaintRequest(egui::RequestRepaintInfo),
+    Wake,
     Exit,
 }
 

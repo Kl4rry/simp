@@ -13,7 +13,6 @@ use image::{
     },
     DynamicImage,
 };
-use rfd::MessageDialog;
 use winit::event_loop::EventLoopProxy;
 
 use self::imageops::{adjust_saturation_in_place, brighten_in_place};
@@ -23,6 +22,7 @@ use super::{
     image_list::ImageList,
     image_view::ImageView,
     load_image::{load_from_bytes, load_uncached},
+    popup_manager::PopupProxy,
     save_image,
 };
 use crate::{
@@ -98,13 +98,14 @@ pub struct OpQueue {
     working: bool,
     loading_info: Arc<Mutex<LoadingInfo>>,
     proxy: EventLoopProxy<UserEvent>,
+    popup_proxy: PopupProxy,
     stack: UndoStack,
     pub cache: Arc<Cache>,
     pub image_list: ImageList,
 }
 
 impl OpQueue {
-    pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, popup_proxy: PopupProxy) -> Self {
         const CACHE_SIZE: usize = 1_000_000_000;
         let cache = Arc::new(Cache::new(CACHE_SIZE));
         let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
@@ -113,6 +114,7 @@ impl OpQueue {
             working: false,
             image_list: ImageList::new(cache.clone(), proxy.clone(), loading_info.clone()),
             loading_info,
+            popup_proxy,
             stack: UndoStack::new(),
             proxy,
             cache,
@@ -282,15 +284,10 @@ impl OpQueue {
             self.cache.pop(&path_buf);
         }
 
-        let dialog = if edited_prompt {
-            Some(get_unsaved_changes_dialog())
-        } else {
-            None
-        };
-
         let cache = self.cache.clone();
         let proxy = self.proxy.clone();
         let loading_info = self.loading_info.clone();
+        let popup_proxy = self.popup_proxy.clone();
         thread::spawn(move || {
             let mut path = path_buf.clone();
             if path.is_dir() {
@@ -320,8 +317,25 @@ impl OpQueue {
                 }
             }
 
-            if let Some(dialog) = dialog {
-                if !dialog.show() {
+            if edited_prompt {
+                let close = popup_proxy
+                    .spawn_popup("Unsaved changes", move |ui| {
+                        ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+                        if ui.button("Ok").clicked() {
+                            return Some(true);
+                        }
+
+                        if ui.button("Cancel").clicked() {
+                            return Some(false);
+                        }
+
+                        None
+                    })
+                    .wait()
+                    .unwrap_or(false);
+                if !close {
                     proxy.send_output(Output::Done);
                     return;
                 }
@@ -426,12 +440,4 @@ pub fn prefetch(
             guard.target_file = None;
         }
     });
-}
-
-pub fn get_unsaved_changes_dialog() -> MessageDialog {
-    rfd::MessageDialog::new()
-        .set_level(rfd::MessageLevel::Warning)
-        .set_title("Unsaved changes")
-        .set_description("You have unsaved changes are you sure you want to close this image?")
-        .set_buttons(rfd::MessageButtons::OkCancel)
 }

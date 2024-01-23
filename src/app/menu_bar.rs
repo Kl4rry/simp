@@ -1,5 +1,3 @@
-use std::thread;
-
 use egui::{menu, TopBottomPanel};
 
 use super::{load_image, new_window, op_queue::Op, save_image, App};
@@ -277,7 +275,11 @@ impl App {
                     {
                         if let Some(ref view) = self.image_view {
                             if let Some(ref path) = view.path {
-                                super::delete(path.clone(), self.proxy.clone(), wgpu);
+                                super::delete(
+                                    path.clone(),
+                                    self.popup_manager.get_proxy(),
+                                    self.proxy.clone(),
+                                );
                             }
                         }
                         ui.close_menu();
@@ -314,14 +316,15 @@ impl App {
                             &format!("Commit: {}", env!("GIT_HASH")),
                         );
 
-                        let dialog = rfd::MessageDialog::new()
-                            .set_parent(&wgpu.window)
-                            .set_level(rfd::MessageLevel::Info)
-                            .set_title("About")
-                            .set_description(&about)
-                            .set_buttons(rfd::MessageButtons::Ok);
+                        self.popup_manager.get_proxy().spawn_popup(
+                            "About",
+                            move |ui| -> Option<()> {
+                                ui.label(&about);
 
-                        thread::spawn(move || dialog.show());
+                                ui.button("Ok").clicked().then_some(())
+                            },
+                        );
+
                         ui.close_menu();
                     }
                 });
