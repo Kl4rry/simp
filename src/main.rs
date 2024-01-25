@@ -34,6 +34,7 @@ struct Config {
 
 pub struct WgpuState {
     pub window: Window,
+    pub adapter: wgpu::Adapter,
     pub surface: wgpu::Surface,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -72,11 +73,17 @@ impl WindowHandler {
 
         #[cfg(windows)]
         let instance_descriptor = wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::GL,
+            ..Default::default()
+        };
+
+        #[cfg(netbsd)]
+        let instance_descriptor = wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
             ..Default::default()
         };
 
-        #[cfg(not(windows))]
+        #[cfg(all(not(windows), not(netbsd)))]
         let instance_descriptor = wgpu::InstanceDescriptor::default();
 
         let instance = wgpu::Instance::new(instance_descriptor);
@@ -89,8 +96,6 @@ impl WindowHandler {
             })
             .await
             .unwrap();
-
-        println!("{:#?}", adapter.get_info());
 
         let limits = wgpu::Limits::default();
         let (device, queue) = adapter
@@ -137,6 +142,7 @@ impl WindowHandler {
 
         let wgpu = WgpuState {
             window,
+            adapter,
             surface,
             device,
             queue,

@@ -320,12 +320,15 @@ impl App {
                     }
 
                     if ui.add(egui::Button::new("About")).clicked() {
+                        let info = wgpu.adapter.get_info();
+
                         let about = format!(
-                            "{}\n{}\n{}\n{}",
+                            "{}\n{}\n{}\n{}\n{}",
                             env!("CARGO_PKG_NAME"),
                             env!("CARGO_PKG_DESCRIPTION"),
                             &format!("Version: {}", env!("CARGO_PKG_VERSION")),
                             &format!("Commit: {}", env!("GIT_HASH")),
+                            &format!("GPU backend: {:?}", info.backend),
                         );
 
                         self.popup_manager.get_proxy().spawn_popup(
