@@ -323,15 +323,19 @@ impl OpQueue {
                         ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
-                        if ui.button("Ok").clicked() {
-                            return Some(true);
-                        }
 
-                        if ui.button("Cancel").clicked() {
-                            return Some(false);
-                        }
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                return Some(true);
+                            }
 
-                        None
+                            if ui.button("Cancel").clicked() {
+                                return Some(false);
+                            }
+
+                            None
+                        })
+                        .inner
                     })
                     .wait()
                     .unwrap_or(false);

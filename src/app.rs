@@ -226,11 +226,36 @@ impl App {
                 }
             }
             Output::Close => {
-                self.image_view = None;
-                stack.clear();
-                self.op_queue.image_list.clear();
-                self.op_queue.cache.clear();
-                wgpu.window.set_title("Simp");
+                let close = self
+                    .popup_manager
+                    .get_proxy()
+                    .spawn_popup("Unsaved changes", move |ui| {
+                        ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                return Some(true);
+                            }
+
+                            if ui.button("Cancel").clicked() {
+                                return Some(false);
+                            }
+
+                            None
+                        })
+                        .inner
+                    })
+                    .wait()
+                    .unwrap_or(false);
+
+                if close {
+                    self.image_view = None;
+                    stack.clear();
+                    self.op_queue.image_list.clear();
+                    self.op_queue.cache.clear();
+                    wgpu.window.set_title("Simp");
+                }
             }
             Output::Saved => {
                 stack.set_saved();
@@ -257,11 +282,14 @@ impl App {
                     .get_proxy()
                     .spawn_popup("Error", move |ui| {
                         ui.label(&error);
-                        if ui.button("Ok").clicked() {
-                            Some(())
-                        } else {
-                            None
-                        }
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        })
+                        .inner
                     });
             }
             UserEvent::Exit => {
@@ -274,15 +302,21 @@ impl App {
                                 ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
-                                if ui.button("Ok").clicked() {
-                                    return Some(true);
-                                }
+                                ui.with_layout(
+                                    egui::Layout::left_to_right(egui::Align::LEFT),
+                                    |ui| {
+                                        if ui.button("Ok").clicked() {
+                                            return Some(true);
+                                        }
 
-                                if ui.button("Cancel").clicked() {
-                                    return Some(false);
-                                }
+                                        if ui.button("Cancel").clicked() {
+                                            return Some(false);
+                                        }
 
-                                None
+                                        None
+                                    },
+                                )
+                                .inner
                             })
                             .wait()
                             .unwrap_or(false);
@@ -1110,16 +1144,20 @@ impl App {
 pub fn delete(path: std::path::PathBuf, popup_proxy: PopupProxy, proxy: EventLoopProxy<UserEvent>) {
     popup_proxy.spawn_popup("Move to trash", move |ui| {
         ui.label("Are you sure you want to move this to trash?");
-        if ui.button("Ok").clicked() {
-            let _ = proxy.send_event(UserEvent::QueueDelete(path.clone()));
-            return Some(());
-        }
 
-        if ui.button("No").clicked() {
-            return Some(());
-        }
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+            if ui.button("Yes").clicked() {
+                let _ = proxy.send_event(UserEvent::QueueDelete(path.clone()));
+                return Some(());
+            }
 
-        None
+            if ui.button("No").clicked() {
+                return Some(());
+            }
+
+            None
+        })
+        .inner
     });
 }
 
