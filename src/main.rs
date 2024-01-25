@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![warn(clippy::all)]
 
-use std::{fs, iter, panic, path::PathBuf};
+use std::{env, fs, iter, panic, path::PathBuf};
 
 use egui::ViewportId;
 use serde::{Deserialize, Serialize};
@@ -71,15 +71,26 @@ impl WindowHandler {
 
         let size = window.inner_size();
 
-        #[cfg(windows)]
-        let instance_descriptor = wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::GL,
-            ..Default::default()
+        let mut backends = if cfg!(windows) {
+            wgpu::Backends::GL
+        } else if cfg!(netbsd) {
+            wgpu::Backends::VULKAN
+        } else {
+            wgpu::Backends::PRIMARY
         };
 
-        #[cfg(netbsd)]
+        if let Ok(gpu_backend) = env::var("SIMP_GPU_BACKEND") {
+            match gpu_backend.as_str() {
+                "vulkan" => backends = wgpu::Backends::VULKAN,
+                "metal" => backends = wgpu::Backends::METAL,
+                "dx12" => backends = wgpu::Backends::DX12,
+                "gl" => backends = wgpu::Backends::GL,
+                _ => eprintln!("Unknown GPU backend: {}", gpu_backend),
+            }
+        }
+
         let instance_descriptor = wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN,
+            backends,
             ..Default::default()
         };
 
