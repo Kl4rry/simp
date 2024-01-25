@@ -72,7 +72,7 @@ impl WindowHandler {
 
         #[cfg(windows)]
         let instance_descriptor = wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::GL,
+            backends: wgpu::Backends::VULKAN,
             ..Default::default()
         };
 
@@ -89,6 +89,8 @@ impl WindowHandler {
             })
             .await
             .unwrap();
+
+        println!("{:#?}", adapter.get_info());
 
         let limits = wgpu::Limits::default();
         let (device, queue) = adapter
