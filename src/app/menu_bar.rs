@@ -1,3 +1,5 @@
+use std::fs;
+
 use egui::{menu, TopBottomPanel};
 
 use super::{load_image, new_window, op_queue::Op, save_image, App};
@@ -307,6 +309,16 @@ impl App {
                         ui.close_menu();
                     }
 
+                    ui.separator();
+
+                    if ui.add(egui::Button::new("Third-party Software")).clicked() {
+                        if let Err(err) = open_licenes() {
+                            let _ = self
+                                .proxy
+                                .send_event(UserEvent::ErrorMessage(err.to_string()));
+                        }
+                    }
+
                     if ui.add(egui::Button::new("About")).clicked() {
                         let about = format!(
                             "{}\n{}\n{}\n{}",
@@ -331,4 +343,14 @@ impl App {
             })
         });
     }
+}
+
+fn open_licenes() -> Result<(), std::io::Error> {
+    let licenses = include_str!(concat!(env!("OUT_DIR"), "/license.html"));
+    let temp = std::env::temp_dir();
+    let name = env!("CARGO_BIN_NAME");
+    fs::create_dir_all(temp.join(name))?;
+    let license_file = temp.join(name).join("license.html");
+    fs::write(&license_file, licenses.as_bytes())?;
+    webbrowser::open(&license_file.to_string_lossy())
 }
