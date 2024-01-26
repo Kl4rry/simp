@@ -96,6 +96,13 @@ sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xf
 
 The dav1d library is required to be installed to build with AVIF support.
 
+### Cargo about
+
+`cargo about` is needed to install simp.
+```shell
+cargo install cargo-about
+```
+
 ## Installation
 
 ### Cargo
