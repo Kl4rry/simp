@@ -48,13 +48,13 @@ impl Vertex {
 pub struct Uniform {
     pub matrix: Matrix4<f32>,
     pub size: Vec2<f32>,
-    pub padding: Vec2<f32>, // Padding because glsl is adding dumb padding
     pub hue: f32,
     pub contrast: f32,
     pub brightness: f32,
     pub saturation: f32,
     pub grayscale: u32,
     pub invert: u32,
+    pub padding: Vec2<f32>, // Padding because glsl is adding dumb padding
 }
 
 impl Default for Uniform {

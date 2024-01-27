@@ -20,6 +20,12 @@ impl Mosaic {
     pub fn from_images(wgpu: &WgpuState, images: Arc<ImageData>) -> Vec<Self> {
         let limit = Limits::default().max_texture_dimension_2d;
 
+        let mut encoder = wgpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+
         let mut output = Vec::new();
         for image in &images.frames {
             let mut tiles = Vec::new();
@@ -28,7 +34,6 @@ impl Mosaic {
             let tile_width = (image.width() / limit) + 1;
             let tile_height = (image.height() / limit) + 1;
 
-            // TODO: make parallel
             for x in 0..tile_width {
                 for y in 0..tile_height {
                     let start_x = x * limit;
@@ -50,11 +55,23 @@ impl Mosaic {
 
                     // Fast path for small images
                     let texture = if tile_height == 1 && tile_width == 1 {
-                        texture::Texture::from_image(&wgpu.device, &wgpu.queue, image, None)
+                        texture::Texture::from_image(
+                            &mut encoder,
+                            &wgpu.device,
+                            &wgpu.queue,
+                            image,
+                            None,
+                        )
                     } else {
                         let sub_image =
                             get_tile(image, start_x, start_y, end_x - start_x, end_y - start_y);
-                        texture::Texture::from_image(&wgpu.device, &wgpu.queue, &sub_image, None)
+                        texture::Texture::from_image(
+                            &mut encoder,
+                            &wgpu.device,
+                            &wgpu.queue,
+                            &sub_image,
+                            None,
+                        )
                     };
 
                     tiles.push(Tile { vertices, texture });
@@ -72,7 +89,7 @@ impl Mosaic {
 
             output.push(Mosaic { tiles, indices })
         }
-        wgpu.queue.submit(iter::empty());
+        wgpu.queue.submit(iter::once(encoder.finish()));
         output
     }
 }

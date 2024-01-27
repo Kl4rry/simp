@@ -48,6 +48,8 @@ impl App {
                 .id(egui::Id::new("preferences window"))
                 .collapsible(false)
                 .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(self.size / 2.0)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("preferences grid").show(ui, |ui| {

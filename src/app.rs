@@ -823,6 +823,8 @@ impl App {
                 .id(egui::Id::new("resize window"))
                 .collapsible(false)
                 .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(self.size / 2.0)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("resize grid").show(ui, |ui| {
@@ -946,6 +948,8 @@ impl App {
                     .id(egui::Id::new("crop window"))
                     .collapsible(false)
                     .resizable(false)
+                    .pivot(egui::Align2::CENTER_CENTER)
+                    .default_pos(self.size / 2.0)
                     .show(ctx, |ui| {
                         egui::Grid::new("crop grid").show(ui, |ui| {
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {

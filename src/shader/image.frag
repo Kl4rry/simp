@@ -139,7 +139,6 @@ vec3 getCheckColor() {
 }
 
 void main() {
-    vec2 size = input.size;
     float hue = input.hue;
     float contrast = input.contrast;
     float brightness = input.brightness;

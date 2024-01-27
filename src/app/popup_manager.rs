@@ -52,9 +52,9 @@ impl PopupManager {
                 .id(egui::Id::new(key))
                 .collapsible(false)
                 .resizable(false)
-                .open(&mut open)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(size / 2.0)
+                .open(&mut open)
                 .show(ctx, |ui| done = (popup.closure)(ui));
             if !open || done {
                 self.popups.remove(&key);

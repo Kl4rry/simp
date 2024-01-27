@@ -9,6 +9,8 @@ impl App {
                 .id(egui::Id::new("help window"))
                 .collapsible(false)
                 .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(self.size / 2.0)
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("help grid")
