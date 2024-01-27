@@ -150,6 +150,7 @@ impl OpQueue {
                     if let Some(view) = view {
                         save_image::save(
                             self.proxy.clone(),
+                            self.popup_proxy.clone(),
                             path,
                             view.image_data.clone(),
                             view.rotation(),

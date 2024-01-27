@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::mpsc};
+use std::{
+    collections::HashMap,
+    sync::mpsc::{self},
+};
 
 use rand::prelude::*;
 use winit::event_loop::EventLoopProxy;

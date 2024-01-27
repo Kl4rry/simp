@@ -72,30 +72,21 @@ impl WindowHandler {
         let size = window.inner_size();
 
         let mut backends = if cfg!(windows) {
-            wgpu::Backends::GL
-        } else if cfg!(netbsd) {
-            wgpu::Backends::VULKAN
+            wgpu::Backends::DX12
         } else {
             wgpu::Backends::PRIMARY
         };
 
         if let Ok(gpu_backend) = env::var("SIMP_GPU_BACKEND") {
-            match gpu_backend.as_str() {
-                "vulkan" => backends = wgpu::Backends::VULKAN,
-                "metal" => backends = wgpu::Backends::METAL,
-                "dx12" => backends = wgpu::Backends::DX12,
-                "gl" => backends = wgpu::Backends::GL,
-                _ => eprintln!("Unknown GPU backend: {}", gpu_backend),
-            }
-        }
+            backends = wgpu::util::parse_backends_from_comma_list(&gpu_backend);
+        } else if let Ok(gpu_backend) = env::var("WGPU_BACKEND") {
+            backends = wgpu::util::parse_backends_from_comma_list(&gpu_backend);
+        };
 
         let instance_descriptor = wgpu::InstanceDescriptor {
             backends,
             ..Default::default()
         };
-
-        #[cfg(all(not(windows), not(netbsd)))]
-        let instance_descriptor = wgpu::InstanceDescriptor::default();
 
         let instance = wgpu::Instance::new(instance_descriptor);
         let surface = unsafe { instance.create_surface(&window).unwrap() };

@@ -20,14 +20,14 @@ impl Preferences {
         Self {
             min_svg_size: 1000,
             zoom_speed: 1.0,
-            jpeg_quality: 90,
+            jpeg_quality: 80,
             webp_lossy: false,
-            webp_quality: 100.0,
+            webp_quality: 80.0,
         }
     }
 
     pub fn clamp(&mut self) {
-        self.jpeg_quality = self.jpeg_quality.clamp(0, 100);
+        self.jpeg_quality = self.jpeg_quality.clamp(1, 100);
         self.webp_quality = self.webp_quality.clamp(0.0, 100.0);
     }
 }
@@ -66,7 +66,7 @@ impl App {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("JPEG quality: ");
                         });
-                        ui.add(egui::Slider::new(&mut preferences.jpeg_quality, 0..=100));
+                        ui.add(egui::Slider::new(&mut preferences.jpeg_quality, 1..=100));
                         ui.end_row();
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
