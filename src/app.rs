@@ -44,11 +44,11 @@ use resize::Resize;
 
 pub mod preferences;
 
-pub mod popup_manager;
+pub mod dialog_manager;
 
 use self::{
+    dialog_manager::{DialogManager, DialogProxy},
     image_view::{crop_renderer, image_renderer},
-    popup_manager::{PopupManager, PopupProxy},
     preferences::PREFERENCES,
     undo_stack::UndoFrame,
 };
@@ -69,7 +69,7 @@ pub struct App {
     pub crop_renderer: crop_renderer::Renderer,
     pub image_view: Option<Box<ImageView>>,
     pub modifiers: ModifiersState,
-    popup_manager: PopupManager,
+    dialog_manager: DialogManager,
     size: Vec2<f32>,
     fullscreen: bool,
     top_bar_size: f32,
@@ -227,9 +227,9 @@ impl App {
             }
             Output::Close => {
                 let close = self
-                    .popup_manager
+                    .dialog_manager
                     .get_proxy()
-                    .spawn_popup("Unsaved changes", move |ui| {
+                    .spawn_dialog("Unsaved changes", move |ui| {
                         ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
@@ -278,9 +278,9 @@ impl App {
             }
             UserEvent::ErrorMessage(error) => {
                 let error = error.clone();
-                self.popup_manager
+                self.dialog_manager
                     .get_proxy()
-                    .spawn_popup("Error", move |ui| {
+                    .spawn_dialog("Error", move |ui| {
                         ui.label(&error);
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
                             if ui.button("Ok").clicked() {
@@ -294,11 +294,11 @@ impl App {
             }
             UserEvent::Exit => {
                 let exit = self.exit.clone();
-                let popup_proxy = self.popup_manager.get_proxy();
+                let dialog_proxy = self.dialog_manager.get_proxy();
                 if self.op_queue.undo_stack().is_edited() {
                     thread::spawn(move || {
-                        let close = popup_proxy
-                            .spawn_popup("Unsaved changes", move |ui| {
+                        let close = dialog_proxy
+                            .spawn_dialog("Unsaved changes", move |ui| {
                                 ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
@@ -374,7 +374,7 @@ impl App {
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
 
-        self.popup_manager.update(ctx, self.size);
+        self.dialog_manager.update(ctx, self.size);
     }
 
     pub fn main_area(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
@@ -404,7 +404,7 @@ impl App {
                         if let Some(ref path) = view.path {
                             delete(
                                 path.clone(),
-                                self.popup_manager.get_proxy(),
+                                self.dialog_manager.get_proxy(),
                                 self.proxy.clone(),
                             );
                         }
@@ -1117,7 +1117,7 @@ impl App {
     }
 
     pub fn new(wgpu: &WgpuState, proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
-        let popup_manager = PopupManager::new(proxy.clone());
+        let dialog_manager = DialogManager::new(proxy.clone());
         App {
             exit: Arc::new(AtomicBool::new(false)),
             delay: Duration::MAX,
@@ -1125,8 +1125,8 @@ impl App {
             image_renderer: image_renderer::Renderer::new(wgpu),
             crop_renderer: crop_renderer::Renderer::new(wgpu),
             image_view: None,
-            op_queue: OpQueue::new(proxy.clone(), popup_manager.get_proxy()),
-            popup_manager,
+            op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy()),
+            dialog_manager,
             size: Vec2::from(size),
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
@@ -1145,8 +1145,12 @@ impl App {
     }
 }
 
-pub fn delete(path: std::path::PathBuf, popup_proxy: PopupProxy, proxy: EventLoopProxy<UserEvent>) {
-    popup_proxy.spawn_popup("Move to trash", move |ui| {
+pub fn delete(
+    path: std::path::PathBuf,
+    dialog_proxy: DialogProxy,
+    proxy: EventLoopProxy<UserEvent>,
+) {
+    dialog_proxy.spawn_dialog("Move to trash", move |ui| {
         ui.label("Are you sure you want to move this to trash?");
 
         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {

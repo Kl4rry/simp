@@ -11,66 +11,66 @@ use crate::{util::UserEvent, vec2::Vec2};
 trait UiClosure: Fn(&mut egui::Ui) -> bool + Send {}
 impl<T: Fn(&mut egui::Ui) -> bool + Send> UiClosure for T {}
 
-struct Popup {
+struct Dialog {
     name: &'static str,
     closure: Box<dyn UiClosure>,
 }
 
-pub struct PopupManager {
-    popups: HashMap<usize, Popup>,
-    receiver: mpsc::Receiver<Popup>,
-    proxy: PopupProxy,
+pub struct DialogManager {
+    dialogs: HashMap<usize, Dialog>,
+    receiver: mpsc::Receiver<Dialog>,
+    proxy: DialogProxy,
 }
 
-impl PopupManager {
+impl DialogManager {
     pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
-        let popups = HashMap::new();
+        let dialogs = HashMap::new();
         let (sender, receiver) = mpsc::channel();
 
         Self {
-            popups,
+            dialogs,
             receiver,
-            proxy: PopupProxy { sender, proxy },
+            proxy: DialogProxy { sender, proxy },
         }
     }
 
-    pub fn get_proxy(&self) -> PopupProxy {
+    pub fn get_proxy(&self) -> DialogProxy {
         self.proxy.clone()
     }
 
     pub fn update(&mut self, ctx: &egui::Context, size: Vec2<f32>) {
         let mut rng = thread_rng();
-        while let Ok(popup) = self.receiver.try_recv() {
-            self.popups.insert(rng.gen(), popup);
+        while let Ok(dialog) = self.receiver.try_recv() {
+            self.dialogs.insert(rng.gen(), dialog);
         }
 
-        for key in self.popups.keys().copied().collect::<Vec<_>>() {
-            let popup = &self.popups[&key];
+        for key in self.dialogs.keys().copied().collect::<Vec<_>>() {
+            let dialog = &self.dialogs[&key];
             let mut open = true;
             let mut done = false;
-            egui::Window::new(popup.name)
+            egui::Window::new(dialog.name)
                 .id(egui::Id::new(key))
                 .collapsible(false)
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(size / 2.0)
                 .open(&mut open)
-                .show(ctx, |ui| done = (popup.closure)(ui));
+                .show(ctx, |ui| done = (dialog.closure)(ui));
             if !open || done {
-                self.popups.remove(&key);
+                self.dialogs.remove(&key);
             }
         }
     }
 }
 
 #[derive(Clone)]
-pub struct PopupProxy {
-    sender: mpsc::Sender<Popup>,
+pub struct DialogProxy {
+    sender: mpsc::Sender<Dialog>,
     proxy: EventLoopProxy<UserEvent>,
 }
 
-impl PopupProxy {
-    pub fn spawn_popup<T, F>(&self, name: &'static str, closure: F) -> PopupHandle<T>
+impl DialogProxy {
+    pub fn spawn_dialog<T, F>(&self, name: &'static str, closure: F) -> DialogHandle<T>
     where
         F: Fn(&mut egui::Ui) -> Option<T> + Send + 'static,
         T: 'static + Send,
@@ -87,20 +87,20 @@ impl PopupProxy {
             }
         };
 
-        let popup = Popup {
+        let dialog = Dialog {
             name,
             closure: Box::new(outer),
         };
 
-        let _ = self.sender.send(popup);
+        let _ = self.sender.send(dialog);
         let _ = self.proxy.send_event(UserEvent::Wake);
-        PopupHandle(rx)
+        DialogHandle(rx)
     }
 }
 
-pub struct PopupHandle<T>(mpsc::Receiver<T>);
+pub struct DialogHandle<T>(mpsc::Receiver<T>);
 
-impl<T> PopupHandle<T> {
+impl<T> DialogHandle<T> {
     pub fn wait(self) -> Option<T> {
         self.0.recv().ok()
     }

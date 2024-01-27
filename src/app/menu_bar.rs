@@ -279,7 +279,7 @@ impl App {
                             if let Some(ref path) = view.path {
                                 super::delete(
                                     path.clone(),
-                                    self.popup_manager.get_proxy(),
+                                    self.dialog_manager.get_proxy(),
                                     self.proxy.clone(),
                                 );
                             }
@@ -331,7 +331,7 @@ impl App {
                             &format!("GPU backend: {:?}", info.backend),
                         );
 
-                        self.popup_manager.get_proxy().spawn_popup(
+                        self.dialog_manager.get_proxy().spawn_dialog(
                             "About",
                             move |ui| -> Option<()> {
                                 ui.label(&about);

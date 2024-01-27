@@ -19,10 +19,10 @@ use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{
     cache::Cache,
     clipboard,
+    dialog_manager::DialogProxy,
     image_list::ImageList,
     image_view::ImageView,
     load_image::{load_from_bytes, load_uncached},
-    popup_manager::PopupProxy,
     save_image,
 };
 use crate::{
@@ -98,14 +98,14 @@ pub struct OpQueue {
     working: bool,
     loading_info: Arc<Mutex<LoadingInfo>>,
     proxy: EventLoopProxy<UserEvent>,
-    popup_proxy: PopupProxy,
+    dialog_proxy: DialogProxy,
     stack: UndoStack,
     pub cache: Arc<Cache>,
     pub image_list: ImageList,
 }
 
 impl OpQueue {
-    pub fn new(proxy: EventLoopProxy<UserEvent>, popup_proxy: PopupProxy) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, dialog_proxy: DialogProxy) -> Self {
         const CACHE_SIZE: usize = 1_000_000_000;
         let cache = Arc::new(Cache::new(CACHE_SIZE));
         let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
@@ -114,7 +114,7 @@ impl OpQueue {
             working: false,
             image_list: ImageList::new(cache.clone(), proxy.clone(), loading_info.clone()),
             loading_info,
-            popup_proxy,
+            dialog_proxy,
             stack: UndoStack::new(),
             proxy,
             cache,
@@ -150,7 +150,7 @@ impl OpQueue {
                     if let Some(view) = view {
                         save_image::save(
                             self.proxy.clone(),
-                            self.popup_proxy.clone(),
+                            self.dialog_proxy.clone(),
                             path,
                             view.image_data.clone(),
                             view.rotation(),
@@ -288,7 +288,7 @@ impl OpQueue {
         let cache = self.cache.clone();
         let proxy = self.proxy.clone();
         let loading_info = self.loading_info.clone();
-        let popup_proxy = self.popup_proxy.clone();
+        let dialog_proxy = self.dialog_proxy.clone();
         thread::spawn(move || {
             let mut path = path_buf.clone();
             if path.is_dir() {
@@ -319,8 +319,8 @@ impl OpQueue {
             }
 
             if edited_prompt {
-                let close = popup_proxy
-                    .spawn_popup("Unsaved changes", move |ui| {
+                let close = dialog_proxy
+                    .spawn_dialog("Unsaved changes", move |ui| {
                         ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );

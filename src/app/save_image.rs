@@ -11,8 +11,8 @@ use image::{
 use winit::event_loop::EventLoopProxy;
 
 use super::{
+    dialog_manager::DialogProxy,
     op_queue::{Output, UserEventLoopProxyExt},
-    popup_manager::PopupProxy,
     preferences::PREFERENCES,
 };
 use crate::{
@@ -45,7 +45,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
 
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
-    popup_proxy: PopupProxy,
+    dialog_proxy: DialogProxy,
     mut path: PathBuf,
     image_data: Arc<RwLock<Arc<ImageData>>>,
     rotation: i32,
@@ -87,7 +87,7 @@ pub fn save(
         let res = match ext.as_str() {
             "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
             "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
-                let quality = match get_jpeg_quality(popup_proxy.clone()) {
+                let quality = match get_jpeg_quality(dialog_proxy.clone()) {
                     Some(quality) => quality,
                     None => {
                         proxy.send_output(Output::Done);
@@ -103,7 +103,7 @@ pub fn save(
             "tiff" | "tif" => tiff(path, &frames[0]),
             "gif" => gif(path, frames),
             "webp" => {
-                let (quality, lossy) = match get_webp_quality(popup_proxy.clone()) {
+                let (quality, lossy) = match get_webp_quality(dialog_proxy.clone()) {
                     Some(quality) => quality,
                     None => {
                         proxy.send_output(Output::Done);
@@ -131,9 +131,9 @@ pub fn save(
     });
 }
 
-pub fn get_jpeg_quality(popup_proxy: PopupProxy) -> Option<u8> {
-    popup_proxy
-        .spawn_popup("Export settings", |ui| {
+pub fn get_jpeg_quality(dialog_proxy: DialogProxy) -> Option<u8> {
+    dialog_proxy
+        .spawn_dialog("Export settings", |ui| {
             let mut preferences = PREFERENCES.lock().unwrap();
             let mut output = None;
             egui::Grid::new("jpeg export settings grid").show(ui, |ui| {
@@ -167,9 +167,9 @@ pub fn get_jpeg_quality(popup_proxy: PopupProxy) -> Option<u8> {
         .flatten()
 }
 
-pub fn get_webp_quality(popup_proxy: PopupProxy) -> Option<(f32, bool)> {
-    popup_proxy
-        .spawn_popup("Export settings", |ui| {
+pub fn get_webp_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
+    dialog_proxy
+        .spawn_dialog("Export settings", |ui| {
             let mut preferences = PREFERENCES.lock().unwrap();
             let mut output = None;
             egui::Grid::new("webp export settings grid").show(ui, |ui| {
