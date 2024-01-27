@@ -194,7 +194,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            egui::Button::new("Best fit").shortcut_text("B"),
+                            egui::Button::new("Best fit").shortcut_text("Ctrl + B"),
                         )
                         .clicked()
                     {
@@ -205,7 +205,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            egui::Button::new("Largest fit").shortcut_text("M"),
+                            egui::Button::new("Largest fit").shortcut_text("Ctrl + L"),
                         )
                         .clicked()
                     {
