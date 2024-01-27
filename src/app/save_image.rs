@@ -23,7 +23,7 @@ use crate::{
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
     let dialog = rfd::FileDialog::new()
-        .set_file_name(&name)
+        .set_file_name(name)
         .set_parent(&wgpu.window)
         .add_filter("PNG", &["png", "apng"])
         .add_filter("JPEG", &["jpg", "jpeg", "jpe", "jif", "jfif"])
@@ -32,7 +32,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
         .add_filter("BMP", &["bmp"])
         .add_filter("TIFF", &["tiff", "tif"])
         .add_filter("WEBP", &["webp"])
-        .add_filter("Targaformat", &["ff", "farbfeld"])
+        .add_filter("farbfeld", &["ff", "farbfeld"])
         .add_filter("TGA", &["tga"])
         .add_filter("EXR", &["exr"]);
 
