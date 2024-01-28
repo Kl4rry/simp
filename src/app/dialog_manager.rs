@@ -3,10 +3,11 @@ use std::{
     sync::mpsc::{self},
 };
 
+use cgmath::{EuclideanSpace, Point2, Vector2};
 use rand::prelude::*;
 use winit::event_loop::EventLoopProxy;
 
-use crate::{util::UserEvent, vec2::Vec2};
+use crate::util::{p2, UserEvent};
 
 trait UiClosure: Fn(&mut egui::Ui) -> bool + Send {}
 impl<T: Fn(&mut egui::Ui) -> bool + Send> UiClosure for T {}
@@ -38,7 +39,7 @@ impl DialogManager {
         self.proxy.clone()
     }
 
-    pub fn update(&mut self, ctx: &egui::Context, size: Vec2<f32>) {
+    pub fn update(&mut self, ctx: &egui::Context, size: Vector2<f32>) {
         let mut rng = thread_rng();
         while let Ok(dialog) = self.receiver.try_recv() {
             self.dialogs.insert(rng.gen(), dialog);
@@ -53,7 +54,7 @@ impl DialogManager {
                 .collapsible(false)
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
-                .default_pos(size / 2.0)
+                .default_pos(p2(Point2::from_vec(size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| done = (dialog.closure)(ui));
             if !open || done {

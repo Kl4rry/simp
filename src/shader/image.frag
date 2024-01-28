@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 v_tex_coords;
 layout(location = 0) out vec4 color;
 
-struct InputUniform {
+layout(std140, set = 0, binding = 0) uniform InputUniform {
     mat4 matrix;
     vec2 size;
     float hue;
@@ -13,8 +13,6 @@ struct InputUniform {
     uint grayscale;
     uint invert;
 };
-
-layout(set = 0, binding = 0) uniform InputUniform input;
 layout(set = 1, binding = 0) uniform texture2D t_diffuse;
 layout(set = 1, binding = 1) uniform sampler s_diffuse;
 
@@ -129,7 +127,7 @@ vec3 getCheckColor() {
 
     float checkSize = 12.0;
     float x = floor(gl_FragCoord.x / checkSize);
-    float y = floor((gl_FragCoord.y - input.size.y) / checkSize);
+    float y = floor((gl_FragCoord.y - size.y) / checkSize);
 
     if(mod(x + y, 2) == 0) {
         return color1;
@@ -139,13 +137,9 @@ vec3 getCheckColor() {
 }
 
 void main() {
-    float hue = input.hue;
-    float contrast = input.contrast;
-    float brightness = input.brightness;
-    float saturation = input.saturation;
-    bool grayscale = bool(input.grayscale);
-    bool invert = bool(input.invert);
+    color = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
 
+    return;
     vec4 p = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
     p.rgb = gammaCorrection(p.rgb, 2.2);
 
@@ -154,17 +148,18 @@ void main() {
     p.rgb = adjustSaturation(p.rgb, saturation);
     p.rgb = brighten(p.rgb, brightness);
 
-    if(grayscale) {
+    if(bool(grayscale)) {
         const vec3 toLuma = vec3(0.299, 0.587, 0.114);
         p.rgb = vec3(dot(p.rgb, toLuma));
     }
 
-    if(invert) {
+    if(bool(invert)) {
         p.rgb = invertRgb(p.rgb);
     }
 
     vec3 check_color = getCheckColor();
     color.rgb = check_color * (1 - p.a) + p.a * p.rgb;
+    color.rgb = p.rgb;
     color.rgb = inverseGamma(color.rgb, 2.2);
     color.a = 1;
 }

@@ -6,6 +6,7 @@ use std::{
     thread,
 };
 
+use cgmath::Vector2;
 use image::{
     imageops::{
         colorops::{contrast_in_place, huerotate_in_place},
@@ -29,7 +30,6 @@ use crate::{
     app::undo_stack::UndoStack,
     rect::Rect,
     util::{extensions::EXTENSIONS, Image, ImageData, UserEvent},
-    vec2::Vec2,
 };
 
 mod imageops;
@@ -41,7 +41,7 @@ pub enum Op {
     Next,
     Prev,
     Save(PathBuf),
-    Resize(Vec2<u32>, FilterType),
+    Resize(Vector2<u32>, FilterType),
     Color {
         hue: f32,
         saturation: f32,
@@ -184,7 +184,7 @@ impl OpQueue {
                         let guard = image_data.read().unwrap();
                         let mut new = Vec::new();
                         for image in guard.frames.iter() {
-                            let buffer = image.buffer().resize_exact(size.x(), size.y(), resample);
+                            let buffer = image.buffer().resize_exact(size.x, size.y, resample);
                             new.push(Image::with_delay(buffer, image.delay));
                         }
                         proxy.send_output(Output::Resize(new));

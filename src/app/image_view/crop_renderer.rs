@@ -1,13 +1,16 @@
 use std::mem;
 
+use cgmath::Vector2;
+use crevice::std140::AsStd140;
+use num_traits::Zero;
 use wgpu::util::DeviceExt;
 
-use crate::{vec2::Vec2, WgpuState};
+use crate::WgpuState;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    pub position: Vec2<f32>,
+    pub position: Vector2<f32>,
 }
 
 unsafe impl bytemuck::Pod for Vertex {}
@@ -16,7 +19,7 @@ unsafe impl bytemuck::Zeroable for Vertex {}
 impl Vertex {
     pub fn new(x: f32, y: f32) -> Self {
         Self {
-            position: Vec2::new(x, y),
+            position: Vector2::new(x, y),
         }
     }
 
@@ -34,15 +37,22 @@ impl Vertex {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, AsStd140)]
 pub struct Uniform {
-    pub start: Vec2<f32>,
-    pub end: Vec2<f32>,
-    pub size: Vec2<f32>,
+    pub start: Vector2<f32>,
+    pub end: Vector2<f32>,
+    pub size: Vector2<f32>,
 }
 
-unsafe impl bytemuck::Pod for Uniform {}
-unsafe impl bytemuck::Zeroable for Uniform {}
+impl Default for Uniform {
+    fn default() -> Self {
+        Self {
+            start: Vector2::zero(),
+            end: Vector2::zero(),
+            size: Vector2::zero(),
+        }
+    }
+}
 
 impl Uniform {
     fn get_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
@@ -139,11 +149,12 @@ impl Renderer {
                 multiview: None,
             });
 
+        let value_std140 = Uniform::default().as_std140();
         let uniform_buffer = wgpu
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Uniform Buffer"),
-                contents: bytemuck::cast_slice(&[Uniform::default()]),
+                contents: value_std140.as_bytes(),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -191,8 +202,9 @@ impl Renderer {
     }
 
     pub fn prepare(&mut self, wgpu: &WgpuState, uniform: Uniform) {
+        let value_std140 = uniform.as_std140();
         wgpu.queue
-            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniform]));
+            .write_buffer(&self.uniform_buffer, 0, value_std140.as_bytes());
     }
 
     pub fn render<'rpass>(&'rpass mut self, rpass: &mut wgpu::RenderPass<'rpass>) {

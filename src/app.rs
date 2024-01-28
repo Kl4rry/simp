@@ -1,4 +1,5 @@
 use std::{
+    mem,
     process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -8,13 +9,19 @@ use std::{
     time::Duration,
 };
 
+use cgmath::{EuclideanSpace, Point2, Vector2};
 use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
 use image::{imageops::FilterType, DynamicImage};
+use num_traits::Zero;
 use winit::{
     event::WindowEvent, event_loop::EventLoopProxy, keyboard::ModifiersState, window::Fullscreen,
 };
 
-use crate::{min, util::UserEvent, vec2::Vec2, WgpuState};
+use crate::{
+    min,
+    util::{p2, UserEvent},
+    WgpuState,
+};
 
 pub mod image_view;
 use image_view::ImageView;
@@ -64,18 +71,18 @@ const BOTTOM_BAR_SIZE: f32 = 27.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
-    delay: Duration,
+    pub delay: Duration,
     pub image_renderer: image_renderer::Renderer,
     pub crop_renderer: crop_renderer::Renderer,
     pub image_view: Option<Box<ImageView>>,
     pub modifiers: ModifiersState,
     dialog_manager: DialogManager,
-    size: Vec2<f32>,
+    size: Vector2<f32>,
     fullscreen: bool,
     top_bar_size: f32,
     bottom_bar_size: f32,
     proxy: EventLoopProxy<UserEvent>,
-    mouse_position: Vec2<f32>,
+    mouse_position: Vector2<f32>,
     current_filename: String,
     op_queue: OpQueue,
     resize: Resize,
@@ -106,7 +113,7 @@ impl App {
 
                 let view = Box::new(ImageView::new(wgpu, image_data, path));
                 self.resize
-                    .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
+                    .set_size(Vector2::new(view.size.x as u32, view.size.y as u32));
                 self.image_view = Some(view);
 
                 if self.current_filename.is_empty() {
@@ -344,8 +351,8 @@ impl App {
     pub fn handle_window_event(&mut self, _wgpu: &WgpuState, event: &WindowEvent) {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                self.mouse_position.set_x(position.x as f32);
-                self.mouse_position.set_y(position.y as f32);
+                self.mouse_position.x = position.x as f32;
+                self.mouse_position.y = position.y as f32;
             }
             WindowEvent::DroppedFile(path) => {
                 self.op_queue.cache.clear();
@@ -655,7 +662,7 @@ impl App {
                 }
 
                 if let Some(image) = self.image_view.as_mut() {
-                    ui.label(format!("{} x {}", image.size.x(), image.size.y()));
+                    ui.label(format!("{} x {}", image.size.x, image.size.y));
                     ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
 
                     let g = image.image_data.read();
@@ -672,7 +679,8 @@ impl App {
                         DynamicImage::ImageRgb32F(_) => "Rgb32F",
                         DynamicImage::ImageRgba32F(_) => "Rgba32F",
                         _ => panic!("Unknown color space name. This is a bug."),
-                    }.to_string();
+                    }
+                    .to_string();
 
                     {
                         let pos = (((self.mouse_position
@@ -680,13 +688,12 @@ impl App {
                             - (image.rotated_size() / 2.0) * image.scale)
                             + image.rotated_size() * image.scale)
                             / image.scale)
-                            .floor()
-                            .map(|v| v as i64);
+                            .map(|v| v.floor() as i64);
 
-                        if pos.x() >= 0
-                            && pos.y() >= 0
-                            && pos.x() < image.rotated_size().x() as i64
-                            && pos.y() < image.rotated_size().y() as i64
+                        if pos.x >= 0
+                            && pos.y >= 0
+                            && pos.x < image.rotated_size().x as i64
+                            && pos.y < image.rotated_size().y as i64
                         {
                             let guard = image.image_data.read().unwrap();
                             let frame = &guard.frames[image.index];
@@ -696,29 +703,29 @@ impl App {
                             match image.rotation() {
                                 0 => (),
                                 1 => {
-                                    pos.swap();
-                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
-                                },
+                                    mem::swap(&mut pos.x, &mut pos.y);
+                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                }
                                 2 => {
-                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
-                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
-                                },
+                                    pos.x = image.size.x as u32 - pos.x - 1;
+                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                }
                                 3 => {
-                                    pos.swap();
-                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
-                                },
+                                    mem::swap(&mut pos.x, &mut pos.y);
+                                    pos.x = image.size.x as u32 - pos.x - 1;
+                                }
                                 _ => panic!("rotated more then 360 degrees"),
                             }
 
                             if image.horizontal_flip {
-                                *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
+                                pos.x = image.size.x as u32 - pos.x - 1;
                             }
 
                             if image.vertical_flip {
-                                *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
+                                pos.y = image.size.y as u32 - pos.y - 1;
                             }
 
-                            fn p2s<P: >(p: P) -> String
+                            fn p2s<P>(p: P) -> String
                             where
                                 P: image::Pixel,
                                 <P as image::Pixel>::Subpixel: ToString,
@@ -738,16 +745,16 @@ impl App {
 
                             #[rustfmt::skip]
                             let color_str = match buffer {
-                                DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLuma16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLumaA16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLuma16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLumaA16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb32F(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x, pos.y)),
                                 _ => panic!("Unknown color space name. This is a bug."),
                             };
                             color_space = format!("{color_space}: {color_str}");
@@ -765,8 +772,6 @@ impl App {
     }
 
     pub fn update(&mut self, _wgpu: &WgpuState) -> (bool, Duration) {
-        self.delay = Duration::MAX;
-
         if let Some(ref mut image) = self.image_view {
             self.delay = self.delay.min(image.animate());
         }
@@ -774,39 +779,34 @@ impl App {
         if let Some(ref mut image) = self.image_view {
             let image_size = image.real_size();
             let mut window_size = self.size;
-            window_size.set_y(window_size.y() - self.top_bar_size - self.bottom_bar_size);
+            window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
 
             const MARGIN: f32 = 50.0;
 
-            if image_size.x() < window_size.x() {
-                image.position.set_x(self.size.x() / 2.0);
+            if image_size.x < window_size.x {
+                image.position.x = self.size.x / 2.0;
             } else {
-                if image.position.x() - image_size.x() / 2.0 > 0.0 + MARGIN {
-                    image.position.set_x(image_size.x() / 2.0 + MARGIN);
+                if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
+                    image.position.x = image_size.x / 2.0 + MARGIN;
                 }
 
-                if image.position.x() + image_size.x() / 2.0 < window_size.x() - MARGIN {
-                    image
-                        .position
-                        .set_x(window_size.x() - image_size.x() / 2.0 - MARGIN);
+                if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
+                    image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
                 }
             }
 
-            if image_size.y() < window_size.y() {
-                image.position.set_y(self.size.y() / 2.0);
+            if image_size.y < window_size.y {
+                image.position.y = self.size.y / 2.0;
             } else {
-                if image.position.y() - image_size.y() / 2.0 > self.top_bar_size + MARGIN {
-                    image
-                        .position
-                        .set_y(image_size.y() / 2.0 + self.top_bar_size + MARGIN);
+                if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
+                    image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
                 }
 
-                if image.position.y() + image_size.y() / 2.0
-                    < window_size.y() + self.top_bar_size - MARGIN
+                if image.position.y + image_size.y / 2.0
+                    < window_size.y + self.top_bar_size - MARGIN
                 {
-                    image.position.set_y(
-                        (window_size.y() - image_size.y() / 2.0) + self.top_bar_size - MARGIN,
-                    );
+                    image.position.y =
+                        (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
                 }
             }
         }
@@ -824,7 +824,7 @@ impl App {
                 .collapsible(false)
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
-                .default_pos(self.size / 2.0)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("resize grid").show(ui, |ui| {
@@ -843,95 +843,97 @@ impl App {
                         self.resize.height.retain(|c| c.is_ascii_digit());
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                            ui.label("Maintain aspect ratio: ");
-                        });
-                        ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
-                        ui.end_row();
+                            ui.label("Maintain aspect ratio:");
+                            ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
+                            ui.end_row();
 
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                            ui.label("Resample: ");
-                        });
-                        let selected = &mut self.resize.resample;
-                        egui::ComboBox::new("filter", "")
-                            .selected_text(filter_name(selected))
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Nearest,
-                                    filter_name(&FilterType::Nearest),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Triangle,
-                                    filter_name(&FilterType::Triangle),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::CatmullRom,
-                                    filter_name(&FilterType::CatmullRom),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Gaussian,
-                                    filter_name(&FilterType::Gaussian),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Lanczos3,
-                                    filter_name(&FilterType::Lanczos3),
-                                );
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                ui.label("Resample: ");
                             });
-                        ui.end_row();
-                        ui.end_row();
+                            let selected = &mut self.resize.resample;
+                            egui::ComboBox::new("filter", "")
+                                .selected_text(filter_name(selected))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Nearest,
+                                        filter_name(&FilterType::Nearest),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Triangle,
+                                        filter_name(&FilterType::Triangle),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::CatmullRom,
+                                        filter_name(&FilterType::CatmullRom),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Gaussian,
+                                        filter_name(&FilterType::Gaussian),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Lanczos3,
+                                        filter_name(&FilterType::Lanczos3),
+                                    );
+                                });
+                            ui.end_row();
+                            ui.end_row();
 
-                        let width = self.resize.width.parse::<u32>();
-                        let height = self.resize.height.parse::<u32>();
+                            let width = self.resize.width.parse::<u32>();
+                            let height = self.resize.height.parse::<u32>();
 
-                        if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
-                            let width = *width.as_ref().unwrap();
-                            let size = self.image_view.as_ref().unwrap().size;
-                            let ratio = width as f32 / size.x();
-                            self.resize.height = ((ratio * size.y()) as u32).to_string();
-                        }
+                            if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
+                                let width = *width.as_ref().unwrap();
+                                let size = self.image_view.as_ref().unwrap().size;
+                                let ratio = width as f32 / size.x;
+                                self.resize.height = ((ratio * size.y) as u32).to_string();
+                            }
 
-                        if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
-                            let height = *height.as_ref().unwrap();
-                            let size = self.image_view.as_ref().unwrap().size;
-                            let ratio = height as f32 / size.y();
-                            self.resize.width = ((ratio * size.x()) as u32).to_string();
-                        }
+                            if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
+                                let height = *height.as_ref().unwrap();
+                                let size = self.image_view.as_ref().unwrap().size;
+                                let ratio = height as f32 / size.y;
+                                self.resize.width = ((ratio * size.x) as u32).to_string();
+                            }
 
-                        ui.with_layout(
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui.add(Button::new("Cancel")).clicked() {
-                                    resized = true;
-                                }
-                            },
-                        );
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui.add(Button::new("Cancel")).clicked() {
+                                        resized = true;
+                                    }
+                                },
+                            );
 
-                        ui.with_layout(
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui
-                                    .add_enabled(
-                                        width.is_ok() && height.is_ok() && self.view_available(),
-                                        Button::new("Resize"),
-                                    )
-                                    .clicked()
-                                    || self.enter
-                                {
-                                    let width = width.unwrap();
-                                    let height = height.unwrap();
-                                    self.queue(Op::Resize(
-                                        Vec2::new(width, height),
-                                        self.resize.resample,
-                                    ));
-                                    resized = true;
-                                    self.enter = false;
-                                }
-                            },
-                        );
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add_enabled(
+                                            width.is_ok()
+                                                && height.is_ok()
+                                                && self.view_available(),
+                                            Button::new("Resize"),
+                                        )
+                                        .clicked()
+                                        || self.enter
+                                    {
+                                        let width = width.unwrap();
+                                        let height = height.unwrap();
+                                        self.queue(Op::Resize(
+                                            Vector2::new(width, height),
+                                            self.resize.resample,
+                                        ));
+                                        resized = true;
+                                        self.enter = false;
+                                    }
+                                },
+                            );
+                        });
                     });
                 });
             self.resize.visible = open && !resized;
@@ -949,7 +951,7 @@ impl App {
                     .collapsible(false)
                     .resizable(false)
                     .pivot(egui::Align2::CENTER_CENTER)
-                    .default_pos(self.size / 2.0)
+                    .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                     .show(ctx, |ui| {
                         egui::Grid::new("crop grid").show(ui, |ui| {
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
@@ -975,21 +977,17 @@ impl App {
                             ui.end_row();
                             ui.end_row();
 
-                            *rect.position.mut_x() = min!(
-                                view.crop.x.parse::<u32>().unwrap_or(0) as f32,
-                                size.x() - 1.0
-                            );
-                            *rect.position.mut_y() = min!(
-                                view.crop.y.parse::<u32>().unwrap_or(0) as f32,
-                                size.y() - 1.0
-                            );
+                            rect.position.x =
+                                min!(view.crop.x.parse::<u32>().unwrap_or(0) as f32, size.x - 1.0);
+                            rect.position.y =
+                                min!(view.crop.y.parse::<u32>().unwrap_or(0) as f32, size.y - 1.0);
 
-                            *rect.size.mut_x() =
-                                (view.crop.width.parse::<u32>().unwrap_or(size.x() as u32) as f32)
-                                    .clamp(1.0, size.x() - rect.x());
-                            *rect.size.mut_y() =
-                                (view.crop.height.parse::<u32>().unwrap_or(size.y() as u32) as f32)
-                                    .clamp(1.0, size.y() - rect.y());
+                            rect.size.x = (view.crop.width.parse::<u32>().unwrap_or(size.x as u32)
+                                as f32)
+                                .clamp(1.0, size.x - rect.x());
+                            rect.size.y = (view.crop.height.parse::<u32>().unwrap_or(size.y as u32)
+                                as f32)
+                                .clamp(1.0, size.y - rect.y());
 
                             if view.crop.x.parse::<u32>().is_ok() {
                                 view.crop.x = rect.x().to_string();
@@ -1050,13 +1048,13 @@ impl App {
             .queue(op, self.image_view.as_ref().map(|v| v.as_ref()))
     }
 
-    fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {
+    fn zoom(&mut self, zoom: f32, mouse_position: Vector2<f32>) {
         if let Some(ref mut image) = self.image_view {
             let old_scale = image.scale;
             image.scale += image.scale * zoom / 10.0;
 
             let new_size = image.scaled();
-            if (new_size.x() < 1.0 || new_size.y() < 1.0)
+            if (new_size.x < 1.0 || new_size.y < 1.0)
                 && old_scale >= image.scale
                 && image.scale < 1.0
             {
@@ -1073,8 +1071,8 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
+                self.size.x / size.x,
+                (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = min!(scaling, 1.0);
             view.position = self.size / 2.0;
@@ -1086,8 +1084,8 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
+                self.size.x / size.x,
+                (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = scaling;
             view.position = self.size / 2.0;
@@ -1096,8 +1094,8 @@ impl App {
     }
 
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-        *self.size.mut_x() = size.width as f32;
-        *self.size.mut_y() = size.height as f32;
+        self.size.x = size.width as f32;
+        self.size.y = size.height as f32;
 
         match self.resize_mode {
             ResizeMode::Original => {}
@@ -1127,12 +1125,12 @@ impl App {
             image_view: None,
             op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy()),
             dialog_manager,
-            size: Vec2::from(size),
+            size: Vector2::from(size),
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
             proxy,
-            mouse_position: Vec2::default(),
+            mouse_position: Vector2::zero(),
             current_filename: String::new(),
             resize: Resize::default(),
             help_visible: false,

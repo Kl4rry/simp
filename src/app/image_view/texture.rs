@@ -21,6 +21,7 @@ fn to_u8<T: Copy + bytemuck::Pod>(input: Vec<T>) -> Vec<u8> {
 impl Texture {
     pub fn from_image(
         command_encoder: &mut wgpu::CommandEncoder,
+        adapter: &wgpu::Adapter,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
@@ -28,11 +29,16 @@ impl Texture {
     ) -> Self {
         let (width, height) = img.dimensions();
 
-        let mip_level_count = ((cmp::max(width, height) as f64).log2().ceil() as u32 + 1).min(10);
+        // A bug in wgpu makes mipmaps broken on GL backend
+        let mip_level_count = if adapter.get_info().backend == wgpu::Backend::Gl {
+            1
+        } else {
+            (cmp::max(width, height).ilog2() + 1).min(10)
+        };
 
         #[rustfmt::skip]
         let (bytes_per_pixel, format, bytes):  (_, _, Cow<[u8]>) = match img {
-            image::DynamicImage::ImageLuma8(_) => (4, wgpu::TextureFormat::R8Unorm, img.as_bytes().into()),
+            image::DynamicImage::ImageLuma8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageLumaA8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgb8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgba8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.as_bytes().into()),
@@ -79,7 +85,6 @@ impl Texture {
             size,
         );
 
-        // TODO: add mip maps
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,

@@ -1,56 +1,66 @@
-use crate::vec2::Vec2;
+use cgmath::Vector2;
+use num_traits::Zero;
 
 #[repr(C)]
-#[derive(Default, Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Rect {
-    pub position: Vec2<f32>,
-    pub size: Vec2<f32>,
+    pub position: Vector2<f32>,
+    pub size: Vector2<f32>,
+}
+
+impl Default for Rect {
+    fn default() -> Self {
+        Self {
+            position: Vector2::zero(),
+            size: Vector2::zero(),
+        }
+    }
 }
 
 impl Rect {
     #[inline]
-    pub fn new(position: Vec2<f32>, size: Vec2<f32>) -> Self {
+    pub fn new(position: Vector2<f32>, size: Vector2<f32>) -> Self {
         Rect { position, size }
     }
 
     #[inline]
     pub fn x(&self) -> f32 {
-        self.position.x()
+        self.position.x
     }
 
     #[inline]
     pub fn y(&self) -> f32 {
-        self.position.y()
+        self.position.y
     }
 
     #[inline]
     pub fn width(&self) -> f32 {
-        self.size.x()
+        self.size.x
     }
 
     #[inline]
     pub fn height(&self) -> f32 {
-        self.size.y()
+        self.size.y
     }
 
     #[inline]
     pub fn left(&self) -> f32 {
-        self.position.x()
+        self.position.x
     }
 
     #[inline]
     pub fn right(&self) -> f32 {
-        self.position.x() + self.size.x()
+        self.position.x + self.size.x
     }
 
     #[inline]
     pub fn top(&self) -> f32 {
-        self.position.y()
+        self.position.y
     }
 
     #[inline]
     pub fn bottom(&self) -> f32 {
-        self.position.y() + self.size.y()
+        self.position.y + self.size.y
     }
 
     #[inline]

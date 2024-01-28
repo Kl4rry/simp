@@ -1,6 +1,8 @@
+use cgmath::{EuclideanSpace, Point2};
 use egui::RichText;
 
 use super::App;
+use crate::util::p2;
 impl App {
     pub fn help_ui(&mut self, ctx: &egui::Context) {
         if self.help_visible {
@@ -10,7 +12,7 @@ impl App {
                 .collapsible(false)
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
-                .default_pos(self.size / 2.0)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("help grid")

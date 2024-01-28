@@ -1,10 +1,11 @@
 use std::{iter, sync::Arc};
 
+use cgmath::Vector2;
 use image::{DynamicImage, SubImage};
 use wgpu::{util::DeviceExt, Limits};
 
 use super::{image_renderer::Vertex, texture};
-use crate::{util::ImageData, vec2::Vec2, WgpuState};
+use crate::{util::ImageData, WgpuState};
 
 pub struct Tile {
     pub vertices: wgpu::Buffer,
@@ -57,6 +58,7 @@ impl Mosaic {
                     let texture = if tile_height == 1 && tile_width == 1 {
                         texture::Texture::from_image(
                             &mut encoder,
+                            &wgpu.adapter,
                             &wgpu.device,
                             &wgpu.queue,
                             image,
@@ -67,6 +69,7 @@ impl Mosaic {
                             get_tile(image, start_x, start_y, end_x - start_x, end_y - start_y);
                         texture::Texture::from_image(
                             &mut encoder,
+                            &wgpu.adapter,
                             &wgpu.device,
                             &wgpu.queue,
                             &sub_image,
@@ -138,16 +141,16 @@ fn get_vertex_buffer(
     end_y: f32,
 ) -> wgpu::Buffer {
     let texture_cords = (
-        Vec2::new(1.0, 1.0),
-        Vec2::new(1.0, 0.0),
-        Vec2::new(0.0, 1.0),
-        Vec2::new(0.0, 0.0),
+        Vector2::new(1.0, 1.0),
+        Vector2::new(1.0, 0.0),
+        Vector2::new(0.0, 1.0),
+        Vector2::new(0.0, 0.0),
     );
     let shape = [
-        Vertex::new(start_x, start_y, texture_cords.3.x(), texture_cords.3.y()),
-        Vertex::new(start_x, end_y, texture_cords.2.x(), texture_cords.2.y()),
-        Vertex::new(end_x, start_y, texture_cords.1.x(), texture_cords.1.y()),
-        Vertex::new(end_x, end_y, texture_cords.0.x(), texture_cords.0.y()),
+        Vertex::new(start_x, start_y, texture_cords.3.x, texture_cords.3.y),
+        Vertex::new(start_x, end_y, texture_cords.2.x, texture_cords.2.y),
+        Vertex::new(end_x, start_y, texture_cords.1.x, texture_cords.1.y),
+        Vertex::new(end_x, end_y, texture_cords.0.x, texture_cords.0.y),
     ];
 
     wgpu.device

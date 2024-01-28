@@ -1,8 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![warn(clippy::all)]
 
-use std::{env, fs, iter, panic, path::PathBuf};
+use std::{env, fs, iter, panic, path::PathBuf, time::Duration};
 
+use cgmath::Vector2;
 use egui::ViewportId;
 use serde::{Deserialize, Serialize};
 
@@ -15,9 +16,7 @@ use app::{
 mod icon;
 mod rect;
 mod util;
-mod vec2;
 use util::UserEvent;
-use vec2::Vec2;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
@@ -142,6 +141,13 @@ impl WindowHandler {
         let egui_renderer = egui_wgpu::renderer::Renderer::new(&device, surface_format, None, 1);
         let egui_shapes = Vec::new();
 
+        let repaint_proxy = event_loop.create_proxy();
+        egui_winit
+            .egui_ctx()
+            .set_request_repaint_callback(move |info| {
+                let _ = repaint_proxy.send_event(UserEvent::RepaintRequest(info));
+            });
+
         let wgpu = WgpuState {
             window,
             adapter,
@@ -241,7 +247,8 @@ impl WindowHandler {
 
                         let control_flow = if repaint_after.is_zero() {
                             wgpu.window.request_redraw();
-                            ControlFlow::Poll
+                            app.delay = Duration::MAX;
+                            ControlFlow::Wait
                         } else {
                             ControlFlow::wait_duration(repaint_after)
                         };
@@ -284,14 +291,14 @@ impl WindowHandler {
                                     });
 
                                 if let Some(image) = app.image_view.as_mut() {
-                                    let uniform = image.get_uniform(Vec2::new(
+                                    let uniform = image.get_uniform(Vector2::new(
                                         wgpu.config.width as f32,
                                         wgpu.config.height as f32,
                                     ));
                                     app.image_renderer.prepare(&wgpu, uniform);
                                     app.image_renderer.render(&mut rpass, image);
 
-                                    let window_size = Vec2::new(
+                                    let window_size = Vector2::new(
                                         wgpu.config.width as f32,
                                         wgpu.config.height as f32,
                                     );
@@ -387,7 +394,7 @@ impl WindowHandler {
                     confy::store("simp", None, data).unwrap();
                 }
                 Event::UserEvent(mut event) => app.handle_user_event(&wgpu, &mut event),
-                _ => wgpu.window.request_redraw(),
+                _ => (),
             })
             .unwrap();
     }

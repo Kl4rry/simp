@@ -1,8 +1,10 @@
 use std::sync::Mutex;
 
+use cgmath::{EuclideanSpace, Point2};
 use serde::{Deserialize, Serialize};
 
 use super::App;
+use crate::util::p2;
 
 pub static PREFERENCES: Mutex<Preferences> = Mutex::new(Preferences::new());
 
@@ -49,7 +51,7 @@ impl App {
                 .collapsible(false)
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
-                .default_pos(self.size / 2.0)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("preferences grid").show(ui, |ui| {

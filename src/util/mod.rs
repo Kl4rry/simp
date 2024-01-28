@@ -220,3 +220,11 @@ impl HasAlpha for ImageBuffer<Rgba<f32>, Vec<f32>> {
         true
     }
 }
+
+pub fn p2(v: impl Into<mint::Point2<f32>>) -> mint::Point2<f32> {
+    v.into()
+}
+
+pub fn v2(v: impl Into<mint::Vector2<f32>>) -> mint::Vector2<f32> {
+    v.into()
+}
