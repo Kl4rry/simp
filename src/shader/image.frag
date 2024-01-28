@@ -137,9 +137,6 @@ vec3 getCheckColor() {
 }
 
 void main() {
-    color = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
-
-    return;
     vec4 p = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
     p.rgb = gammaCorrection(p.rgb, 2.2);
 
