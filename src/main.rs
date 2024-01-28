@@ -1,7 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![warn(clippy::all)]
 
-use std::{env, fs, iter, panic, path::PathBuf, time::Duration};
+use std::{
+    env, fs, iter, panic,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use cgmath::Vector2;
 use egui::ViewportId;
@@ -141,12 +146,17 @@ impl WindowHandler {
         let egui_renderer = egui_wgpu::renderer::Renderer::new(&device, surface_format, None, 1);
         let egui_shapes = Vec::new();
 
-        let repaint_proxy = event_loop.create_proxy();
-        egui_winit
-            .egui_ctx()
-            .set_request_repaint_callback(move |info| {
-                let _ = repaint_proxy.send_event(UserEvent::RepaintRequest(info));
-            });
+        {
+            let repaint_proxy = Arc::new(Mutex::new(event_loop.create_proxy()));
+            egui_winit
+                .egui_ctx()
+                .set_request_repaint_callback(move |info| {
+                    let _ = repaint_proxy
+                        .lock()
+                        .unwrap()
+                        .send_event(UserEvent::RepaintRequest(info));
+                });
+        }
 
         let wgpu = WgpuState {
             window,
