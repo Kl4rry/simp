@@ -9,8 +9,8 @@ use winit::event_loop::EventLoopProxy;
 
 use crate::util::{p2, UserEvent};
 
-trait UiClosure: Fn(&mut egui::Ui) -> bool + Send {}
-impl<T: Fn(&mut egui::Ui) -> bool + Send> UiClosure for T {}
+trait UiClosure: Fn(&mut egui::Ui, &mut bool) -> bool + Send {}
+impl<T: Fn(&mut egui::Ui, &mut bool) -> bool + Send> UiClosure for T {}
 
 struct Dialog {
     name: &'static str,
@@ -39,7 +39,7 @@ impl DialogManager {
         self.proxy.clone()
     }
 
-    pub fn update(&mut self, ctx: &egui::Context, size: Vector2<f32>) {
+    pub fn update(&mut self, ctx: &egui::Context, size: Vector2<f32>, enter: &mut bool) {
         let mut rng = thread_rng();
         while let Ok(dialog) = self.receiver.try_recv() {
             self.dialogs.insert(rng.gen(), dialog);
@@ -56,7 +56,7 @@ impl DialogManager {
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(p2(Point2::from_vec(size / 2.0)))
                 .open(&mut open)
-                .show(ctx, |ui| done = (dialog.closure)(ui));
+                .show(ctx, |ui| done = (dialog.closure)(ui, enter));
             if !open || done {
                 self.dialogs.remove(&key);
             }
@@ -73,12 +73,12 @@ pub struct DialogProxy {
 impl DialogProxy {
     pub fn spawn_dialog<T, F>(&self, name: &'static str, closure: F) -> DialogHandle<T>
     where
-        F: Fn(&mut egui::Ui) -> Option<T> + Send + 'static,
+        F: Fn(&mut egui::Ui, &mut bool) -> Option<T> + Send + 'static,
         T: 'static + Send,
     {
         let (tx, rx) = mpsc::channel();
-        let outer = move |ui: &mut egui::Ui| {
-            let value = (closure)(ui);
+        let outer = move |ui: &mut egui::Ui, enter: &mut bool| {
+            let value = (closure)(ui, enter);
             match value {
                 Some(value) => {
                     let _ = tx.send(value);

@@ -236,7 +236,7 @@ impl App {
                 let close = self
                     .dialog_manager
                     .get_proxy()
-                    .spawn_dialog("Unsaved changes", move |ui| {
+                    .spawn_dialog("Unsaved changes", move |ui, enter| {
                         ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
@@ -247,6 +247,11 @@ impl App {
 
                             if ui.button("Cancel").clicked() {
                                 return Some(false);
+                            }
+
+                            if *enter {
+                                *enter = false;
+                                return Some(true);
                             }
 
                             None
@@ -287,10 +292,13 @@ impl App {
                 let error = error.clone();
                 self.dialog_manager
                     .get_proxy()
-                    .spawn_dialog("Error", move |ui| {
+                    .spawn_dialog("Error", move |ui, enter| {
                         ui.label(&error);
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
                             if ui.button("Ok").clicked() {
+                                Some(())
+                            } else if *enter {
+                                *enter = false;
                                 Some(())
                             } else {
                                 None
@@ -305,7 +313,7 @@ impl App {
                 if self.op_queue.undo_stack().is_edited() {
                     thread::spawn(move || {
                         let close = dialog_proxy
-                            .spawn_dialog("Unsaved changes", move |ui| {
+                            .spawn_dialog("Unsaved changes", move |ui, enter| {
                                 ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
@@ -318,6 +326,11 @@ impl App {
 
                                         if ui.button("Cancel").clicked() {
                                             return Some(false);
+                                        }
+
+                                        if *enter {
+                                            *enter = false;
+                                            return Some(true);
                                         }
 
                                         None
@@ -381,7 +394,7 @@ impl App {
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
 
-        self.dialog_manager.update(ctx, self.size);
+        self.dialog_manager.update(ctx, self.size, &mut self.enter);
     }
 
     pub fn main_area(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
@@ -1146,7 +1159,7 @@ pub fn delete(
     dialog_proxy: DialogProxy,
     proxy: EventLoopProxy<UserEvent>,
 ) {
-    dialog_proxy.spawn_dialog("Move to trash", move |ui| {
+    dialog_proxy.spawn_dialog("Move to trash", move |ui, enter| {
         ui.label("Are you sure you want to move this to trash?");
 
         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
@@ -1156,6 +1169,12 @@ pub fn delete(
             }
 
             if ui.button("No").clicked() {
+                return Some(());
+            }
+
+            if *enter {
+                *enter = false;
+                let _ = proxy.send_event(UserEvent::QueueDelete(path.clone()));
                 return Some(());
             }
 

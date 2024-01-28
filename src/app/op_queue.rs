@@ -320,7 +320,7 @@ impl OpQueue {
 
             if edited_prompt {
                 let close = dialog_proxy
-                    .spawn_dialog("Unsaved changes", move |ui| {
+                    .spawn_dialog("Unsaved changes", move |ui, enter| {
                         ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
@@ -332,6 +332,11 @@ impl OpQueue {
 
                             if ui.button("Cancel").clicked() {
                                 return Some(false);
+                            }
+
+                            if *enter {
+                                *enter = false;
+                                return Some(true);
                             }
 
                             None

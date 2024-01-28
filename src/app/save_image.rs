@@ -133,7 +133,7 @@ pub fn save(
 
 pub fn get_jpeg_quality(dialog_proxy: DialogProxy) -> Option<u8> {
     dialog_proxy
-        .spawn_dialog("Export settings", |ui| {
+        .spawn_dialog("Export settings", |ui, enter| {
             let mut preferences = PREFERENCES.lock().unwrap();
             let mut output = None;
             egui::Grid::new("jpeg export settings grid").show(ui, |ui| {
@@ -160,6 +160,11 @@ pub fn get_jpeg_quality(dialog_proxy: DialogProxy) -> Option<u8> {
                         }
                     },
                 );
+
+                if *enter {
+                    *enter = false;
+                    output = Some(Some(preferences.jpeg_quality))
+                }
             });
             output
         })
@@ -169,7 +174,7 @@ pub fn get_jpeg_quality(dialog_proxy: DialogProxy) -> Option<u8> {
 
 pub fn get_webp_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
     dialog_proxy
-        .spawn_dialog("Export settings", |ui| {
+        .spawn_dialog("Export settings", |ui, enter| {
             let mut preferences = PREFERENCES.lock().unwrap();
             let mut output = None;
             egui::Grid::new("webp export settings grid").show(ui, |ui| {
@@ -205,6 +210,11 @@ pub fn get_webp_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
                         }
                     },
                 );
+
+                if *enter {
+                    *enter = false;
+                    output = Some(Some((preferences.webp_quality, preferences.webp_lossy)))
+                }
             });
             output
         })

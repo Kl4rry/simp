@@ -51,7 +51,12 @@ impl App {
                         )
                         .clicked()
                     {
-                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu);
+                        if let Some(image) = self.image_view.as_ref() {
+                            if let Some(path) = &image.path {
+                                let buf = path.to_path_buf();
+                                self.queue(Op::LoadPath(buf, false));
+                            }
+                        }
                         ui.close_menu();
                     }
 
@@ -333,8 +338,13 @@ impl App {
 
                         self.dialog_manager.get_proxy().spawn_dialog(
                             "About",
-                            move |ui| -> Option<()> {
+                            move |ui, enter| -> Option<()> {
                                 ui.label(&about);
+
+                                if *enter {
+                                    *enter = false;
+                                    return Some(());
+                                }
 
                                 ui.button("Ok").clicked().then_some(())
                             },
