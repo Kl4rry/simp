@@ -398,11 +398,11 @@ impl WindowHandler {
                     }
                 },
                 Event::LoopExiting => {
+                    wgpu.window.set_visible(false);
                     let data = Config {
                         maximized: wgpu.window.is_maximized(),
                         preferences: PREFERENCES.lock().unwrap().clone(),
                     };
-                    wgpu.window.set_visible(false);
                     confy::store("simp", None, data).unwrap();
                 }
                 Event::UserEvent(mut event) => app.handle_user_event(&wgpu, &mut event),
