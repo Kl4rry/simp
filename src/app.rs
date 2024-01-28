@@ -602,7 +602,7 @@ impl App {
                     modifiers: Modifiers::NONE,
                     logical_key: Minus,
                 }) {
-                    self.zoom(1.0, self.size / 2.0);
+                    self.zoom(-1.0, self.size / 2.0);
                 }
 
                 self.zoom(
