@@ -4,25 +4,27 @@ use std::{
     thread,
 };
 
-use glium::{glutin::event_loop::EventLoopProxy, Display};
 use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageOutputFormat,
 };
+use winit::event_loop::EventLoopProxy;
 
 use super::{
+    dialog_manager::DialogProxy,
     op_queue::{Output, UserEventLoopProxyExt},
     preferences::PREFERENCES,
 };
 use crate::{
     image_io::save::{exr, farbfeld, gif, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
+    WgpuState,
 };
 
-pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
+pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
     let dialog = rfd::FileDialog::new()
-        .set_file_name(&name)
-        .set_parent(display.gl_window().window())
+        .set_file_name(name)
+        .set_parent(&wgpu.window)
         .add_filter("PNG", &["png", "apng"])
         .add_filter("JPEG", &["jpg", "jpeg", "jpe", "jif", "jfif"])
         .add_filter("GIF", &["gif"])
@@ -30,7 +32,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
         .add_filter("BMP", &["bmp"])
         .add_filter("TIFF", &["tiff", "tif"])
         .add_filter("WEBP", &["webp"])
-        .add_filter("Targaformat", &["ff", "farbfeld"])
+        .add_filter("farbfeld", &["ff", "farbfeld"])
         .add_filter("TGA", &["tga"])
         .add_filter("EXR", &["exr"]);
 
@@ -43,6 +45,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, display: &Display) {
 
 pub fn save(
     proxy: EventLoopProxy<UserEvent>,
+    dialog_proxy: DialogProxy,
     mut path: PathBuf,
     image_data: Arc<RwLock<Arc<ImageData>>>,
     rotation: i32,
@@ -83,21 +86,35 @@ pub fn save(
 
         let res = match ext.as_str() {
             "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
-            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => save_with_format(
-                path,
-                &frames[0],
-                ImageOutputFormat::Jpeg(PREFERENCES.lock().unwrap().jpeg_quality),
-            ),
+            "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
+                let quality = match get_jpeg_quality(dialog_proxy.clone()) {
+                    Some(quality) => quality,
+                    None => {
+                        proxy.send_output(Output::Done);
+                        return;
+                    }
+                };
+
+                save_with_format(path, &frames[0], ImageOutputFormat::Jpeg(quality))
+            }
             "ico" => save_with_format(path, &frames[0], ImageOutputFormat::Ico),
             "tga" => save_with_format(path, &frames[0], ImageOutputFormat::Tga),
             "ff" | "farbfeld" => farbfeld(path, &frames[0]),
             "tiff" | "tif" => tiff(path, &frames[0]),
             "gif" => gif(path, frames),
             "webp" => {
+                let (quality, lossy) = match get_webp_quality(dialog_proxy.clone()) {
+                    Some(quality) => quality,
+                    None => {
+                        proxy.send_output(Output::Done);
+                        return;
+                    }
+                };
+
                 if frames.len() > 1 {
-                    webp_animation(path, frames)
+                    webp_animation(path, frames, quality, lossy)
                 } else {
-                    webp(path, &frames[0])
+                    webp(path, &frames[0], quality, lossy)
                 }
             }
             "exr" => exr(path, &frames[0]),
@@ -112,4 +129,85 @@ pub fn save(
             let _ = proxy.send_event(UserEvent::ErrorMessage(error.to_string()));
         }
     });
+}
+
+pub fn get_jpeg_quality(dialog_proxy: DialogProxy) -> Option<u8> {
+    dialog_proxy
+        .spawn_dialog("Export settings", |ui| {
+            let mut preferences = PREFERENCES.lock().unwrap();
+            let mut output = None;
+            egui::Grid::new("jpeg export settings grid").show(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    ui.label("Jpeg Quality: ");
+                });
+                ui.add(egui::Slider::new(&mut preferences.jpeg_quality, 1..=100));
+                ui.end_row();
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Save").clicked() {
+                            output = Some(Some(preferences.jpeg_quality))
+                        }
+                    },
+                );
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Cancel").clicked() {
+                            output = Some(None);
+                        }
+                    },
+                );
+            });
+            output
+        })
+        .wait()
+        .flatten()
+}
+
+pub fn get_webp_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
+    dialog_proxy
+        .spawn_dialog("Export settings", |ui| {
+            let mut preferences = PREFERENCES.lock().unwrap();
+            let mut output = None;
+            egui::Grid::new("webp export settings grid").show(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    ui.label("WebP lossy compression: ");
+                });
+                ui.add(egui::Checkbox::new(&mut preferences.webp_lossy, ""));
+                ui.end_row();
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    ui.label("Webp Quality: ");
+                });
+                ui.add(egui::Slider::new(
+                    &mut preferences.webp_quality,
+                    0.0..=100.0,
+                ));
+                ui.end_row();
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Save").clicked() {
+                            output = Some(Some((preferences.webp_quality, preferences.webp_lossy)))
+                        }
+                    },
+                );
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Cancel").clicked() {
+                            output = Some(None);
+                        }
+                    },
+                );
+            });
+            output
+        })
+        .wait()
+        .flatten()
 }

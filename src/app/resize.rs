@@ -1,6 +1,5 @@
+use cgmath::Vector2;
 use image::imageops::FilterType;
-
-use crate::vec2::Vec2;
 
 #[derive(Clone)]
 pub struct Resize {
@@ -24,8 +23,8 @@ impl Default for Resize {
 }
 
 impl Resize {
-    pub fn set_size(&mut self, size: Vec2<u32>) {
-        self.width = size.x().to_string();
-        self.height = size.y().to_string();
+    pub fn set_size(&mut self, size: Vector2<u32>) {
+        self.width = size.x.to_string();
+        self.height = size.y.to_string();
     }
 }

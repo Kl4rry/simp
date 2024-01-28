@@ -1,6 +1,8 @@
+use cgmath::{EuclideanSpace, Point2};
 use egui::{RichText, ScrollArea};
 
 use super::App;
+use crate::util::p2;
 impl App {
     pub fn metadata_ui(&mut self, ctx: &egui::Context) {
         if self.metadata_visible && self.image_view.is_some() {
@@ -9,6 +11,8 @@ impl App {
                 .id(egui::Id::new("metadata window"))
                 .collapsible(false)
                 .resizable(true)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     ScrollArea::vertical().show(ui, |ui| {

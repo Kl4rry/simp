@@ -1,16 +1,20 @@
-#version 150
+#version 440
 
-in vec2 v_tex_coords;
-out vec4 color;
+layout(location = 0) in vec2 v_tex_coords;
+layout(location = 0) out vec4 color;
 
-uniform sampler2D tex;
-uniform vec2 size;
-uniform float hue = 0.0;
-uniform float contrast = 0.0;
-uniform float brightness = 0.0;
-uniform float saturation = 0.0;
-uniform bool grayscale = false;
-uniform bool invert = false;
+layout(std140, set = 0, binding = 0) uniform InputUniform {
+    mat4 matrix;
+    vec2 size;
+    float hue;
+    float contrast;
+    float brightness;
+    float saturation;
+    uint grayscale;
+    uint invert;
+};
+layout(set = 1, binding = 0) uniform texture2D t_diffuse;
+layout(set = 1, binding = 1) uniform sampler s_diffuse;
 
 const float PI = 3.141592653589793238462643383279502884197169399375105820974944;
 const float max_value = 255;
@@ -133,7 +137,10 @@ vec3 getCheckColor() {
 }
 
 void main() {
-    vec4 p = texture(tex, v_tex_coords);
+    color = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
+
+    return;
+    vec4 p = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
     p.rgb = gammaCorrection(p.rgb, 2.2);
 
     p.rgb = rotateHue(p.rgb, hue);
@@ -141,17 +148,18 @@ void main() {
     p.rgb = adjustSaturation(p.rgb, saturation);
     p.rgb = brighten(p.rgb, brightness);
 
-    if(grayscale) {
+    if(bool(grayscale)) {
         const vec3 toLuma = vec3(0.299, 0.587, 0.114);
         p.rgb = vec3(dot(p.rgb, toLuma));
     }
 
-    if(invert) {
+    if(bool(invert)) {
         p.rgb = invertRgb(p.rgb);
     }
 
     vec3 check_color = getCheckColor();
     color.rgb = check_color * (1 - p.a) + p.a * p.rgb;
+    color.rgb = p.rgb;
     color.rgb = inverseGamma(color.rgb, 2.2);
     color.a = 1;
 }

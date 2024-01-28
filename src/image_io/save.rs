@@ -13,10 +13,7 @@ use image::{
 };
 use webp_animation::prelude::*;
 
-use crate::{
-    app::preferences::PREFERENCES,
-    util::{HasAlpha, Image},
-};
+use crate::util::{HasAlpha, Image};
 
 type SaveResult<T> = Result<T, SaveError>;
 
@@ -107,12 +104,12 @@ pub fn save_with_format(
 
     if let Err(err) = image.buffer().write_to(&mut BufWriter::new(file), format) {
         let _ = fs::remove_file(&temp_path);
-        return Err(err)?;
+        Err(err)?;
     }
 
     if let Err(err) = fs::rename(&temp_path, path) {
         let _ = fs::remove_file(&temp_path);
-        return Err(err)?;
+        Err(err)?;
     }
 
     Ok(())
@@ -163,12 +160,12 @@ pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
 }
 
 #[inline]
-pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
-    let preferences = PREFERENCES.lock().unwrap();
-    let lossy = preferences.webp_lossy;
-    let quality = preferences.webp_quality;
-    drop(preferences);
-
+pub fn webp_animation(
+    path: impl AsRef<Path>,
+    images: Vec<Image>,
+    quality: f32,
+    lossy: bool,
+) -> SaveResult<()> {
     let encoding_type = if lossy {
         EncodingType::Lossy(LossyEncodingConfig::default())
     } else {
@@ -202,13 +199,8 @@ pub fn webp_animation(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<
 }
 
 #[inline]
-pub fn webp(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
+pub fn webp(path: impl AsRef<Path>, image: &Image, quality: f32, lossy: bool) -> SaveResult<()> {
     let (width, height) = image.buffer().dimensions();
-
-    let preferences = PREFERENCES.lock().unwrap();
-    let lossy = preferences.webp_lossy;
-    let quality = preferences.webp_quality;
-    drop(preferences);
 
     let webp_data = if lossy {
         libwebp::WebPEncodeLosslessRGBA(

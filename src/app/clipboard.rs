@@ -1,10 +1,10 @@
 use std::{borrow::Cow, sync::Arc, thread};
 
-use glium::glutin::event_loop::EventLoopProxy;
 use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     EncodableLayout, GenericImageView, ImageBuffer, Rgba,
 };
+use winit::event_loop::EventLoopProxy;
 
 use super::{
     image_view::ImageView,

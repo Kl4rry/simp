@@ -1,4 +1,5 @@
 use std::{
+    mem,
     process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -8,18 +9,19 @@ use std::{
     time::Duration,
 };
 
-use egui::{Button, CursorIcon, RichText, Style, TopBottomPanel};
-use glium::{
-    backend::glutin::Display,
-    glutin::{
-        event::{ElementState, ModifiersState, MouseScrollDelta, VirtualKeyCode, WindowEvent},
-        event_loop::EventLoopProxy,
-        window::Fullscreen,
-    },
-};
+use cgmath::{EuclideanSpace, Point2, Vector2};
+use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
 use image::{imageops::FilterType, DynamicImage};
+use num_traits::Zero;
+use winit::{
+    event::WindowEvent, event_loop::EventLoopProxy, keyboard::ModifiersState, window::Fullscreen,
+};
 
-use crate::{min, util::UserEvent, vec2::Vec2};
+use crate::{
+    min,
+    util::{p2, UserEvent},
+    WgpuState,
+};
 
 pub mod image_view;
 use image_view::ImageView;
@@ -49,7 +51,14 @@ use resize::Resize;
 
 pub mod preferences;
 
-use self::{op_queue::get_unsaved_changes_dialog, preferences::PREFERENCES, undo_stack::UndoFrame};
+pub mod dialog_manager;
+
+use self::{
+    dialog_manager::{DialogManager, DialogProxy},
+    image_view::{crop_renderer, image_renderer},
+    preferences::PREFERENCES,
+    undo_stack::UndoFrame,
+};
 
 enum ResizeMode {
     Original,
@@ -62,15 +71,18 @@ const BOTTOM_BAR_SIZE: f32 = 27.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
-    delay: Option<Duration>,
+    pub delay: Duration,
+    pub image_renderer: image_renderer::Renderer,
+    pub crop_renderer: crop_renderer::Renderer,
     pub image_view: Option<Box<ImageView>>,
-    size: Vec2<f32>,
+    pub modifiers: ModifiersState,
+    dialog_manager: DialogManager,
+    size: Vector2<f32>,
     fullscreen: bool,
     top_bar_size: f32,
     bottom_bar_size: f32,
     proxy: EventLoopProxy<UserEvent>,
-    modifiers: ModifiersState,
-    mouse_position: Vec2<f32>,
+    mouse_position: Vector2<f32>,
     current_filename: String,
     op_queue: OpQueue,
     resize: Resize,
@@ -87,7 +99,7 @@ impl App {
         !self.op_queue.working() && self.image_view.is_some()
     }
 
-    pub fn handle_output(&mut self, display: &Display, output: Output) {
+    pub fn handle_output(&mut self, wgpu: &WgpuState, output: Output) {
         let stack = self.op_queue.undo_stack_mut();
         match output {
             Output::ImageLoaded(image_data, path) => {
@@ -99,18 +111,15 @@ impl App {
                     String::new()
                 };
 
-                let view = Box::new(ImageView::new(display, image_data, path));
+                let view = Box::new(ImageView::new(wgpu, image_data, path));
                 self.resize
-                    .set_size(Vec2::new(view.size.x() as u32, view.size.y() as u32));
+                    .set_size(Vector2::new(view.size.x as u32, view.size.y as u32));
                 self.image_view = Some(view);
 
-                let window_context = display.gl_window();
-                let window = window_context.window();
-
                 if self.current_filename.is_empty() {
-                    window.set_title("Simp");
+                    wgpu.window.set_title("Simp");
                 } else {
-                    window.set_title(&self.current_filename.to_string());
+                    wgpu.window.set_title(&self.current_filename.to_string());
                 }
 
                 self.largest_fit();
@@ -118,21 +127,21 @@ impl App {
             Output::FlipHorizontal => {
                 let view = self.image_view.as_mut().unwrap();
                 if view.rotation() % 2 != 0 {
-                    view.flip_horizontal();
-                    stack.push(UndoFrame::FlipHorizontal);
-                } else {
                     view.flip_vertical();
                     stack.push(UndoFrame::FlipVertical);
+                } else {
+                    view.flip_horizontal();
+                    stack.push(UndoFrame::FlipHorizontal);
                 }
             }
             Output::FlipVertical => {
                 let view = self.image_view.as_mut().unwrap();
                 if view.rotation() % 2 != 0 {
                     view.flip_horizontal();
-                    stack.push(UndoFrame::FlipVertical);
+                    stack.push(UndoFrame::FlipHorizontal);
                 } else {
                     view.flip_vertical();
-                    stack.push(UndoFrame::FlipHorizontal);
+                    stack.push(UndoFrame::FlipVertical);
                 }
             }
             Output::Rotate(dir) => {
@@ -141,13 +150,13 @@ impl App {
             }
             Output::Resize(mut frames) => {
                 if let Some(ref mut view) = self.image_view {
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Resize(frames));
                 }
             }
             Output::Color(mut frames) => {
                 if let Some(ref mut view) = self.image_view {
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Color(frames));
                     view.hue = 0.0;
                     view.contrast = 0.0;
@@ -155,14 +164,13 @@ impl App {
                     view.brightness = 0.0;
                     view.grayscale = false;
                     view.invert = false;
-                    let window = display.gl_window();
-                    window.window().request_redraw();
+                    wgpu.window.request_redraw();
                 }
             }
             Output::Crop(mut frames, rotation) => {
                 if let Some(ref mut view) = self.image_view {
                     view.set_rotation(0);
-                    view.swap_frames(&mut frames, display);
+                    view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Crop { frames, rotation })
                 }
             }
@@ -181,16 +189,16 @@ impl App {
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                             view.swap_rotation(rotation);
                         }
                         UndoFrame::Resize(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                         UndoFrame::Color(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                     }
                 }
@@ -210,25 +218,51 @@ impl App {
                         }
                         UndoFrame::Crop { frames, rotation } => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                             view.swap_rotation(rotation);
                         }
                         UndoFrame::Resize(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                         UndoFrame::Color(frames) => {
                             let view = self.image_view.as_mut().unwrap();
-                            view.swap_frames(frames, display);
+                            view.swap_frames(wgpu, frames);
                         }
                     }
                 }
             }
             Output::Close => {
-                self.image_view = None;
-                stack.clear();
-                self.op_queue.image_list.clear();
-                self.op_queue.cache.clear();
+                let close = self
+                    .dialog_manager
+                    .get_proxy()
+                    .spawn_dialog("Unsaved changes", move |ui| {
+                        ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                return Some(true);
+                            }
+
+                            if ui.button("Cancel").clicked() {
+                                return Some(false);
+                            }
+
+                            None
+                        })
+                        .inner
+                    })
+                    .wait()
+                    .unwrap_or(false);
+
+                if close {
+                    self.image_view = None;
+                    stack.clear();
+                    self.op_queue.image_list.clear();
+                    self.op_queue.cache.clear();
+                    wgpu.window.set_title("Simp");
+                }
             }
             Output::Saved => {
                 stack.set_saved();
@@ -238,7 +272,7 @@ impl App {
         }
     }
 
-    pub fn handle_user_event(&mut self, display: &Display, event: &mut UserEvent) {
+    pub fn handle_user_event(&mut self, wgpu: &WgpuState, event: &mut UserEvent) {
         match event {
             UserEvent::QueueLoad(path) => {
                 self.queue(Op::LoadPath(path.to_path_buf(), false));
@@ -250,21 +284,50 @@ impl App {
                 self.queue(Op::Delete(path.to_path_buf()));
             }
             UserEvent::ErrorMessage(error) => {
-                let dialog = rfd::MessageDialog::new()
-                    .set_parent(display.gl_window().window())
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_title("About")
-                    .set_description(error)
-                    .set_buttons(rfd::MessageButtons::Ok);
-
-                thread::spawn(move || dialog.show());
+                let error = error.clone();
+                self.dialog_manager
+                    .get_proxy()
+                    .spawn_dialog("Error", move |ui| {
+                        ui.label(&error);
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        })
+                        .inner
+                    });
             }
             UserEvent::Exit => {
                 let exit = self.exit.clone();
-                let dialog = get_unsaved_changes_dialog();
+                let dialog_proxy = self.dialog_manager.get_proxy();
                 if self.op_queue.undo_stack().is_edited() {
                     thread::spawn(move || {
-                        if dialog.show() {
+                        let close = dialog_proxy
+                            .spawn_dialog("Unsaved changes", move |ui| {
+                                ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+                                ui.with_layout(
+                                    egui::Layout::left_to_right(egui::Align::LEFT),
+                                    |ui| {
+                                        if ui.button("Ok").clicked() {
+                                            return Some(true);
+                                        }
+
+                                        if ui.button("Cancel").clicked() {
+                                            return Some(false);
+                                        }
+
+                                        None
+                                    },
+                                )
+                                .inner
+                            })
+                            .wait()
+                            .unwrap_or(false);
+                        if close {
                             exit.store(true, Ordering::Relaxed);
                         }
                     });
@@ -275,213 +338,39 @@ impl App {
             UserEvent::Output(output) => {
                 if let Some(output) = output.take() {
                     self.op_queue.set_working(false);
-                    self.handle_output(display, output);
+                    self.handle_output(wgpu, output);
                 }
             }
+            UserEvent::RepaintRequest(request_repaint_info) => {
+                self.delay = self.delay.min(request_repaint_info.delay);
+            }
+            UserEvent::Wake => (),
         };
     }
 
-    pub fn handle_window_event(&mut self, display: &Display, event: &WindowEvent<'_>) {
+    pub fn handle_window_event(&mut self, _wgpu: &WgpuState, event: &WindowEvent) {
         match event {
-            WindowEvent::Resized(size) => {
-                *self.size.mut_x() = size.width as f32;
-                *self.size.mut_y() = size.height as f32;
-
-                match self.resize_mode {
-                    ResizeMode::Original => {}
-                    ResizeMode::LargestFit => {
-                        self.largest_fit();
-                    }
-                    ResizeMode::BestFit => {
-                        self.best_fit();
-                    }
-                }
-            }
             WindowEvent::CursorMoved { position, .. } => {
-                self.mouse_position.set_x(position.x as f32);
-                self.mouse_position.set_y(position.y as f32);
+                self.mouse_position.x = position.x as f32;
+                self.mouse_position.y = position.y as f32;
             }
-            WindowEvent::MouseWheel { delta, .. } => {
-                if !self.metadata_visible {
-                    let scroll = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => *y,
-                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
-                    };
-
-                    self.zoom(
-                        scroll * PREFERENCES.lock().unwrap().zoom_speed,
-                        self.mouse_position,
-                    );
-                }
-            }
-            WindowEvent::ModifiersChanged(state) => self.modifiers = *state,
             WindowEvent::DroppedFile(path) => {
                 self.op_queue.cache.clear();
                 self.queue(Op::LoadPath(path.to_path_buf(), true));
             }
-            WindowEvent::KeyboardInput { input, .. } => {
-                if let Some(key) = input.virtual_keycode {
-                    match input.state {
-                        ElementState::Pressed => match key {
-                            #[cfg(feature = "trash")]
-                            VirtualKeyCode::Delete => {
-                                if let Some(ref view) = self.image_view {
-                                    if let Some(ref path) = view.path {
-                                        delete(path.clone(), self.proxy.clone(), display);
-                                    }
-                                }
-                            }
-
-                            VirtualKeyCode::H if self.modifiers.ctrl() => self.help_visible = true,
-                            VirtualKeyCode::O if self.modifiers.ctrl() => {
-                                load_image::open(self.proxy.clone(), display, false)
-                            }
-                            VirtualKeyCode::S if self.modifiers.ctrl() => save_image::open(
-                                self.current_filename.clone(),
-                                self.proxy.clone(),
-                                display,
-                            ),
-                            VirtualKeyCode::W if self.modifiers.ctrl() => {
-                                let _ = self.proxy.send_event(UserEvent::Exit);
-                            }
-                            VirtualKeyCode::N if self.modifiers.ctrl() => new_window(),
-
-                            VirtualKeyCode::M => {
-                                self.largest_fit();
-                            }
-                            VirtualKeyCode::B => {
-                                self.best_fit();
-                            }
-
-                            VirtualKeyCode::Q => {
-                                if self.image_view.is_some() {
-                                    self.queue(Op::Rotate(-1))
-                                }
-                            }
-                            VirtualKeyCode::E => {
-                                if self.image_view.is_some() {
-                                    self.queue(Op::Rotate(1))
-                                }
-                            }
-
-                            VirtualKeyCode::F5 => {
-                                if let Some(image) = self.image_view.as_ref() {
-                                    if let Some(path) = &image.path {
-                                        let buf = path.to_path_buf();
-                                        self.queue(Op::LoadPath(buf, false));
-                                    }
-                                }
-                            }
-
-                            VirtualKeyCode::C if self.modifiers.ctrl() => {
-                                if self.view_available() {
-                                    self.queue(Op::Copy);
-                                }
-                            }
-                            VirtualKeyCode::V if self.modifiers.ctrl() => {
-                                if !self.op_queue.working() {
-                                    self.queue(Op::Paste);
-                                }
-                            }
-                            VirtualKeyCode::X if self.modifiers.ctrl() => {
-                                self.image_view.as_mut().unwrap().start_crop()
-                            }
-
-                            VirtualKeyCode::Z if self.modifiers.ctrl() => {
-                                self.queue(Op::Undo);
-                            }
-                            VirtualKeyCode::Y if self.modifiers.ctrl() => {
-                                self.queue(Op::Redo);
-                            }
-
-                            VirtualKeyCode::R if self.modifiers.ctrl() => {
-                                self.resize.visible = true;
-                            }
-
-                            VirtualKeyCode::Left | VirtualKeyCode::D | VirtualKeyCode::H => {
-                                if self.view_available()
-                                    && !self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.queue(Op::Prev);
-                                }
-                            }
-
-                            VirtualKeyCode::Right | VirtualKeyCode::A | VirtualKeyCode::L => {
-                                if self.view_available()
-                                    && !self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.queue(Op::Next);
-                                }
-                            }
-                            VirtualKeyCode::F4 if self.modifiers.ctrl() => {
-                                self.queue(Op::Close);
-                            }
-
-                            VirtualKeyCode::F11 | VirtualKeyCode::F => {
-                                let window_context = display.gl_window();
-                                let window = window_context.window();
-                                let fullscreen = window.fullscreen();
-                                if fullscreen.is_some() {
-                                    window.set_fullscreen(None);
-                                    self.fullscreen = false;
-                                    self.top_bar_size = TOP_BAR_SIZE;
-                                    self.bottom_bar_size = BOTTOM_BAR_SIZE;
-                                } else {
-                                    window.set_fullscreen(Some(Fullscreen::Borderless(None)));
-                                    self.fullscreen = true;
-                                    self.top_bar_size = 0.0;
-                                    self.bottom_bar_size = 0.0;
-                                }
-                                self.largest_fit();
-                            }
-                            VirtualKeyCode::Escape => {
-                                if self.view_available()
-                                    && self.image_view.as_ref().unwrap().cropping()
-                                {
-                                    self.image_view.as_mut().unwrap().cancel_crop();
-                                }
-                                self.help_visible = false;
-                                self.color_visible = false;
-                                self.metadata_visible = false;
-                                self.resize.visible = false;
-                            }
-                            VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                                self.enter = true
-                            }
-                            _ => (),
-                        },
-                        ElementState::Released => (),
-                    }
-                }
-            }
-            WindowEvent::ReceivedCharacter(c) => match c {
-                '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' => {
-                    if let Some(ref mut view) = self.image_view {
-                        let zoom = c.to_digit(10).unwrap() as f32;
-                        view.scale = zoom;
-                    }
-                }
-                '+' => {
-                    self.zoom(1.0, self.size / 2.0);
-                }
-                '-' => {
-                    self.zoom(-1.0, self.size / 2.0);
-                }
-                _ => (),
-            },
             _ => (),
         };
     }
 
-    pub fn handle_ui(&mut self, display: &Display, ctx: &egui::Context) {
+    pub fn handle_ui(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         if self.op_queue.working() {
-            ctx.output().cursor_icon = CursorIcon::Progress;
+            ctx.set_cursor_icon(CursorIcon::Progress);
         }
 
-        self.main_area(display, ctx);
+        self.main_area(wgpu, ctx);
 
         if !self.fullscreen {
-            self.menu_bar(display, ctx);
+            self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
         }
 
@@ -491,9 +380,11 @@ impl App {
         self.color_ui(ctx);
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
+
+        self.dialog_manager.update(ctx, self.size);
     }
 
-    pub fn main_area(&mut self, _display: &Display, ctx: &egui::Context) {
+    pub fn main_area(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
         egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             if self.image_view.is_none() {
@@ -508,6 +399,248 @@ impl App {
             if let Some(ref mut view) = self.image_view {
                 view.handle_drag(ui);
             }
+
+            ui.input_mut(|input| {
+                use egui::{Key::*, KeyboardShortcut};
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Delete,
+                }) {
+                    if let Some(ref view) = self.image_view {
+                        if let Some(ref path) = view.path {
+                            delete(
+                                path.clone(),
+                                self.dialog_manager.get_proxy(),
+                                self.proxy.clone(),
+                            );
+                        }
+                    }
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: H,
+                }) {
+                    self.help_visible = true
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: O,
+                }) {
+                    load_image::open(self.proxy.clone(), wgpu, false)
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: S,
+                }) {
+                    save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu)
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Q,
+                }) {
+                    let _ = self.proxy.send_event(UserEvent::Exit);
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: N,
+                }) {
+                    new_window()
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: L,
+                }) {
+                    self.largest_fit();
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: B,
+                }) {
+                    self.best_fit();
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Q,
+                }) && self.image_view.is_some()
+                {
+                    self.queue(Op::Rotate(-1))
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: E,
+                }) && self.image_view.is_some()
+                {
+                    self.queue(Op::Rotate(1))
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: F5,
+                }) {
+                    if let Some(image) = self.image_view.as_ref() {
+                        if let Some(path) = &image.path {
+                            let buf = path.to_path_buf();
+                            self.queue(Op::LoadPath(buf, false));
+                        }
+                    }
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Z,
+                }) {
+                    self.queue(Op::Undo);
+                }
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: Y,
+                }) {
+                    self.queue(Op::Redo);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: R,
+                }) {
+                    self.resize.visible = true;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: ArrowRight,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: D,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: H,
+                }) && self.view_available()
+                    && !self.image_view.as_ref().unwrap().cropping()
+                {
+                    self.queue(Op::Prev);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: ArrowLeft,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: A,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: L,
+                }) && self.view_available()
+                    && !self.image_view.as_ref().unwrap().cropping()
+                {
+                    self.queue(Op::Next);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: W,
+                }) {
+                    self.queue(Op::Close);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: F11,
+                }) || input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::CTRL,
+                    logical_key: F,
+                }) {
+                    let fullscreen = wgpu.window.fullscreen();
+                    if fullscreen.is_some() {
+                        wgpu.window.set_fullscreen(None);
+                        self.fullscreen = false;
+                        self.top_bar_size = TOP_BAR_SIZE;
+                        self.bottom_bar_size = BOTTOM_BAR_SIZE;
+                    } else {
+                        wgpu.window
+                            .set_fullscreen(Some(Fullscreen::Borderless(None)));
+                        self.fullscreen = true;
+                        self.top_bar_size = 0.0;
+                        self.bottom_bar_size = 0.0;
+                    }
+                    self.largest_fit();
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Escape,
+                }) {
+                    if self.view_available() && self.image_view.as_ref().unwrap().cropping() {
+                        self.image_view.as_mut().unwrap().cancel_crop();
+                    }
+                    self.help_visible = false;
+                    self.color_visible = false;
+                    self.metadata_visible = false;
+                    self.resize.visible = false;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Enter,
+                }) {
+                    self.enter = true;
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Plus,
+                }) {
+                    self.zoom(1.0, self.size / 2.0);
+                }
+
+                if input.consume_shortcut(&KeyboardShortcut {
+                    modifiers: Modifiers::NONE,
+                    logical_key: Minus,
+                }) {
+                    self.zoom(1.0, self.size / 2.0);
+                }
+
+                self.zoom(
+                    input.scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
+                    self.mouse_position,
+                );
+
+                for event in &input.events {
+                    match event {
+                        Event::Copy => {
+                            if self.view_available() {
+                                self.queue(Op::Copy);
+                            }
+                        }
+                        Event::Cut => {
+                            if self.view_available() {
+                                self.image_view.as_mut().unwrap().start_crop()
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                input
+                    .events
+                    .retain(|e| !matches!(e, Event::Copy | Event::Cut));
+
+                let nums = [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9];
+                for (i, num) in nums.into_iter().enumerate() {
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: num,
+                    }) {
+                        if let Some(ref mut view) = self.image_view {
+                            view.scale = (i + 1) as f32;
+                        }
+                    }
+                }
+            });
         });
     }
 
@@ -529,7 +662,7 @@ impl App {
                 }
 
                 if let Some(image) = self.image_view.as_mut() {
-                    ui.label(format!("{} x {}", image.size.x(), image.size.y()));
+                    ui.label(format!("{} x {}", image.size.x, image.size.y));
                     ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
 
                     let g = image.image_data.read();
@@ -546,7 +679,8 @@ impl App {
                         DynamicImage::ImageRgb32F(_) => "Rgb32F",
                         DynamicImage::ImageRgba32F(_) => "Rgba32F",
                         _ => panic!("Unknown color space name. This is a bug."),
-                    }.to_string();
+                    }
+                    .to_string();
 
                     {
                         let pos = (((self.mouse_position
@@ -554,13 +688,12 @@ impl App {
                             - (image.rotated_size() / 2.0) * image.scale)
                             + image.rotated_size() * image.scale)
                             / image.scale)
-                            .floor()
-                            .map(|v| v as i64);
+                            .map(|v| v.floor() as i64);
 
-                        if pos.x() >= 0
-                            && pos.y() >= 0
-                            && pos.x() < image.rotated_size().x() as i64
-                            && pos.y() < image.rotated_size().y() as i64
+                        if pos.x >= 0
+                            && pos.y >= 0
+                            && pos.x < image.rotated_size().x as i64
+                            && pos.y < image.rotated_size().y as i64
                         {
                             let guard = image.image_data.read().unwrap();
                             let frame = &guard.frames[image.index];
@@ -570,29 +703,29 @@ impl App {
                             match image.rotation() {
                                 0 => (),
                                 1 => {
-                                    pos.swap();
-                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
-                                },
+                                    mem::swap(&mut pos.x, &mut pos.y);
+                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                }
                                 2 => {
-                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
-                                    *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
-                                },
+                                    pos.x = image.size.x as u32 - pos.x - 1;
+                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                }
                                 3 => {
-                                    pos.swap();
-                                    *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
-                                },
+                                    mem::swap(&mut pos.x, &mut pos.y);
+                                    pos.x = image.size.x as u32 - pos.x - 1;
+                                }
                                 _ => panic!("rotated more then 360 degrees"),
                             }
 
                             if image.horizontal_flip {
-                                *pos.mut_x() = image.size.x() as u32 - pos.x() - 1;
+                                pos.x = image.size.x as u32 - pos.x - 1;
                             }
 
                             if image.vertical_flip {
-                                *pos.mut_y() = image.size.y() as u32 - pos.y() - 1;
+                                pos.y = image.size.y as u32 - pos.y - 1;
                             }
 
-                            fn p2s<P: >(p: P) -> String
+                            fn p2s<P>(p: P) -> String
                             where
                                 P: image::Pixel,
                                 <P as image::Pixel>::Subpixel: ToString,
@@ -612,16 +745,16 @@ impl App {
 
                             #[rustfmt::skip]
                             let color_str = match buffer {
-                                DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba8(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLuma16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageLumaA16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba16(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgb32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
-                                DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x(), pos.y())),
+                                DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLuma16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageLumaA16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba16(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgb32F(b) => p2s(*b.get_pixel(pos.x, pos.y)),
+                                DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x, pos.y)),
                                 _ => panic!("Unknown color space name. This is a bug."),
                             };
                             color_space = format!("{color_space}: {color_str}");
@@ -638,49 +771,42 @@ impl App {
         });
     }
 
-    pub fn update(&mut self, display: &Display) -> (bool, Option<Duration>) {
-        self.delay = None;
-
+    pub fn update(&mut self, _wgpu: &WgpuState) -> (bool, Duration) {
         if let Some(ref mut image) = self.image_view {
-            update_delay(&mut self.delay, &image.animate(display));
+            self.delay = self.delay.min(image.animate());
         }
 
         if let Some(ref mut image) = self.image_view {
             let image_size = image.real_size();
             let mut window_size = self.size;
-            window_size.set_y(window_size.y() - self.top_bar_size - self.bottom_bar_size);
+            window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
 
             const MARGIN: f32 = 50.0;
 
-            if image_size.x() < window_size.x() {
-                image.position.set_x(self.size.x() / 2.0);
+            if image_size.x < window_size.x {
+                image.position.x = self.size.x / 2.0;
             } else {
-                if image.position.x() - image_size.x() / 2.0 > 0.0 + MARGIN {
-                    image.position.set_x(image_size.x() / 2.0 + MARGIN);
+                if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
+                    image.position.x = image_size.x / 2.0 + MARGIN;
                 }
 
-                if image.position.x() + image_size.x() / 2.0 < window_size.x() - MARGIN {
-                    image
-                        .position
-                        .set_x(window_size.x() - image_size.x() / 2.0 - MARGIN);
+                if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
+                    image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
                 }
             }
 
-            if image_size.y() < window_size.y() {
-                image.position.set_y(self.size.y() / 2.0);
+            if image_size.y < window_size.y {
+                image.position.y = self.size.y / 2.0;
             } else {
-                if image.position.y() - image_size.y() / 2.0 > self.top_bar_size + MARGIN {
-                    image
-                        .position
-                        .set_y(image_size.y() / 2.0 + self.top_bar_size + MARGIN);
+                if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
+                    image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
                 }
 
-                if image.position.y() + image_size.y() / 2.0
-                    < window_size.y() + self.top_bar_size - MARGIN
+                if image.position.y + image_size.y / 2.0
+                    < window_size.y + self.top_bar_size - MARGIN
                 {
-                    image.position.set_y(
-                        (window_size.y() - image_size.y() / 2.0) + self.top_bar_size - MARGIN,
-                    );
+                    image.position.y =
+                        (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
                 }
             }
         }
@@ -697,6 +823,8 @@ impl App {
                 .id(egui::Id::new("resize window"))
                 .collapsible(false)
                 .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("resize grid").show(ui, |ui| {
@@ -715,95 +843,97 @@ impl App {
                         self.resize.height.retain(|c| c.is_ascii_digit());
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                            ui.label("Maintain aspect ratio: ");
-                        });
-                        ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
-                        ui.end_row();
+                            ui.label("Maintain aspect ratio:");
+                            ui.checkbox(&mut self.resize.maintain_aspect_ratio, "");
+                            ui.end_row();
 
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                            ui.label("Resample: ");
-                        });
-                        let selected = &mut self.resize.resample;
-                        egui::ComboBox::new("filter", "")
-                            .selected_text(filter_name(selected))
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Nearest,
-                                    filter_name(&FilterType::Nearest),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Triangle,
-                                    filter_name(&FilterType::Triangle),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::CatmullRom,
-                                    filter_name(&FilterType::CatmullRom),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Gaussian,
-                                    filter_name(&FilterType::Gaussian),
-                                );
-                                ui.selectable_value(
-                                    selected,
-                                    FilterType::Lanczos3,
-                                    filter_name(&FilterType::Lanczos3),
-                                );
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                ui.label("Resample: ");
                             });
-                        ui.end_row();
-                        ui.end_row();
+                            let selected = &mut self.resize.resample;
+                            egui::ComboBox::new("filter", "")
+                                .selected_text(filter_name(selected))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Nearest,
+                                        filter_name(&FilterType::Nearest),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Triangle,
+                                        filter_name(&FilterType::Triangle),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::CatmullRom,
+                                        filter_name(&FilterType::CatmullRom),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Gaussian,
+                                        filter_name(&FilterType::Gaussian),
+                                    );
+                                    ui.selectable_value(
+                                        selected,
+                                        FilterType::Lanczos3,
+                                        filter_name(&FilterType::Lanczos3),
+                                    );
+                                });
+                            ui.end_row();
+                            ui.end_row();
 
-                        let width = self.resize.width.parse::<u32>();
-                        let height = self.resize.height.parse::<u32>();
+                            let width = self.resize.width.parse::<u32>();
+                            let height = self.resize.height.parse::<u32>();
 
-                        if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
-                            let width = *width.as_ref().unwrap();
-                            let size = self.image_view.as_ref().unwrap().size;
-                            let ratio = width as f32 / size.x();
-                            self.resize.height = ((ratio * size.y()) as u32).to_string();
-                        }
+                            if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
+                                let width = *width.as_ref().unwrap();
+                                let size = self.image_view.as_ref().unwrap().size;
+                                let ratio = width as f32 / size.x;
+                                self.resize.height = ((ratio * size.y) as u32).to_string();
+                            }
 
-                        if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
-                            let height = *height.as_ref().unwrap();
-                            let size = self.image_view.as_ref().unwrap().size;
-                            let ratio = height as f32 / size.y();
-                            self.resize.width = ((ratio * size.x()) as u32).to_string();
-                        }
+                            if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
+                                let height = *height.as_ref().unwrap();
+                                let size = self.image_view.as_ref().unwrap().size;
+                                let ratio = height as f32 / size.y;
+                                self.resize.width = ((ratio * size.x) as u32).to_string();
+                            }
 
-                        ui.with_layout(
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui.add(Button::new("Cancel")).clicked() {
-                                    resized = true;
-                                }
-                            },
-                        );
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui.add(Button::new("Cancel")).clicked() {
+                                        resized = true;
+                                    }
+                                },
+                            );
 
-                        ui.with_layout(
-                            egui::Layout::top_down_justified(egui::Align::Center),
-                            |ui| {
-                                if ui
-                                    .add_enabled(
-                                        width.is_ok() && height.is_ok() && self.view_available(),
-                                        Button::new("Resize"),
-                                    )
-                                    .clicked()
-                                    || self.enter
-                                {
-                                    let width = width.unwrap();
-                                    let height = height.unwrap();
-                                    self.queue(Op::Resize(
-                                        Vec2::new(width, height),
-                                        self.resize.resample,
-                                    ));
-                                    resized = true;
-                                    self.enter = false;
-                                }
-                            },
-                        );
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add_enabled(
+                                            width.is_ok()
+                                                && height.is_ok()
+                                                && self.view_available(),
+                                            Button::new("Resize"),
+                                        )
+                                        .clicked()
+                                        || self.enter
+                                    {
+                                        let width = width.unwrap();
+                                        let height = height.unwrap();
+                                        self.queue(Op::Resize(
+                                            Vector2::new(width, height),
+                                            self.resize.resample,
+                                        ));
+                                        resized = true;
+                                        self.enter = false;
+                                    }
+                                },
+                            );
+                        });
                     });
                 });
             self.resize.visible = open && !resized;
@@ -820,6 +950,8 @@ impl App {
                     .id(egui::Id::new("crop window"))
                     .collapsible(false)
                     .resizable(false)
+                    .pivot(egui::Align2::CENTER_CENTER)
+                    .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                     .show(ctx, |ui| {
                         egui::Grid::new("crop grid").show(ui, |ui| {
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
@@ -845,21 +977,17 @@ impl App {
                             ui.end_row();
                             ui.end_row();
 
-                            *rect.position.mut_x() = min!(
-                                view.crop.x.parse::<u32>().unwrap_or(0) as f32,
-                                size.x() - 1.0
-                            );
-                            *rect.position.mut_y() = min!(
-                                view.crop.y.parse::<u32>().unwrap_or(0) as f32,
-                                size.y() - 1.0
-                            );
+                            rect.position.x =
+                                min!(view.crop.x.parse::<u32>().unwrap_or(0) as f32, size.x - 1.0);
+                            rect.position.y =
+                                min!(view.crop.y.parse::<u32>().unwrap_or(0) as f32, size.y - 1.0);
 
-                            *rect.size.mut_x() =
-                                (view.crop.width.parse::<u32>().unwrap_or(size.x() as u32) as f32)
-                                    .clamp(1.0, size.x() - rect.x());
-                            *rect.size.mut_y() =
-                                (view.crop.height.parse::<u32>().unwrap_or(size.y() as u32) as f32)
-                                    .clamp(1.0, size.y() - rect.y());
+                            rect.size.x = (view.crop.width.parse::<u32>().unwrap_or(size.x as u32)
+                                as f32)
+                                .clamp(1.0, size.x - rect.x());
+                            rect.size.y = (view.crop.height.parse::<u32>().unwrap_or(size.y as u32)
+                                as f32)
+                                .clamp(1.0, size.y - rect.y());
 
                             if view.crop.x.parse::<u32>().is_ok() {
                                 view.crop.x = rect.x().to_string();
@@ -920,13 +1048,13 @@ impl App {
             .queue(op, self.image_view.as_ref().map(|v| v.as_ref()))
     }
 
-    fn zoom(&mut self, zoom: f32, mouse_position: Vec2<f32>) {
+    fn zoom(&mut self, zoom: f32, mouse_position: Vector2<f32>) {
         if let Some(ref mut image) = self.image_view {
             let old_scale = image.scale;
             image.scale += image.scale * zoom / 10.0;
 
             let new_size = image.scaled();
-            if (new_size.x() < 1.0 || new_size.y() < 1.0)
+            if (new_size.x < 1.0 || new_size.y < 1.0)
                 && old_scale >= image.scale
                 && image.scale < 1.0
             {
@@ -943,8 +1071,8 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
+                self.size.x / size.x,
+                (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = min!(scaling, 1.0);
             view.position = self.size / 2.0;
@@ -956,8 +1084,8 @@ impl App {
         if let Some(ref mut view) = self.image_view {
             let size = view.rotated_size();
             let scaling = min!(
-                self.size.x() / size.x(),
-                (self.size.y() - self.top_bar_size - self.bottom_bar_size) / size.y()
+                self.size.x / size.x,
+                (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = scaling;
             view.position = self.size / 2.0;
@@ -965,19 +1093,44 @@ impl App {
         }
     }
 
-    pub fn new(proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.size.x = size.width as f32;
+        self.size.y = size.height as f32;
+
+        match self.resize_mode {
+            ResizeMode::Original => {}
+            ResizeMode::LargestFit => {
+                self.largest_fit();
+            }
+            ResizeMode::BestFit => {
+                self.best_fit();
+            }
+        }
+    }
+
+    pub fn handle_paste(&mut self) {
+        if !self.op_queue.working() {
+            self.queue(Op::Paste);
+        }
+    }
+
+    pub fn new(wgpu: &WgpuState, proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
+        let dialog_manager = DialogManager::new(proxy.clone());
         App {
             exit: Arc::new(AtomicBool::new(false)),
-            delay: None,
+            delay: Duration::MAX,
+            modifiers: ModifiersState::empty(),
+            image_renderer: image_renderer::Renderer::new(wgpu),
+            crop_renderer: crop_renderer::Renderer::new(wgpu),
             image_view: None,
-            size: Vec2::from(size),
+            op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy()),
+            dialog_manager,
+            size: Vector2::from(size),
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
-            op_queue: OpQueue::new(proxy.clone()),
             proxy,
-            modifiers: ModifiersState::empty(),
-            mouse_position: Vec2::default(),
+            mouse_position: Vector2::zero(),
             current_filename: String::new(),
             resize: Resize::default(),
             help_visible: false,
@@ -990,35 +1143,32 @@ impl App {
     }
 }
 
-#[cfg(feature = "trash")]
-pub fn delete(path: std::path::PathBuf, proxy: EventLoopProxy<UserEvent>, display: &Display) {
-    let dialog = rfd::MessageDialog::new()
-        .set_parent(display.gl_window().window())
-        .set_level(rfd::MessageLevel::Warning)
-        .set_title("Move to trash")
-        .set_description("Are you sure you want to move this to trash?")
-        .set_buttons(rfd::MessageButtons::YesNo);
-    thread::spawn(move || {
-        if dialog.show() {
-            let _ = proxy.send_event(UserEvent::QueueDelete(path));
-        }
+pub fn delete(
+    path: std::path::PathBuf,
+    dialog_proxy: DialogProxy,
+    proxy: EventLoopProxy<UserEvent>,
+) {
+    dialog_proxy.spawn_dialog("Move to trash", move |ui| {
+        ui.label("Are you sure you want to move this to trash?");
+
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+            if ui.button("Yes").clicked() {
+                let _ = proxy.send_event(UserEvent::QueueDelete(path.clone()));
+                return Some(());
+            }
+
+            if ui.button("No").clicked() {
+                return Some(());
+            }
+
+            None
+        })
+        .inner
     });
 }
 
 fn new_window() {
     let _ = Command::new(std::env::current_exe().unwrap()).spawn();
-}
-
-fn update_delay(old: &mut Option<Duration>, new: &Option<Duration>) {
-    if let Some(ref mut old_time) = old {
-        if let Some(ref new_time) = new {
-            if *old_time > *new_time {
-                *old_time = *new_time;
-            }
-        }
-    } else {
-        *old = *new;
-    }
 }
 
 fn filter_name(filter: &FilterType) -> &'static str {

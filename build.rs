@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{env, process::Command};
 
 #[cfg(target_os = "windows")]
 use winres::WindowsResource;
@@ -28,7 +28,7 @@ fn compile_icon() {
     res.compile().unwrap();
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     #[cfg(target_os = "windows")]
     compile_icon();
 
@@ -38,4 +38,25 @@ fn main() {
         .unwrap();
     let git_hash = String::from_utf8(output.stdout).unwrap();
     println!("cargo:rustc-env=GIT_HASH={git_hash}");
+
+    {
+        println!("cargo:rerun-if-changed=Cargo.toml");
+
+        Command::new("cargo").args(["about", "init"]).spawn()?;
+
+        let out_dir = env::var("OUT_DIR").unwrap();
+        let child = Command::new("cargo")
+            .args([
+                "about",
+                "generate",
+                "about.hbs",
+                "-o",
+                &format!("{out_dir}/license.html"),
+            ])
+            .spawn()?;
+        let exit_status = child.wait_with_output()?.status;
+        assert!(exit_status.success());
+    }
+
+    Ok(())
 }

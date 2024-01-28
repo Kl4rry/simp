@@ -1,6 +1,8 @@
+use cgmath::{EuclideanSpace, Point2};
 use egui::{Button, Slider};
 
 use super::{op_queue::Op, App};
+use crate::util::p2;
 
 impl App {
     pub fn color_ui(&mut self, ctx: &egui::Context) {
@@ -11,6 +13,8 @@ impl App {
                 .id(egui::Id::new("color window"))
                 .collapsible(false)
                 .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("color grid").show(ui, |ui| {

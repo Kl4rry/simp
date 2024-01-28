@@ -40,6 +40,8 @@ jobs:
         run: |
           rustup update ${{ matrix.rust }} --no-self-update 
           rustup default ${{ matrix.rust }}
+      - name: Install cargo about
+        run: cargo install cargo-about
       - name: Build
         run: cargo build --release
 
@@ -83,6 +85,8 @@ jobs:
         run: |
           rustup update ${{ matrix.rust }} --no-self-update 
           rustup default ${{ matrix.rust }}
+      - name: Install cargo about
+        run: cargo install cargo-about
       - name: Build
         run: cargo build --release
 
@@ -126,6 +130,8 @@ jobs:
         run: |
           rustup update ${{ matrix.rust }} --no-self-update 
           rustup default ${{ matrix.rust }}
+      - name: Install cargo about
+        run: cargo install cargo-about
       - name: Build
         run: cargo build --release
 

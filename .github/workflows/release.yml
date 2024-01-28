@@ -102,6 +102,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Rust
         run: rustup update 1.72.0 --no-self-update && rustup default 1.72.0
+      - name: Install cargo about
+        run: cargo install cargo-about
       - name: Install cargo-dist
         run: ${{ matrix.install-dist }}
       - name: Install linux deps

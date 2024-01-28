@@ -6,7 +6,7 @@ use std::{
     thread,
 };
 
-use glium::glutin::event_loop::EventLoopProxy;
+use cgmath::Vector2;
 use image::{
     imageops::{
         colorops::{contrast_in_place, huerotate_in_place},
@@ -14,12 +14,13 @@ use image::{
     },
     DynamicImage,
 };
-use rfd::MessageDialog;
+use winit::event_loop::EventLoopProxy;
 
 use self::imageops::{adjust_saturation_in_place, brighten_in_place};
 use super::{
     cache::Cache,
     clipboard,
+    dialog_manager::DialogProxy,
     image_list::ImageList,
     image_view::ImageView,
     load_image::{load_from_bytes, load_uncached},
@@ -29,7 +30,6 @@ use crate::{
     app::undo_stack::UndoStack,
     rect::Rect,
     util::{extensions::EXTENSIONS, Image, ImageData, UserEvent},
-    vec2::Vec2,
 };
 
 mod imageops;
@@ -41,7 +41,7 @@ pub enum Op {
     Next,
     Prev,
     Save(PathBuf),
-    Resize(Vec2<u32>, FilterType),
+    Resize(Vector2<u32>, FilterType),
     Color {
         hue: f32,
         saturation: f32,
@@ -98,13 +98,14 @@ pub struct OpQueue {
     working: bool,
     loading_info: Arc<Mutex<LoadingInfo>>,
     proxy: EventLoopProxy<UserEvent>,
+    dialog_proxy: DialogProxy,
     stack: UndoStack,
     pub cache: Arc<Cache>,
     pub image_list: ImageList,
 }
 
 impl OpQueue {
-    pub fn new(proxy: EventLoopProxy<UserEvent>) -> Self {
+    pub fn new(proxy: EventLoopProxy<UserEvent>, dialog_proxy: DialogProxy) -> Self {
         const CACHE_SIZE: usize = 1_000_000_000;
         let cache = Arc::new(Cache::new(CACHE_SIZE));
         let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
@@ -113,6 +114,7 @@ impl OpQueue {
             working: false,
             image_list: ImageList::new(cache.clone(), proxy.clone(), loading_info.clone()),
             loading_info,
+            dialog_proxy,
             stack: UndoStack::new(),
             proxy,
             cache,
@@ -148,6 +150,7 @@ impl OpQueue {
                     if let Some(view) = view {
                         save_image::save(
                             self.proxy.clone(),
+                            self.dialog_proxy.clone(),
                             path,
                             view.image_data.clone(),
                             view.rotation(),
@@ -181,7 +184,7 @@ impl OpQueue {
                         let guard = image_data.read().unwrap();
                         let mut new = Vec::new();
                         for image in guard.frames.iter() {
-                            let buffer = image.buffer().resize_exact(size.x(), size.y(), resample);
+                            let buffer = image.buffer().resize_exact(size.x, size.y, resample);
                             new.push(Image::with_delay(buffer, image.delay));
                         }
                         proxy.send_output(Output::Resize(new));
@@ -240,7 +243,6 @@ impl OpQueue {
                 Op::Paste => {
                     clipboard::paste(self.proxy.clone());
                 }
-                #[cfg(feature = "trash")]
                 Op::Delete(path) => match trash::delete(&path) {
                     Ok(_) => match self.image_list.trash(&path) {
                         Some(path) => {
@@ -256,10 +258,6 @@ impl OpQueue {
                             .send_event(UserEvent::ErrorMessage(error.to_string()));
                     }
                 },
-                #[cfg(not(feature = "trash"))]
-                _ => {
-                    let _ = self.proxy.send_output(Output::Done);
-                }
             }
         }
     }
@@ -287,15 +285,10 @@ impl OpQueue {
             self.cache.pop(&path_buf);
         }
 
-        let dialog = if edited_prompt {
-            Some(get_unsaved_changes_dialog())
-        } else {
-            None
-        };
-
         let cache = self.cache.clone();
         let proxy = self.proxy.clone();
         let loading_info = self.loading_info.clone();
+        let dialog_proxy = self.dialog_proxy.clone();
         thread::spawn(move || {
             let mut path = path_buf.clone();
             if path.is_dir() {
@@ -325,8 +318,29 @@ impl OpQueue {
                 }
             }
 
-            if let Some(dialog) = dialog {
-                if !dialog.show() {
+            if edited_prompt {
+                let close = dialog_proxy
+                    .spawn_dialog("Unsaved changes", move |ui| {
+                        ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                            if ui.button("Ok").clicked() {
+                                return Some(true);
+                            }
+
+                            if ui.button("Cancel").clicked() {
+                                return Some(false);
+                            }
+
+                            None
+                        })
+                        .inner
+                    })
+                    .wait()
+                    .unwrap_or(false);
+                if !close {
                     proxy.send_output(Output::Done);
                     return;
                 }
@@ -431,12 +445,4 @@ pub fn prefetch(
             guard.target_file = None;
         }
     });
-}
-
-pub fn get_unsaved_changes_dialog() -> MessageDialog {
-    rfd::MessageDialog::new()
-        .set_level(rfd::MessageLevel::Warning)
-        .set_title("Unsaved changes")
-        .set_description("You have unsaved changes are you sure you want to close this image?")
-        .set_buttons(rfd::MessageButtons::OkCancel)
 }

@@ -1,13 +1,12 @@
-use std::thread;
+use std::fs;
 
 use egui::{menu, TopBottomPanel};
-use glium::Display;
 
 use super::{load_image, new_window, op_queue::Op, save_image, App};
-use crate::util::UserEvent;
+use crate::{util::UserEvent, WgpuState};
 
 impl App {
-    pub fn menu_bar(&mut self, display: &Display, ctx: &egui::Context) {
+    pub fn menu_bar(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
         TopBottomPanel::top("top").show(ctx, |ui| {
             menu::bar(ui, |ui| {
                 menu::menu_button(ui, "File", |ui| {
@@ -15,12 +14,12 @@ impl App {
                         .add(egui::Button::new("Open").shortcut_text("Ctrl + O"))
                         .clicked()
                     {
-                        load_image::open(self.proxy.clone(), display, false);
+                        load_image::open(self.proxy.clone(), wgpu, false);
                         ui.close_menu();
                     }
 
                     if ui.add(egui::Button::new("Open folder")).clicked() {
-                        load_image::open(self.proxy.clone(), display, true);
+                        load_image::open(self.proxy.clone(), wgpu, true);
                         ui.close_menu();
                     }
 
@@ -31,11 +30,7 @@ impl App {
                         )
                         .clicked()
                     {
-                        save_image::open(
-                            self.current_filename.clone(),
-                            self.proxy.clone(),
-                            display,
-                        );
+                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu);
                         ui.close_menu();
                     }
 
@@ -56,11 +51,7 @@ impl App {
                         )
                         .clicked()
                     {
-                        save_image::open(
-                            self.current_filename.clone(),
-                            self.proxy.clone(),
-                            display,
-                        );
+                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu);
                         ui.close_menu();
                     }
 
@@ -203,7 +194,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            egui::Button::new("Best fit").shortcut_text("B"),
+                            egui::Button::new("Best fit").shortcut_text("Ctrl + B"),
                         )
                         .clicked()
                     {
@@ -214,7 +205,7 @@ impl App {
                     if ui
                         .add_enabled(
                             self.image_view.is_some(),
-                            egui::Button::new("Largest fit").shortcut_text("M"),
+                            egui::Button::new("Largest fit").shortcut_text("Ctrl + L"),
                         )
                         .clicked()
                     {
@@ -276,23 +267,24 @@ impl App {
                         ui.close_menu();
                     }
 
-                    #[cfg(feature = "trash")]
+                    ui.separator();
+                    if ui
+                        .add_enabled(
+                            self.image_view.is_some(),
+                            egui::Button::new("Delete").shortcut_text("Delete"),
+                        )
+                        .clicked()
                     {
-                        ui.separator();
-                        if ui
-                            .add_enabled(
-                                self.image_view.is_some(),
-                                egui::Button::new("Delete").shortcut_text("Delete"),
-                            )
-                            .clicked()
-                        {
-                            if let Some(ref view) = self.image_view {
-                                if let Some(ref path) = view.path {
-                                    super::delete(path.clone(), self.proxy.clone(), display);
-                                }
+                        if let Some(ref view) = self.image_view {
+                            if let Some(ref path) = view.path {
+                                super::delete(
+                                    path.clone(),
+                                    self.dialog_manager.get_proxy(),
+                                    self.proxy.clone(),
+                                );
                             }
-                            ui.close_menu();
                         }
+                        ui.close_menu();
                     }
                 });
 
@@ -317,27 +309,51 @@ impl App {
                         ui.close_menu();
                     }
 
+                    ui.separator();
+
+                    if ui.add(egui::Button::new("Third-party Software")).clicked() {
+                        if let Err(err) = open_licenes() {
+                            let _ = self
+                                .proxy
+                                .send_event(UserEvent::ErrorMessage(err.to_string()));
+                        }
+                    }
+
                     if ui.add(egui::Button::new("About")).clicked() {
+                        let info = wgpu.adapter.get_info();
+
                         let about = format!(
-                            "{}\n{}\n{}\n{}",
+                            "{}\n{}\n{}\n{}\n{}",
                             env!("CARGO_PKG_NAME"),
                             env!("CARGO_PKG_DESCRIPTION"),
                             &format!("Version: {}", env!("CARGO_PKG_VERSION")),
                             &format!("Commit: {}", env!("GIT_HASH")),
+                            &format!("GPU backend: {:?}", info.backend),
                         );
 
-                        let dialog = rfd::MessageDialog::new()
-                            .set_parent(display.gl_window().window())
-                            .set_level(rfd::MessageLevel::Info)
-                            .set_title("About")
-                            .set_description(&about)
-                            .set_buttons(rfd::MessageButtons::Ok);
+                        self.dialog_manager.get_proxy().spawn_dialog(
+                            "About",
+                            move |ui| -> Option<()> {
+                                ui.label(&about);
 
-                        thread::spawn(move || dialog.show());
+                                ui.button("Ok").clicked().then_some(())
+                            },
+                        );
+
                         ui.close_menu();
                     }
                 });
             })
         });
     }
+}
+
+fn open_licenes() -> Result<(), std::io::Error> {
+    let licenses = include_str!(concat!(env!("OUT_DIR"), "/license.html"));
+    let temp = std::env::temp_dir();
+    let name = env!("CARGO_BIN_NAME");
+    fs::create_dir_all(temp.join(name))?;
+    let license_file = temp.join(name).join("license.html");
+    fs::write(&license_file, licenses.as_bytes())?;
+    webbrowser::open(&license_file.to_string_lossy())
 }

@@ -8,7 +8,7 @@ use image::{
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
-use resvg::usvg::{Options, Tree, TreeParsing, TreeTextToPath};
+use resvg::usvg::{Options, Tree, TreeParsing, TreePostProc};
 
 use crate::{app::preferences::PREFERENCES, util::Image};
 
@@ -132,9 +132,13 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let Ok(mut tree) = Tree::from_data(bytes, &options) else {
         return None;
     };
-    tree.convert_text(&fontdb);
-    let rtree = resvg::Tree::from_usvg(&tree);
-    let size = rtree.size.to_int_size();
+    tree.postprocess(
+        resvg::usvg::PostProcessingSteps {
+            convert_text_into_paths: true,
+        },
+        &fontdb,
+    );
+    let size = tree.size.to_int_size();
 
     let min_size = PREFERENCES.lock().unwrap().min_svg_size.max(100);
     let smaller_axis = size.width().min(size.height());
@@ -146,12 +150,12 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     };
 
     let transform = resvg::tiny_skia::Transform::from_scale(
-        size.width() as f32 / rtree.size.width(),
-        size.height() as f32 / rtree.size.height(),
+        size.width() as f32 / tree.size.width(),
+        size.height() as f32 / tree.size.height(),
     );
 
     let mut pix_map = resvg::tiny_skia::Pixmap::new(size.width(), size.height()).unwrap();
-    rtree.render(transform, &mut pix_map.as_mut());
+    resvg::render(&tree, transform, &mut pix_map.as_mut());
 
     let width = pix_map.width();
     let height = pix_map.height();

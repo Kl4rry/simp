@@ -4,12 +4,13 @@ use std::{
     thread,
 };
 
-use glium::{glutin::event_loop::EventLoopProxy, Display};
 use rexif::ExifTag;
+use winit::event_loop::EventLoopProxy;
 
 use crate::{
     image_io::load::*,
     util::{extensions::*, ImageData, UserEvent},
+    WgpuState,
 };
 
 #[derive(Debug)]
@@ -44,11 +45,11 @@ impl From<std::io::Error> for LoadError {
     }
 }
 
-pub fn open(proxy: EventLoopProxy<UserEvent>, display: &Display, folder: bool) {
+pub fn open(proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState, folder: bool) {
     let ext: Vec<_> = EXTENSIONS.iter().copied().collect();
     let raw: Vec<_> = RAW.iter().copied().collect();
     let dialog = rfd::FileDialog::new()
-        .set_parent(display.gl_window().window())
+        .set_parent(&wgpu.window)
         .add_filter("All", &ext)
         .add_filter("png", &["png", "apng"])
         .add_filter("svg", &["svg"])
