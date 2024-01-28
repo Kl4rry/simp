@@ -2,7 +2,9 @@
 #![warn(clippy::all)]
 
 use std::{
-    env, fs, iter, panic,
+    env, fs,
+    io::{self, IsTerminal, Read},
+    iter, panic,
     path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
@@ -434,9 +436,8 @@ fn main() {
     let path: Option<&String> = matches.get_one("FILE");
 
     let mut buffer = Vec::new();
-    if !atty::is(atty::Stream::Stdin) {
-        use std::io::{stdin, Read};
-        let _ = stdin().read_to_end(&mut buffer);
+    if !io::stdin().is_terminal() {
+        let _ = io::stdin().read_to_end(&mut buffer);
     }
 
     let mut window_handler = pollster::block_on(WindowHandler::new());
