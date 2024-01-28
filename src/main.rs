@@ -206,7 +206,7 @@ impl WindowHandler {
             mut wgpu,
         } = self;
 
-        event_loop
+        let _ = event_loop
             .run(move |event, event_loop| match event {
                 Event::Resumed => wgpu.window.set_visible(true),
                 Event::WindowEvent { event, .. } => match event {
@@ -404,11 +404,11 @@ impl WindowHandler {
                         preferences: PREFERENCES.lock().unwrap().clone(),
                     };
                     confy::store("simp", None, data).unwrap();
+                    std::process::exit(0);
                 }
                 Event::UserEvent(mut event) => app.handle_user_event(&wgpu, &mut event),
                 _ => (),
-            })
-            .unwrap();
+            });
     }
 }
 
