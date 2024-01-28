@@ -156,7 +156,6 @@ void main() {
 
     vec3 check_color = getCheckColor();
     color.rgb = check_color * (1 - p.a) + p.a * p.rgb;
-    color.rgb = p.rgb;
     color.rgb = inverseGamma(color.rgb, 2.2);
     color.a = 1;
 }
