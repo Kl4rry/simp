@@ -619,7 +619,7 @@ impl App {
                 }
 
                 self.zoom(
-                    input.scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
+                    input.raw_scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
                     self.mouse_position,
                 );
 

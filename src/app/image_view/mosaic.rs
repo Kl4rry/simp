@@ -58,7 +58,6 @@ impl Mosaic {
                     let texture = if tile_height == 1 && tile_width == 1 {
                         texture::Texture::from_image(
                             &mut encoder,
-                            &wgpu.adapter,
                             &wgpu.device,
                             &wgpu.queue,
                             image,
@@ -69,7 +68,6 @@ impl Mosaic {
                             get_tile(image, start_x, start_y, end_x - start_x, end_y - start_y);
                         texture::Texture::from_image(
                             &mut encoder,
-                            &wgpu.adapter,
                             &wgpu.device,
                             &wgpu.queue,
                             &sub_image,

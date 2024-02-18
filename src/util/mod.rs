@@ -143,35 +143,6 @@ impl HasAlpha for DynamicImage {
     }
 }
 
-pub enum ColorBits {
-    U16,
-    U8,
-    F32,
-}
-
-pub trait GetColorBits {
-    fn get_color_bits(&self) -> ColorBits;
-}
-
-impl GetColorBits for DynamicImage {
-    fn get_color_bits(&self) -> ColorBits {
-        use ColorBits::*;
-        match self {
-            DynamicImage::ImageLuma8(_) => U8,
-            DynamicImage::ImageLumaA8(_) => U8,
-            DynamicImage::ImageRgb8(_) => U8,
-            DynamicImage::ImageRgba8(_) => U8,
-            DynamicImage::ImageLuma16(_) => U16,
-            DynamicImage::ImageLumaA16(_) => U16,
-            DynamicImage::ImageRgb16(_) => U16,
-            DynamicImage::ImageRgba16(_) => U16,
-            DynamicImage::ImageRgb32F(_) => F32,
-            DynamicImage::ImageRgba32F(_) => F32,
-            _ => panic!("Unknown color space name. This is a bug."),
-        }
-    }
-}
-
 impl<T: Primitive> HasAlpha for ImageBuffer<Luma<T>, Vec<T>> {
     fn has_alpha(&self) -> bool {
         false

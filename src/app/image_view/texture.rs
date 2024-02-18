@@ -21,20 +21,13 @@ fn to_u8<T: Copy + bytemuck::Pod>(input: Vec<T>) -> Vec<u8> {
 impl Texture {
     pub fn from_image(
         command_encoder: &mut wgpu::CommandEncoder,
-        adapter: &wgpu::Adapter,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
         label: Option<&str>,
     ) -> Self {
         let (width, height) = img.dimensions();
-
-        // A bug in wgpu makes mipmaps broken on GL backend
-        let mip_level_count = if adapter.get_info().backend == wgpu::Backend::Gl {
-            1
-        } else {
-            (cmp::max(width, height).ilog2() + 1).min(10)
-        };
+        let mip_level_count = (cmp::max(width, height).ilog2() + 1).min(10);
 
         #[rustfmt::skip]
         let (bytes_per_pixel, format, bytes):  (_, _, Cow<[u8]>) = match img {
