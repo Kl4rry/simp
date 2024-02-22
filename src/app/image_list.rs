@@ -7,6 +7,7 @@ use std::{
     thread,
 };
 
+use lexical_sort::PathSort;
 use winit::event_loop::EventLoopProxy;
 
 use super::op_queue::{prefetch, LoadingInfo};
@@ -98,7 +99,7 @@ impl ImageList {
                 }
             }
 
-            list.sort();
+            list.path_sort(lexical_sort::natural_lexical_cmp);
             list.dedup();
 
             for (index, path) in list.iter().enumerate() {
