@@ -81,8 +81,10 @@ impl<'a> WindowHandler<'a> {
 
         let mut backends = if cfg!(windows) {
             wgpu::Backends::DX12
-        } else {
+        } else if cfg!(macos) {
             wgpu::Backends::PRIMARY
+        } else {
+            wgpu::Backends::PRIMARY | wgpu::Backends::SECONDARY
         };
 
         if let Ok(gpu_backend) = env::var("SIMP_GPU_BACKEND") {
@@ -105,7 +107,7 @@ impl<'a> WindowHandler<'a> {
                 force_fallback_adapter: false,
             })
             .await
-            .unwrap();
+            .expect("Unable to create adapter");
 
         let limits = wgpu::Limits::default();
         let (device, queue) = adapter
