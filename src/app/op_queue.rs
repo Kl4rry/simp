@@ -175,7 +175,47 @@ impl OpQueue {
                     self.proxy.send_output(Output::Redo);
                 }
                 Op::Close => {
-                    self.proxy.send_output(Output::Close);
+                    let proxy = self.proxy.clone();
+                    let dialog_proxy = self.dialog_proxy.clone();
+                    if self.stack.is_edited() {
+                        thread::spawn(move || {
+                            let close = dialog_proxy
+                                .spawn_dialog("Unsaved changes", move |ui, enter| {
+                                    ui.label(
+                            "You have unsaved changes are you sure you want to close this image?",
+                        );
+                                    ui.with_layout(
+                                        egui::Layout::left_to_right(egui::Align::LEFT),
+                                        |ui| {
+                                            if ui.button("Ok").clicked() {
+                                                return Some(true);
+                                            }
+
+                                            if ui.button("Cancel").clicked() {
+                                                return Some(false);
+                                            }
+
+                                            if *enter {
+                                                *enter = false;
+                                                return Some(true);
+                                            }
+
+                                            None
+                                        },
+                                    )
+                                    .inner
+                                })
+                                .wait()
+                                .unwrap_or(false);
+                            if close {
+                                proxy.send_output(Output::Close);
+                            } else {
+                                proxy.send_output(Output::Done);
+                            }
+                        });
+                    } else {
+                        proxy.send_output(Output::Close);
+                    }
                 }
                 Op::Resize(size, resample) => {
                     let image_data = view.as_ref().unwrap().image_data.clone();

@@ -95,6 +95,7 @@ pub enum UserEvent {
     QueueSave(PathBuf),
     QueueDelete(PathBuf),
     Output(Option<Output>),
+    LoadBytes(Vec<u8>),
     RepaintRequest(egui::RequestRepaintInfo),
     Wake,
     Exit,

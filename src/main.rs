@@ -7,6 +7,7 @@ use std::{
     iter, panic,
     path::PathBuf,
     sync::{Arc, Mutex},
+    thread,
     time::Duration,
 };
 
@@ -414,7 +415,7 @@ impl WindowHandler<'_> {
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
         let dirs = directories::UserDirs::new();
-        let mut path = PathBuf::from("/panic.txt");
+        let mut path = PathBuf::from("panic.txt");
         if let Some(dirs) = dirs {
             if let Some(desktop) = dirs.desktop_dir() {
                 path = desktop.to_path_buf().join("panic.txt");
@@ -434,16 +435,18 @@ fn main() {
 
     let path: Option<&String> = matches.get_one("FILE");
 
-    let mut buffer = Vec::new();
-    if !io::stdin().is_terminal() {
-        let _ = io::stdin().read_to_end(&mut buffer);
-    }
-
     let mut window_handler = pollster::block_on(WindowHandler::new());
 
-    if !buffer.is_empty() {
-        window_handler.app.queue(Op::LoadBytes(buffer));
-    } else if let Some(path) = path {
+    if !io::stdin().is_terminal() {
+        let proxy = window_handler.proxy.clone();
+        thread::spawn(move || {
+            let mut buffer = Vec::new();
+            let _ = io::stdin().read_to_end(&mut buffer);
+            let _ = proxy.send_event(UserEvent::LoadBytes(buffer));
+        });
+    }
+
+    if let Some(path) = path {
         window_handler
             .app
             .queue(Op::LoadPath(PathBuf::from(path), true))

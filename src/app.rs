@@ -233,41 +233,11 @@ impl App {
                 }
             }
             Output::Close => {
-                let close = self
-                    .dialog_manager
-                    .get_proxy()
-                    .spawn_dialog("Unsaved changes", move |ui, enter| {
-                        ui.label(
-                            "You have unsaved changes are you sure you want to close this image?",
-                        );
-                        ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
-                            if ui.button("Ok").clicked() {
-                                return Some(true);
-                            }
-
-                            if ui.button("Cancel").clicked() {
-                                return Some(false);
-                            }
-
-                            if *enter {
-                                *enter = false;
-                                return Some(true);
-                            }
-
-                            None
-                        })
-                        .inner
-                    })
-                    .wait()
-                    .unwrap_or(false);
-
-                if close {
-                    self.image_view = None;
-                    stack.clear();
-                    self.op_queue.image_list.clear();
-                    self.op_queue.cache.clear();
-                    wgpu.window.set_title("Simp");
-                }
+                self.image_view = None;
+                stack.clear();
+                self.op_queue.image_list.clear();
+                self.op_queue.cache.clear();
+                wgpu.window.set_title("Simp");
             }
             Output::Saved => {
                 stack.set_saved();
@@ -279,6 +249,9 @@ impl App {
 
     pub fn handle_user_event(&mut self, wgpu: &WgpuState, event: &mut UserEvent) {
         match event {
+            UserEvent::LoadBytes(bytes) => {
+                self.queue(Op::LoadBytes(mem::take(bytes)));
+            }
             UserEvent::QueueLoad(path) => {
                 self.queue(Op::LoadPath(path.to_path_buf(), false));
             }
