@@ -442,7 +442,9 @@ fn main() {
         thread::spawn(move || {
             let mut buffer = Vec::new();
             let _ = io::stdin().read_to_end(&mut buffer);
-            let _ = proxy.send_event(UserEvent::LoadBytes(buffer));
+            if !buffer.is_empty() {
+                let _ = proxy.send_event(UserEvent::LoadBytes(buffer));
+            }
         });
     }
 
