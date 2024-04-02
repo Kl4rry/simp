@@ -6,7 +6,7 @@ use std::{
 
 use image::{
     imageops::{flip_horizontal_in_place, flip_vertical_in_place},
-    ImageOutputFormat,
+    ImageFormat,
 };
 use winit::event_loop::EventLoopProxy;
 
@@ -16,7 +16,7 @@ use super::{
     preferences::PREFERENCES,
 };
 use crate::{
-    image_io::save::{exr, farbfeld, gif, save_with_format, tiff, webp, webp_animation},
+    image_io::save::{exr, farbfeld, gif, jpeg, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
     WgpuState,
 };
@@ -85,7 +85,7 @@ pub fn save(
         }
 
         let res = match ext.as_str() {
-            "png" => save_with_format(path, &frames[0], ImageOutputFormat::Png),
+            "png" => save_with_format(path, &frames[0], ImageFormat::Png),
             "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
                 let quality = match get_jpeg_quality(dialog_proxy.clone()) {
                     Some(quality) => quality,
@@ -95,10 +95,10 @@ pub fn save(
                     }
                 };
 
-                save_with_format(path, &frames[0], ImageOutputFormat::Jpeg(quality))
+                jpeg(path, &frames[0], quality)
             }
-            "ico" => save_with_format(path, &frames[0], ImageOutputFormat::Ico),
-            "tga" => save_with_format(path, &frames[0], ImageOutputFormat::Tga),
+            "ico" => save_with_format(path, &frames[0], ImageFormat::Ico),
+            "tga" => save_with_format(path, &frames[0], ImageFormat::Tga),
             "ff" | "farbfeld" => farbfeld(path, &frames[0]),
             "tiff" | "tif" => tiff(path, &frames[0]),
             "gif" => gif(path, frames),
@@ -120,7 +120,7 @@ pub fn save(
             "exr" => exr(path, &frames[0]),
             _ => {
                 path.set_extension("png");
-                save_with_format(path, &frames[0], ImageOutputFormat::Png)
+                save_with_format(path, &frames[0], ImageFormat::Png)
             }
         };
 

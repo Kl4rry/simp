@@ -66,17 +66,23 @@ impl<'a> WindowHandler<'a> {
 
         let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
         let proxy = event_loop.create_proxy();
-        let window = Arc::new(
-            WindowBuilder::new()
-                .with_title(String::from("Simp"))
-                .with_visible(false)
-                .with_min_inner_size(winit::dpi::LogicalSize::new(640f64, 400f64))
-                .with_inner_size(winit::dpi::LogicalSize::new(1100f64, 720f64))
-                .with_maximized(config.maximized)
-                .with_window_icon(Some(icon::get_icon()))
-                .build(&event_loop)
-                .unwrap(),
-        );
+
+        let builder = WindowBuilder::new()
+            .with_title(String::from("Simp"))
+            .with_visible(false)
+            .with_min_inner_size(winit::dpi::LogicalSize::new(640f64, 400f64))
+            .with_inner_size(winit::dpi::LogicalSize::new(1100f64, 720f64))
+            .with_maximized(config.maximized)
+            .with_window_icon(Some(icon::get_icon()));
+
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let builder = {
+            use winit::platform::{wayland, x11};
+            let builder = wayland::WindowBuilderExtWayland::with_name(builder, "simp", "simp");
+            x11::WindowBuilderExtX11::with_name(builder, "simp", "simp")
+        };
+
+        let window = Arc::new(builder.build(&event_loop).unwrap());
 
         let size = window.inner_size();
 

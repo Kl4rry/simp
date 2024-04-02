@@ -7,9 +7,10 @@ use std::{
 
 use image::{
     codecs::{
-        farbfeld::FarbfeldEncoder, gif::GifEncoder, openexr::OpenExrEncoder, tiff::TiffEncoder,
+        farbfeld::FarbfeldEncoder, gif::GifEncoder, jpeg::JpegEncoder, openexr::OpenExrEncoder,
+        tiff::TiffEncoder,
     },
-    EncodableLayout, Frame, GenericImageView, ImageEncoder, ImageError, ImageOutputFormat,
+    EncodableLayout, Frame, GenericImageView, ImageEncoder, ImageError, ImageFormat,
 };
 use webp_animation::prelude::*;
 
@@ -21,6 +22,7 @@ type SaveResult<T> = Result<T, SaveError>;
 pub enum SaveError {
     Image(ImageError),
     Io(std::io::Error),
+    #[allow(unused)]
     WebpAnimation(webp_animation::Error),
     LibWebp(libwebp::error::WebPSimpleError),
 }
@@ -97,7 +99,7 @@ fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
 pub fn save_with_format(
     path: impl AsRef<Path>,
     image: &Image,
-    format: ImageOutputFormat,
+    format: ImageFormat,
 ) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
@@ -127,7 +129,25 @@ pub fn tiff(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
         buffer.as_bytes(),
         buffer.width(),
         buffer.height(),
-        buffer.color(),
+        buffer.color().into(),
+    )?;
+
+    Ok(fs::rename(temp_path, path)?)
+}
+
+#[inline]
+pub fn jpeg(path: impl AsRef<Path>, image: &Image, quality: u8) -> SaveResult<()> {
+    let temp_path = get_temp_path(path.as_ref());
+    let file = open_file(&temp_path)?;
+
+    let mut encoder = JpegEncoder::new_with_quality(BufWriter::new(file), quality);
+    let buffer = image.buffer();
+
+    encoder.encode(
+        buffer.as_bytes(),
+        buffer.width(),
+        buffer.height(),
+        buffer.color().into(),
     )?;
 
     Ok(fs::rename(temp_path, path)?)
@@ -238,14 +258,14 @@ pub fn exr(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
             image.buffer().to_rgba32f().as_bytes(),
             width,
             height,
-            image::ColorType::Rgba32F,
+            image::ColorType::Rgba32F.into(),
         )?;
     } else {
         encoder.write_image(
             image.buffer().to_rgb32f().as_bytes(),
             width,
             height,
-            image::ColorType::Rgb32F,
+            image::ColorType::Rgb32F.into(),
         )?;
     }
 

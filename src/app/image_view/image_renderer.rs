@@ -10,7 +10,9 @@ use crate::WgpuState;
 
 #[derive(Copy, Clone)]
 pub struct Vertex {
+    #[allow(dead_code)]
     pub position: [f32; 2],
+    #[allow(dead_code)]
     pub tex_coords: [f32; 2],
 }
 

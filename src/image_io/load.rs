@@ -33,7 +33,7 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
 
     match format {
         ImageFormat::Gif => {
-            if let Ok(decoder) = GifDecoder::new(bytes) {
+            if let Ok(decoder) = GifDecoder::new(Cursor::new(bytes)) {
                 return Some(decode_images(decoder.into_frames()));
             }
             None
@@ -70,9 +70,9 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
             None
         }
         ImageFormat::Png => {
-            if let Ok(decoder) = PngDecoder::new(bytes) {
-                if decoder.is_apng() {
-                    return Some(decode_images(decoder.apng().into_frames()));
+            if let Ok(decoder) = PngDecoder::new(Cursor::new(bytes)) {
+                if decoder.is_apng().unwrap_or(false) {
+                    return Some(decode_images(decoder.apng().ok()?.into_frames()));
                 } else if let Ok(image) = DynamicImage::from_decoder(decoder) {
                     return Some(vec![Image::new(image)]);
                 }
