@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp, mem};
+use std::{borrow::Cow, cmp};
 
 use image::GenericImageView;
 
@@ -10,13 +10,14 @@ pub struct Texture {
     pub diffuse_bind_group: wgpu::BindGroup,
 }
 
-fn to_u8<T: Copy + bytemuck::Pod>(input: Vec<T>) -> Vec<u8> {
+/*fn to_u8<T: Copy + bytemuck::Pod>(input: Vec<T>) -> Vec<u8> {
+    use std::mem;
     let cap = input.capacity() * mem::size_of::<T>();
     let len = input.len() * mem::size_of::<T>();
     let ptr = input.as_ptr() as *mut u8;
     mem::forget(input);
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
-}
+}*/
 
 impl Texture {
     pub fn from_image(
@@ -29,20 +30,27 @@ impl Texture {
         let (width, height) = img.dimensions();
         let mip_level_count = (cmp::max(width, height).ilog2() + 1).min(10);
 
-        #[rustfmt::skip]
+        // TODO maybe reenable this sometime
+        /*#[rustfmt::skip]
         let (bytes_per_pixel, format, bytes):  (_, _, Cow<[u8]>) = match img {
             image::DynamicImage::ImageLuma8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageLumaA8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgb8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
             image::DynamicImage::ImageRgba8(_) => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.as_bytes().into()),
-            image::DynamicImage::ImageLuma16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
-            image::DynamicImage::ImageLumaA16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
-            image::DynamicImage::ImageRgb16(_) => (8, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
-            image::DynamicImage::ImageRgba16(_) => (8, wgpu::TextureFormat::Rgba32Float, img.as_bytes().into()),
+            image::DynamicImage::ImageLuma16(_) => (16, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageLumaA16(_) => (16, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageRgb16(_) => (16, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
+            image::DynamicImage::ImageRgba16(_) => (16, wgpu::TextureFormat::Rgba32Float, img.as_bytes().into()),
             image::DynamicImage::ImageRgb32F(_) => (16, wgpu::TextureFormat::Rgba32Float, to_u8(img.to_rgba32f().into_raw()).into()),
             image::DynamicImage::ImageRgba32F(_) => (16, wgpu::TextureFormat::Rgba32Float, img.as_bytes().into()),
             _ => (4, wgpu::TextureFormat::Rgba8UnormSrgb, img.to_rgba8().into_raw().into()),
-        };
+        };*/
+
+        let (bytes_per_pixel, format, bytes): (_, _, Cow<[u8]>) = (
+            4,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            img.to_rgba8().into_raw().into(),
+        );
 
         let size = wgpu::Extent3d {
             width,
