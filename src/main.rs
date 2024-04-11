@@ -34,7 +34,7 @@ use winit::{
 mod image_io;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-struct Config {
+pub struct Config {
     maximized: bool,
     preferences: Preferences,
 }
@@ -207,7 +207,7 @@ impl<'a> WindowHandler<'a> {
 }
 
 impl WindowHandler<'_> {
-    pub fn main_loop(mut self) {
+    pub fn main_loop(mut self) -> Config {
         let WindowHandler {
             event_loop,
             mut app,
@@ -217,6 +217,9 @@ impl WindowHandler<'_> {
             ref mut egui_shapes,
             mut wgpu,
         } = self;
+
+        let mut config = Config::default();
+        let config_ref = &mut config;
 
         let _ = event_loop.run(move |event, event_loop| match event {
             Event::Resumed => wgpu.window.set_visible(true),
@@ -405,16 +408,17 @@ impl WindowHandler<'_> {
             },
             Event::LoopExiting => {
                 wgpu.window.set_visible(false);
-                let data = Config {
-                    maximized: wgpu.window.is_maximized(),
+                let maximized = wgpu.window.is_maximized();
+                *config_ref = Config {
+                    maximized,
                     preferences: PREFERENCES.lock().unwrap().clone(),
                 };
-                confy::store("simp", None, data).unwrap();
-                std::process::exit(0);
             }
             Event::UserEvent(mut event) => app.handle_user_event(&wgpu, &mut event),
             _ => (),
         });
+
+        config
     }
 }
 
@@ -460,5 +464,8 @@ fn main() {
             .queue(Op::LoadPath(PathBuf::from(path), true))
     }
 
-    window_handler.main_loop();
+    let config = window_handler.main_loop();
+    if let Err(err) = confy::store("simp", None, config) {
+        eprintln!("{err}");
+    };
 }
