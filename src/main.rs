@@ -91,7 +91,7 @@ impl<'a> WindowHandler<'a> {
         } else if cfg!(macos) {
             wgpu::Backends::PRIMARY
         } else {
-            wgpu::Backends::PRIMARY | wgpu::Backends::SECONDARY
+            wgpu::Backends::all()
         };
 
         if let Ok(gpu_backend) = env::var("SIMP_GPU_BACKEND") {
