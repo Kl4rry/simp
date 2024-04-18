@@ -172,6 +172,10 @@ impl<'a> WindowHandler<'a> {
                 });
         }
 
+        egui_winit.egui_ctx().style_mut(|style| {
+            style.spacing.slider_width = 200.0;
+        });
+
         let wgpu = WgpuState {
             window: window.clone(),
             adapter,
