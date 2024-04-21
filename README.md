@@ -82,19 +82,19 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Previous image | A or Left arrow      |
 | Next image     | D or Right arrow     |
 
-## System dependencies
-
-System dependencies are only required at compile time.
+## Runtime dependencies
 
 ### dav1d
 
-The dav1d library is required to be installed to build with AVIF support.
-
-### Cargo about
-
-`cargo about` is needed to install simp.
+The dav1d library is required for AVIF support.
 ```shell
-cargo install cargo-about
+pacman -S dav1d
+```
+
+## Build dependencies
+
+```shell
+pacman -S rust cargo-about nasm clang
 ```
 
 ## Installation
@@ -107,7 +107,7 @@ cargo install simp --locked
 
 ### Arch
 ```shell
-yay -S simp
+paru -S simp
 ```
 
 ### NetBSD
