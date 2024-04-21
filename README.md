@@ -94,7 +94,7 @@ pacman -S dav1d
 ## Build dependencies
 
 ```shell
-pacman -S rust cargo-about nasm clang
+pacman -S git rust cargo-about nasm clang
 ```
 
 ## Installation
