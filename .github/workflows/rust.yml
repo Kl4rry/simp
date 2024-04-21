@@ -34,7 +34,7 @@ jobs:
             ${{ runner.os }}-stable-debug-target-
 
       - name: Install system deps
-        run: sudo snap install dav1d && sudo apt-get update
+        run: sudo snap install dav1d
 
       - name: Install Rust
         run: |

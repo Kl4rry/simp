@@ -86,12 +86,6 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 System dependencies are only required at compile time.
 
-### Linux
-
-```shell
-sudo apt-get install libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
-```
-
 ### dav1d
 
 The dav1d library is required to be installed to build with AVIF support.
