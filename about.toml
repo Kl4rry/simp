@@ -15,4 +15,5 @@ accepted = [
     "LGPL-2.1",
     "LGPL-3.0",
     "Apache-2.0 WITH LLVM-exception",
+    "GPL-3.0",
 ]

@@ -93,9 +93,12 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
         load_psd,
         load_raster,
         load_un_detectable_raster,
+        load_jxl,
     ];
 
-    if RASTER.contains(&*extension) {
+    if extension == "jxl" {
+        loaders.swap(0, 5);
+    } else if RASTER.contains(&*extension) {
         loaders.swap(0, 3);
     } else if VECTOR.contains(&*extension) {
         loaders.swap(0, 1);

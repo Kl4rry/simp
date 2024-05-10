@@ -194,3 +194,22 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
     let image = image::DynamicImage::ImageRgb16(image?);
     Some(vec![Image::new(image)])
 }
+
+pub fn load_jxl(bytes: &[u8]) -> Option<Vec<Image>> {
+    #[cfg(feature = "jxl")]
+    {
+        use jpegxl_rs::image::ToDynamic;
+        let decoder = jpegxl_rs::decoder_builder()
+            .unpremul_alpha(true)
+            .build()
+            .ok()?;
+        let image = decoder.decode_to_image(&bytes).ok()??;
+        Some(vec![Image::new(image)])
+    }
+
+    #[cfg(not(feature = "jxl"))]
+    {
+        let _ = bytes;
+        None
+    }
+}

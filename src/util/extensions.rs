@@ -9,7 +9,7 @@ fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
 pub static RASTER: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     create_set(&[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
-        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr",
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "jxl",
     ])
 });
 

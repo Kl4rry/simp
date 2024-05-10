@@ -21,40 +21,41 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Supported Platforms
 
-| OS      | Support                                                                       |
-| ------- | ----------------------------------------------------------------------------- |
-| Windows | Primary development platform and the most well tested.                        |
-| Linux   | Aur package is tested on wayland.                                             |
-| MacOS   | MacOS compiles but is not well tested.                                        |
-| NetBSD  | Native package available.                                                     |
+| OS      | Support                                                |
+| ------- | ------------------------------------------------------ |
+| Windows | Primary development platform and the most well tested. |
+| Linux   | Aur package is tested on wayland.                      |
+| MacOS   | MacOS compiles but is not well tested.                 |
+| NetBSD  | Native package available.                              |
 
 ## Supported Codecs
 
-| Format    | Decoding                                                              | Encoding                                |
-| --------- | --------------------------------------------------------------------- | --------------------------------------- |
-| PNG       | ✅                                                                    | ✅                                      |
-| JPEG      | ✅ Baseline and progressive                                           | ✅ Baseline                             |
-| GIF       | ✅                                                                    | ✅                                      |
-| BMP       | ✅                                                                    | ✅                                      |
-| ICO       | ✅                                                                    | ✅                                      |
-| TIFF      | ✅ Baseline(no fax support) + LZW + PackBits                          | ✅                                      |
-| WebP      | ✅ Converted to Rgba8                                                 | ✅ Lossless only                        |
-| AVIF      | 🚧 Only 8-bit (1)                                                     | ❌                                      |
-| PNM       | ✅ PBM, PGM, PPM, standard PAM                                        | ❌                                      |
-| DDS       | ✅ DXT1, DXT3, DXT5                                                   | ❌                                      |
-| TGA       | ✅                                                                    | ✅                                      |
-| farbfeld  | ✅                                                                    | ✅                                      |
-| SVG       | ✅ (2)                                                                | ❌                                      |
-| PSD       | ✅                                                                    | ❌                                      |
-| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌                                      |
-| HEIF/HEIC | ❌ (4)                                                                | ❌                                      |
-| JPEG XL   | ❌                                                                    | ❌                                      |
-| OpenEXR   | ✅ Rgb32F, Rgba32F (no dwa compression)                               | ✅ Rgb32F, Rgba32F (no dwa compression) |
+| Format    | Decoding                                                             | Encoding        |
+| --------- | -------------------------------------------------------------------- | --------------- |
+| PNG       | ✅                                                                    | ✅               |
+| JPEG      | ✅ Baseline and progressive                                           | ✅ Baseline      |
+| GIF       | ✅                                                                    | ✅               |
+| BMP       | ✅                                                                    | ✅               |
+| ICO       | ✅                                                                    | ✅               |
+| TIFF      | ✅                                                                    | ✅               |
+| WebP      | ✅ Converted to Rgba8                                                 | ✅ Lossless only |
+| AVIF      | 🚧 Only 8-bit (1)                                                     | ❌               |
+| PNM       | ✅                                                                    | ❌               |
+| DDS       | ✅                                                                    | ❌               |
+| TGA       | ✅                                                                    | ✅               |
+| farbfeld  | ✅                                                                    | ✅               |
+| SVG       | ✅ (2)                                                                | ❌               |
+| PSD       | ✅                                                                    | ❌               |
+| Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
+| HEIF/HEIC | ❌ (4)                                                                | ❌               |
+| JPEG XL   | ✅ (5)                                                                | ❌               |
+| OpenEXR   | ✅                                                                    | ✅               |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
 2. SVGs are rastarized because Simp is primarily a bitmap image editor.
 3. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
 4. HEIF/HEIC is not supported because it is currently very hard to link libheif on windows.
+5. JPEG XL is only works well on linux currently.
 
 ## Keybinds
 
