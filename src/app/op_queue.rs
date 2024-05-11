@@ -341,7 +341,7 @@ impl OpQueue {
                                 match path.extension() {
                                     Some(ext)
                                         if EXTENSIONS.contains(
-                                            &*ext.to_string_lossy().to_ascii_lowercase(),
+                                            &&*ext.to_string_lossy().to_ascii_lowercase(),
                                         ) =>
                                     {
                                         paths.push(path);

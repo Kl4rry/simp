@@ -1,44 +1,40 @@
-use std::collections::HashSet;
-
 use once_cell::sync::Lazy;
 
-fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
-    input.iter().cloned().collect()
-}
+pub static QOI: Lazy<&[&'static str]> = Lazy::new(|| &["qoi"]);
 
-pub static JXL: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["jxl"]));
+pub static JXL: Lazy<&[&'static str]> = Lazy::new(|| &["jxl"]);
 
-pub static HEIF: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["heif", "heic"]));
+pub static HEIF: Lazy<&[&'static str]> = Lazy::new(|| &["heif", "heic"]);
 
-pub static RASTER: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    create_set(&[
+pub static RASTER: Lazy<&[&'static str]> = Lazy::new(|| {
+    &[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
         "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr",
-    ])
+    ]
 });
 
-pub static UNDETECTABLE_RASTER: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["tga"]));
+pub static UNDETECTABLE_RASTER: Lazy<&[&'static str]> = Lazy::new(|| &["tga"]);
 
-pub static VECTOR: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["svg"]));
+pub static VECTOR: Lazy<&[&'static str]> = Lazy::new(|| &["svg"]);
 
-pub static RAW: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    create_set(&[
+pub static RAW: Lazy<&[&'static str]> = Lazy::new(|| {
+    &[
         "raw", "mrw", "arw", "srf", "sr2", "mef", "orf", "srw", "erf", "kdc", "dcs", "rw2", "raf",
         "dcr", "dng", "pef", "crw", "iiq", "3fr", "nrw", "nef", "mos", "cr2", "ari",
-    ])
+    ]
 });
 
-pub static PHOTOSHOP: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["psd"]));
+pub static PHOTOSHOP: Lazy<&[&'static str]> = Lazy::new(|| &["psd"]);
 
-pub static EXTENSIONS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    let mut set: HashSet<&'static str> = HashSet::new();
-    set.extend(RASTER.iter());
-    set.extend(VECTOR.iter());
-    set.extend(PHOTOSHOP.iter());
-    set.extend(RAW.iter());
+pub static EXTENSIONS: Lazy<Vec<&'static str>> = Lazy::new(|| {
+    let mut vec: Vec<&'static str> = Vec::new();
+    vec.extend(RASTER.iter());
+    vec.extend(VECTOR.iter());
+    vec.extend(PHOTOSHOP.iter());
+    vec.extend(RAW.iter());
     #[cfg(feature = "heif")]
-    set.extend(HEIF.iter());
+    vec.extend(HEIF.iter());
     #[cfg(feature = "jxl")]
-    set.extend(JXL.iter());
-    set
+    vec.extend(JXL.iter());
+    vec
 });

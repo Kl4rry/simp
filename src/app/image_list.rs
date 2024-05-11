@@ -89,7 +89,7 @@ impl ImageList {
                         match dir.path().extension() {
                             Some(ext)
                                 if EXTENSIONS
-                                    .contains(&*ext.to_string_lossy().to_ascii_lowercase()) =>
+                                    .contains(&&*ext.to_string_lossy().to_ascii_lowercase()) =>
                             {
                                 list.push(path)
                             }

@@ -95,19 +95,23 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
         load_un_detectable_raster,
         load_jxl,
         load_heif,
+        load_qoi,
     ];
 
-    if HEIF.contains(&*extension) {
+    if QOI.contains(&extension.as_str()) {
+        loaders.swap(0, 7);
+    }
+    if HEIF.contains(&extension.as_str()) {
         loaders.swap(0, 6);
-    } else if JXL.contains(&*extension) {
+    } else if JXL.contains(&extension.as_str()) {
         loaders.swap(0, 5);
-    } else if RASTER.contains(&*extension) {
+    } else if RASTER.contains(&extension.as_str()) {
         loaders.swap(0, 3);
-    } else if VECTOR.contains(&*extension) {
+    } else if VECTOR.contains(&extension.as_str()) {
         loaders.swap(0, 1);
-    } else if PHOTOSHOP.contains(&*extension) {
+    } else if PHOTOSHOP.contains(&extension.as_str()) {
         loaders.swap(0, 2);
-    } else if UNDETECTABLE_RASTER.contains(&*extension) {
+    } else if UNDETECTABLE_RASTER.contains(&extension.as_str()) {
         loaders.swap(0, 4);
     }
 

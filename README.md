@@ -50,6 +50,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | HEIF/HEIC | ✅ (4)                                                                | ❌               |
 | JPEG XL   | ✅ (5)                                                                | ❌               |
 | OpenEXR   | ✅                                                                    | ✅               |
+| qoi       | ✅                                                                    | ✅               |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
 2. SVGs are rastarized because Simp is primarily a bitmap image editor.

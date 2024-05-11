@@ -4,7 +4,8 @@ use fontdb::Database;
 use image::{
     codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder},
     io::Reader as ImageReader,
-    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba, RgbaImage,
+    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, RgbImage, Rgba,
+    RgbaImage,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -63,9 +64,11 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                 }
             }
             if let Ok((width, height, buf)) = libwebp::WebPDecodeRGBA(bytes) {
-                return Some(vec![Image::from(
-                    ImageBuffer::from_raw(width, height, buf.to_vec()).unwrap(),
-                )]);
+                return Some(vec![Image::from(ImageBuffer::from_raw(
+                    width,
+                    height,
+                    buf.to_vec(),
+                )?)]);
             }
             None
         }
@@ -152,9 +155,9 @@ pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
     let width = pix_map.width();
     let height = pix_map.height();
     let data = pix_map.take();
-    Some(vec![Image::from(
-        ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, data).unwrap(),
-    )])
+    Some(vec![Image::from(ImageBuffer::<Rgba<u8>, _>::from_raw(
+        width, height, data,
+    )?)])
 }
 
 pub fn load_psd(bytes: &[u8]) -> Option<Vec<Image>> {
@@ -189,9 +192,9 @@ pub fn load_raw(bytes: &[u8]) -> Option<Vec<Image>> {
         image.width as u32,
         image.height as u32,
         image.data,
-    );
+    )?;
 
-    let image = image::DynamicImage::ImageRgb16(image?);
+    let image = image::DynamicImage::ImageRgb16(image);
     Some(vec![Image::new(image)])
 }
 
@@ -244,4 +247,24 @@ pub fn load_heif(bytes: &[u8]) -> Option<Vec<Image>> {
         let _ = bytes;
         None
     }
+}
+
+pub fn load_qoi(bytes: &[u8]) -> Option<Vec<Image>> {
+    let (
+        qoi::Header {
+            width,
+            height,
+            channels,
+            //colorspace, FIXME handle linear color
+            ..
+        },
+        decoded,
+    ) = qoi::decode_to_vec(bytes).ok()?;
+    let image = match channels {
+        qoi::Channels::Rgb => DynamicImage::ImageRgb8(RgbImage::from_raw(width, height, decoded)?),
+        qoi::Channels::Rgba => {
+            DynamicImage::ImageRgba8(RgbaImage::from_raw(width, height, decoded)?)
+        }
+    };
+    Some(vec![Image::new(image)])
 }
