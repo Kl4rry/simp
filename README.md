@@ -21,12 +21,12 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 
 ## Supported Platforms
 
-| OS      | Support                                                |
-| ------- | ------------------------------------------------------ |
-| Windows | Primary development platform and the most well tested. |
-| Linux   | Aur package is tested on wayland.                      |
-| MacOS   | MacOS compiles but is not well tested.                 |
-| NetBSD  | Native package available.                              |
+| OS      | Support                                                              |
+| ------- | -------------------------------------------------------------------- |
+| Linux   | The aur package is the only platform with all image formats enabled. |
+| Windows | Windows does not have any optional formats enabled by default.       |
+| MacOS   | MacOS compiles but is not well tested.                               |
+| NetBSD  | Native package available.                                            |
 
 ## Supported Codecs
 
@@ -47,14 +47,14 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | SVG       | ✅ (2)                                                                | ❌               |
 | PSD       | ✅                                                                    | ❌               |
 | Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
-| HEIF/HEIC | ❌ (4)                                                                | ❌               |
+| HEIF/HEIC | ✅ (4)                                                                | ❌               |
 | JPEG XL   | ✅ (5)                                                                | ❌               |
 | OpenEXR   | ✅                                                                    | ✅               |
 
 1. Building with AVIF support requires the C library dav1d and is therefore not enabled by default.
 2. SVGs are rastarized because Simp is primarily a bitmap image editor.
 3. Most common cameras are supported but the colors may look weird because the standard curve may not fit all images.
-4. HEIF/HEIC is not supported because it is currently very hard to link libheif on windows.
+4. HEIF/HEIC is only enabled on linux by default.
 5. JPEG XL is only works well on linux currently.
 
 ## Keybinds
@@ -84,12 +84,9 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | Next image     | D or Right arrow     |
 
 ## Runtime dependencies
-
-### dav1d
-
-The dav1d library is required for AVIF support.
+The dav1d library is required for AVIF support and libheif is required for heif/heic support.
 ```shell
-pacman -S dav1d
+pacman -S dav1d libheif
 ```
 
 ## Build dependencies

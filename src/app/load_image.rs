@@ -94,9 +94,12 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
         load_raster,
         load_un_detectable_raster,
         load_jxl,
+        load_heif,
     ];
 
-    if extension == "jxl" {
+    if HEIF.contains(&*extension) {
+        loaders.swap(0, 6);
+    } else if JXL.contains(&*extension) {
         loaders.swap(0, 5);
     } else if RASTER.contains(&*extension) {
         loaders.swap(0, 3);

@@ -33,8 +33,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-stable-debug-target-
 
-      - name: Install system deps
+      - name: Install snap deps
         run: sudo snap install dav1d
+      
+      - name: Install apt deps
+        run: sudo apt update && sudo apt install libheif-dev
 
       - name: Install Rust
         run: |

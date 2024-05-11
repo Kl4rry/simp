@@ -6,10 +6,14 @@ fn create_set(input: &[&'static str]) -> HashSet<&'static str> {
     input.iter().cloned().collect()
 }
 
+pub static JXL: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["jxl"]));
+
+pub static HEIF: Lazy<HashSet<&'static str>> = Lazy::new(|| create_set(&["heif", "heic"]));
+
 pub static RASTER: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     create_set(&[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
-        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "jxl",
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr",
     ])
 });
 
@@ -32,5 +36,9 @@ pub static EXTENSIONS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     set.extend(VECTOR.iter());
     set.extend(PHOTOSHOP.iter());
     set.extend(RAW.iter());
+    #[cfg(feature = "heif")]
+    set.extend(HEIF.iter());
+    #[cfg(feature = "jxl")]
+    set.extend(JXL.iter());
     set
 });

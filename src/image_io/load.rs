@@ -4,7 +4,7 @@ use fontdb::Database;
 use image::{
     codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder},
     io::Reader as ImageReader,
-    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
+    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba, RgbaImage,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -208,6 +208,38 @@ pub fn load_jxl(bytes: &[u8]) -> Option<Vec<Image>> {
     }
 
     #[cfg(not(feature = "jxl"))]
+    {
+        let _ = bytes;
+        None
+    }
+}
+
+pub fn load_heif(bytes: &[u8]) -> Option<Vec<Image>> {
+    #[cfg(feature = "heif")]
+    {
+        use libheif_rs::{ColorSpace, DecodingOptions, HeifContext, LibHeif, RgbChroma};
+        let lib_heif = LibHeif::new();
+        let ctx = HeifContext::read_from_bytes(bytes).ok()?;
+        let handle = ctx.primary_image_handle().ok()?;
+        let image = lib_heif
+            .decode(
+                &handle,
+                ColorSpace::Rgb(RgbChroma::Rgba),
+                DecodingOptions::new().map(|mut o| {
+                    o.set_convert_hdr_to_8bit(true);
+                    o
+                }),
+            )
+            .ok()?;
+        let planes = image.planes();
+        let interleaved_plane = planes.interleaved?;
+        let raw = interleaved_plane.data.to_vec();
+        let rgba_image =
+            RgbaImage::from_raw(interleaved_plane.width, interleaved_plane.height, raw)?;
+        Some(vec![Image::new(DynamicImage::ImageRgba8(rgba_image))])
+    }
+
+    #[cfg(not(feature = "heif"))]
     {
         let _ = bytes;
         None
