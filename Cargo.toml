@@ -86,7 +86,7 @@ inherits = "release"
 lto = "thin"
 
 [features]
-default = ["heif"]
+default = []
 avif = ["image/avif-native"]
 jxl = ["dep:jpegxl-rs"]
 heif = ["dep:libheif-rs"]
