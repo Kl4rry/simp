@@ -16,7 +16,7 @@ use super::{
     preferences::PREFERENCES,
 };
 use crate::{
-    image_io::save::{exr, farbfeld, gif, jpeg, save_with_format, tiff, webp, webp_animation},
+    image_io::save::{exr, farbfeld, gif, jpeg, qoi, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
     WgpuState,
 };
@@ -34,6 +34,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
         .add_filter("WEBP", &["webp"])
         .add_filter("farbfeld", &["ff", "farbfeld"])
         .add_filter("TGA", &["tga"])
+        .add_filter("QOI", &["qoi"])
         .add_filter("EXR", &["exr"]);
 
     thread::spawn(move || {
@@ -118,6 +119,7 @@ pub fn save(
                 }
             }
             "exr" => exr(path, &frames[0]),
+            "qoi" => qoi(path, &frames[0]),
             _ => {
                 path.set_extension("png");
                 save_with_format(path, &frames[0], ImageFormat::Png)
