@@ -219,6 +219,7 @@ pub fn load_jxl(bytes: &[u8]) -> Option<Vec<Image>> {
 pub fn load_heif(bytes: &[u8]) -> Option<Vec<Image>> {
     #[cfg(feature = "heif")]
     {
+        use image::RgbaImage;
         use libheif_rs::{ColorSpace, DecodingOptions, HeifContext, LibHeif, RgbChroma};
         let lib_heif = LibHeif::new();
         let ctx = HeifContext::read_from_bytes(bytes).ok()?;

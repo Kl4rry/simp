@@ -7,7 +7,7 @@ pub static HEIF: Lazy<&[&'static str]> = Lazy::new(|| &["heif", "heic"]);
 pub static RASTER: Lazy<&[&'static str]> = Lazy::new(|| {
     &[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
-        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "qoi",
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "qoi", "hdr",
     ]
 });
 
