@@ -1,7 +1,8 @@
 use cgmath::{EuclideanSpace, Point2};
 use egui::{Button, Slider};
+use image::ColorType;
 
-use super::{op_queue::Op, App};
+use super::{color_type_to_str, op_queue::Op, App};
 use crate::util::p2;
 
 impl App {
@@ -115,6 +116,81 @@ impl App {
                     view.invert = false;
                 }
             }
+        }
+    }
+
+    pub fn color_space_ui(&mut self, ctx: &egui::Context) {
+        if self.color_space_visible && self.image_view.is_some() {
+            let mut open = true;
+            let mut closed = false;
+            egui::Window::new("Color space")
+                .id(egui::Id::new("color space window"))
+                .collapsible(false)
+                .resizable(false)
+                .pivot(egui::Align2::CENTER_CENTER)
+                .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                .open(&mut open)
+                .show(ctx, |ui| {
+                    egui::Grid::new("color space grid").show(ui, |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                            ui.label("Colorspace: ");
+                        });
+                        let selected = &mut self.color_type;
+                        let color_types = [
+                            ColorType::L8,
+                            ColorType::La8,
+                            ColorType::Rgb8,
+                            ColorType::Rgba8,
+                            ColorType::L16,
+                            ColorType::La16,
+                            ColorType::Rgb16,
+                            ColorType::Rgba16,
+                            ColorType::Rgb32F,
+                            ColorType::Rgba32F,
+                        ];
+                        egui::ComboBox::new("filter", "")
+                            .selected_text(color_type_to_str(*selected))
+                            .show_ui(ui, |ui| {
+                                for color_type in color_types {
+                                    ui.selectable_value(
+                                        selected,
+                                        color_type,
+                                        color_type_to_str(color_type),
+                                    );
+                                }
+                            });
+                        ui.end_row();
+                        ui.end_row();
+
+                        ui.with_layout(
+                            egui::Layout::top_down_justified(egui::Align::Center),
+                            |ui| {
+                                if ui
+                                    .add_enabled(self.view_available(), Button::new("Cancel"))
+                                    .clicked()
+                                {
+                                    closed = true;
+                                }
+                            },
+                        );
+
+                        ui.with_layout(
+                            egui::Layout::top_down_justified(egui::Align::Center),
+                            |ui| {
+                                if ui
+                                    .add_enabled(self.view_available(), Button::new("Apply"))
+                                    .clicked()
+                                    || self.enter
+                                {
+                                    self.queue(Op::ColorSpace(self.color_type));
+                                    closed = true;
+                                    self.enter = false;
+                                }
+                            },
+                        );
+                    });
+                });
+            self.color_space_visible = open && !closed;
         }
     }
 }

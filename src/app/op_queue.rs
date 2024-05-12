@@ -12,7 +12,7 @@ use image::{
         colorops::{contrast_in_place, huerotate_in_place},
         FilterType,
     },
-    DynamicImage,
+    ColorType, DynamicImage,
 };
 use winit::event_loop::EventLoopProxy;
 
@@ -51,6 +51,7 @@ pub enum Op {
         invert: bool,
     },
     Crop(Rect),
+    ColorSpace(ColorType),
     FlipHorizontal,
     FlipVertical,
     Rotate(i32),
@@ -70,6 +71,7 @@ pub enum Output {
     Resize(Vec<Image>),
     Color(Vec<Image>),
     Crop(Vec<Image>, i32),
+    ColorSpace(Vec<Image>),
     Undo,
     Redo,
     Close,
@@ -216,6 +218,38 @@ impl OpQueue {
                     } else {
                         proxy.send_output(Output::Close);
                     }
+                }
+                Op::ColorSpace(color_type) => {
+                    let image_data = view.as_ref().unwrap().image_data.clone();
+                    let proxy = self.proxy.clone();
+                    thread::spawn(move || {
+                        let guard = image_data.read().unwrap();
+                        let mut new = Vec::new();
+                        for image in guard.frames.iter() {
+                            let buffer = image.buffer();
+                            let buffer = match color_type {
+                                ColorType::L8 => DynamicImage::ImageLuma8(buffer.to_luma8()),
+                                ColorType::La8 => {
+                                    DynamicImage::ImageLumaA8(buffer.to_luma_alpha8())
+                                }
+                                ColorType::Rgb8 => DynamicImage::ImageRgb8(buffer.to_rgb8()),
+                                ColorType::Rgba8 => DynamicImage::ImageRgba8(buffer.to_rgba8()),
+                                ColorType::L16 => DynamicImage::ImageLuma16(buffer.to_luma16()),
+                                ColorType::La16 => {
+                                    DynamicImage::ImageLumaA16(buffer.to_luma_alpha16())
+                                }
+                                ColorType::Rgb16 => DynamicImage::ImageRgb16(buffer.to_rgb16()),
+                                ColorType::Rgba16 => DynamicImage::ImageRgba16(buffer.to_rgba16()),
+                                ColorType::Rgb32F => DynamicImage::ImageRgb32F(buffer.to_rgb32f()),
+                                ColorType::Rgba32F => {
+                                    DynamicImage::ImageRgba32F(buffer.to_rgba32f())
+                                }
+                                _ => panic!("unknown color type this a bug"),
+                            };
+                            new.push(Image::with_delay(buffer, image.delay));
+                        }
+                        proxy.send_output(Output::ColorSpace(new));
+                    });
                 }
                 Op::Resize(size, resample) => {
                     let image_data = view.as_ref().unwrap().image_data.clone();

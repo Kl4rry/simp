@@ -7,6 +7,7 @@ pub enum UndoFrame {
     Crop { frames: Vec<Image>, rotation: i32 },
     Resize(Vec<Image>),
     Color(Vec<Image>),
+    ColorSpace(Vec<Image>),
 }
 
 impl UndoFrame {
@@ -18,6 +19,7 @@ impl UndoFrame {
             UndoFrame::Crop { .. } => true,
             UndoFrame::Resize(..) => true,
             UndoFrame::Color(..) => true,
+            UndoFrame::ColorSpace(..) => true,
         }
     }
 }

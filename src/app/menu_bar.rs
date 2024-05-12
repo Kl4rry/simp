@@ -229,6 +229,14 @@ impl App {
                     }
 
                     if ui
+                        .add_enabled(self.image_view.is_some(), egui::Button::new("Color space"))
+                        .clicked()
+                    {
+                        self.color_space_visible = true;
+                        ui.close_menu();
+                    }
+
+                    if ui
                         .add_enabled(
                             self.view_available(),
                             egui::Button::new("Crop").shortcut_text("Ctrl + X"),

@@ -11,7 +11,7 @@ use std::{
 
 use cgmath::{EuclideanSpace, Point2, Vector2};
 use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
-use image::{imageops::FilterType, DynamicImage};
+use image::{imageops::FilterType, ColorType, DynamicImage};
 use num_traits::Zero;
 use winit::{
     event::WindowEvent, event_loop::EventLoopProxy, keyboard::ModifiersState, window::Fullscreen,
@@ -77,6 +77,7 @@ pub struct App {
     pub image_view: Option<Box<ImageView>>,
     pub modifiers: ModifiersState,
     dialog_manager: DialogManager,
+    color_type: ColorType,
     size: Vector2<f32>,
     fullscreen: bool,
     top_bar_size: f32,
@@ -89,6 +90,7 @@ pub struct App {
     resize_mode: ResizeMode,
     help_visible: bool,
     color_visible: bool,
+    color_space_visible: bool,
     metadata_visible: bool,
     preferences_visible: bool,
     enter: bool,
@@ -110,6 +112,8 @@ impl App {
                 } else {
                     String::new()
                 };
+
+                self.color_type = image_data.frames[0].buffer().color();
 
                 let view = Box::new(ImageView::new(wgpu, image_data, path));
                 self.resize
@@ -152,6 +156,16 @@ impl App {
                 if let Some(ref mut view) = self.image_view {
                     view.swap_frames(wgpu, &mut frames);
                     stack.push(UndoFrame::Resize(frames));
+                }
+            }
+            Output::ColorSpace(mut frames) => {
+                if let Some(ref mut view) = self.image_view {
+                    let new = frames[0].buffer().color();
+                    let old = view.image_data.read().unwrap().frames[0].buffer().color();
+                    if new != old {
+                        view.swap_frames(wgpu, &mut frames);
+                        stack.push(UndoFrame::ColorSpace(frames));
+                    }
                 }
             }
             Output::Color(mut frames) => {
@@ -200,6 +214,12 @@ impl App {
                             let view = self.image_view.as_mut().unwrap();
                             view.swap_frames(wgpu, frames);
                         }
+                        UndoFrame::ColorSpace(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(wgpu, frames);
+                            self.color_type =
+                                view.image_data.read().unwrap().frames[0].buffer().color();
+                        }
                     }
                 }
             }
@@ -228,6 +248,12 @@ impl App {
                         UndoFrame::Color(frames) => {
                             let view = self.image_view.as_mut().unwrap();
                             view.swap_frames(wgpu, frames);
+                        }
+                        UndoFrame::ColorSpace(frames) => {
+                            let view = self.image_view.as_mut().unwrap();
+                            view.swap_frames(wgpu, frames);
+                            self.color_type =
+                                view.image_data.read().unwrap().frames[0].buffer().color();
                         }
                     }
                 }
@@ -364,6 +390,7 @@ impl App {
         self.preferences_ui(ctx);
         self.help_ui(ctx);
         self.color_ui(ctx);
+        self.color_space_ui(ctx);
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
 
@@ -653,20 +680,7 @@ impl App {
 
                     let g = image.image_data.read();
                     let buf = g.as_ref().unwrap().frames[0].buffer();
-                    let mut color_space = match buf {
-                        DynamicImage::ImageLuma8(_) => "Luma8",
-                        DynamicImage::ImageLumaA8(_) => "LumaA8",
-                        DynamicImage::ImageRgb8(_) => "Rgb8",
-                        DynamicImage::ImageRgba8(_) => "Rgba8",
-                        DynamicImage::ImageLuma16(_) => "Luma16",
-                        DynamicImage::ImageLumaA16(_) => "LumaA16",
-                        DynamicImage::ImageRgb16(_) => "Rgb16",
-                        DynamicImage::ImageRgba16(_) => "Rgba16",
-                        DynamicImage::ImageRgb32F(_) => "Rgb32F",
-                        DynamicImage::ImageRgba32F(_) => "Rgba32F",
-                        _ => panic!("Unknown color space name. This is a bug."),
-                    }
-                    .to_string();
+                    let mut color_space = color_type_to_str(buf.color()).to_string();
 
                     {
                         let pos = (((self.mouse_position
@@ -1109,6 +1123,7 @@ impl App {
             image_view: None,
             op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy()),
             dialog_manager,
+            color_type: ColorType::Rgba8,
             size: Vector2::from(size),
             fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
@@ -1119,6 +1134,7 @@ impl App {
             resize: Resize::default(),
             help_visible: false,
             color_visible: false,
+            color_space_visible: false,
             metadata_visible: false,
             preferences_visible: false,
             resize_mode: ResizeMode::Original,
@@ -1168,5 +1184,21 @@ fn filter_name(filter: &FilterType) -> &'static str {
         FilterType::CatmullRom => "Cubic Filter",
         FilterType::Gaussian => "Gaussian Filter",
         FilterType::Lanczos3 => "Lanczos",
+    }
+}
+
+pub fn color_type_to_str(color_type: ColorType) -> &'static str {
+    match color_type {
+        ColorType::L8 => "Luma8",
+        ColorType::La8 => "LumaA8",
+        ColorType::Rgb8 => "Rgb8",
+        ColorType::Rgba8 => "Rgba8",
+        ColorType::L16 => "Luma16",
+        ColorType::La16 => "LumaA16",
+        ColorType::Rgb16 => "Rgb16",
+        ColorType::Rgba16 => "Rgba16",
+        ColorType::Rgb32F => "Rgb32F",
+        ColorType::Rgba32F => "Rgba32F",
+        _ => panic!("Unknown color space name. This is a bug."),
     }
 }
