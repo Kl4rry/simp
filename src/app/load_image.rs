@@ -95,12 +95,8 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
         load_un_detectable_raster,
         load_jxl,
         load_heif,
-        load_qoi,
     ];
 
-    if QOI.contains(&extension.as_str()) {
-        loaders.swap(0, 7);
-    }
     if HEIF.contains(&extension.as_str()) {
         loaders.swap(0, 6);
     } else if JXL.contains(&extension.as_str()) {

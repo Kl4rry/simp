@@ -16,7 +16,7 @@ use super::{
     preferences::PREFERENCES,
 };
 use crate::{
-    image_io::save::{exr, farbfeld, gif, jpeg, qoi, save_with_format, tiff, webp, webp_animation},
+    image_io::save::{exr, farbfeld, gif, jpeg, save_with_format, tiff, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
     WgpuState,
 };
@@ -87,6 +87,7 @@ pub fn save(
 
         let res = match ext.as_str() {
             "png" => save_with_format(path, &frames[0], ImageFormat::Png),
+            "qoi" => save_with_format(path, &frames[0], ImageFormat::Qoi),
             "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
                 let quality = match get_jpeg_quality(dialog_proxy.clone()) {
                     Some(quality) => quality,
@@ -119,7 +120,6 @@ pub fn save(
                 }
             }
             "exr" => exr(path, &frames[0]),
-            "qoi" => qoi(path, &frames[0]),
             _ => {
                 path.set_extension("png");
                 save_with_format(path, &frames[0], ImageFormat::Png)

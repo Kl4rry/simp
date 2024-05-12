@@ -3421,7 +3421,6 @@ dependencies = [
  "once_cell",
  "pollster",
  "psd",
- "qoi",
  "rand",
  "rawloader",
  "resvg",

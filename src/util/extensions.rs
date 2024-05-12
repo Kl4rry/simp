@@ -1,7 +1,5 @@
 use once_cell::sync::Lazy;
 
-pub static QOI: Lazy<&[&'static str]> = Lazy::new(|| &["qoi"]);
-
 pub static JXL: Lazy<&[&'static str]> = Lazy::new(|| &["jxl"]);
 
 pub static HEIF: Lazy<&[&'static str]> = Lazy::new(|| &["heif", "heic"]);
@@ -9,7 +7,7 @@ pub static HEIF: Lazy<&[&'static str]> = Lazy::new(|| &["heif", "heic"]);
 pub static RASTER: Lazy<&[&'static str]> = Lazy::new(|| {
     &[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
-        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr",
+        "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "qoi",
     ]
 });
 

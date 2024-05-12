@@ -4,8 +4,7 @@ use fontdb::Database;
 use image::{
     codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder},
     io::Reader as ImageReader,
-    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, RgbImage, Rgba,
-    RgbaImage,
+    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -247,24 +246,4 @@ pub fn load_heif(bytes: &[u8]) -> Option<Vec<Image>> {
         let _ = bytes;
         None
     }
-}
-
-pub fn load_qoi(bytes: &[u8]) -> Option<Vec<Image>> {
-    let (
-        qoi::Header {
-            width,
-            height,
-            channels,
-            //colorspace, FIXME handle linear color
-            ..
-        },
-        decoded,
-    ) = qoi::decode_to_vec(bytes).ok()?;
-    let image = match channels {
-        qoi::Channels::Rgb => DynamicImage::ImageRgb8(RgbImage::from_raw(width, height, decoded)?),
-        qoi::Channels::Rgba => {
-            DynamicImage::ImageRgba8(RgbaImage::from_raw(width, height, decoded)?)
-        }
-    };
-    Some(vec![Image::new(image)])
 }

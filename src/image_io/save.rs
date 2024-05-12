@@ -25,7 +25,6 @@ pub enum SaveError {
     #[allow(unused)]
     WebpAnimation(webp_animation::Error),
     LibWebp(libwebp::error::WebPSimpleError),
-    Qoi(qoi::Error),
 }
 
 impl fmt::Display for SaveError {
@@ -36,7 +35,6 @@ impl fmt::Display for SaveError {
             SaveError::Io(ref e) => e.fmt(f),
             SaveError::WebpAnimation(_) => write!(f, "error encoding webp"),
             SaveError::LibWebp(ref e) => e.fmt(f),
-            SaveError::Qoi(ref e) => e.fmt(f),
         }
     }
 }
@@ -49,7 +47,6 @@ impl error::Error for SaveError {
             SaveError::Io(ref e) => Some(e),
             SaveError::WebpAnimation(_) => None,
             SaveError::LibWebp(ref e) => Some(e),
-            SaveError::Qoi(ref e) => Some(e),
         }
     }
 }
@@ -79,13 +76,6 @@ impl From<libwebp::error::WebPSimpleError> for SaveError {
     #[inline]
     fn from(err: libwebp::error::WebPSimpleError) -> SaveError {
         SaveError::LibWebp(err)
-    }
-}
-
-impl From<qoi::Error> for SaveError {
-    #[inline]
-    fn from(err: qoi::Error) -> SaveError {
-        SaveError::Qoi(err)
     }
 }
 
@@ -279,22 +269,5 @@ pub fn exr(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
         )?;
     }
 
-    Ok(fs::rename(temp_path, path)?)
-}
-
-#[inline]
-pub fn qoi(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-    let (width, height) = image.buffer().dimensions();
-    let data = if image.buffer().color().has_alpha() {
-        image.buffer().to_rgba8().into_vec()
-    } else {
-        image.buffer().to_rgb8().into_vec()
-    };
-
-    // FIXME handle linear color
-    let encoder = qoi::Encoder::new(&data, width, height)?.with_colorspace(qoi::ColorSpace::Srgb);
-    encoder.encode_to_stream(&mut BufWriter::new(file))?;
     Ok(fs::rename(temp_path, path)?)
 }
