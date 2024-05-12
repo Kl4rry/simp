@@ -114,7 +114,6 @@ pub fn save_with_format(
     Ok(())
 }
 
-#[inline]
 pub fn jpeg(path: impl AsRef<Path>, image: &Image, quality: u8) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
@@ -132,7 +131,6 @@ pub fn jpeg(path: impl AsRef<Path>, image: &Image, quality: u8) -> SaveResult<()
     Ok(fs::rename(temp_path, path)?)
 }
 
-#[inline]
 pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
@@ -144,7 +142,6 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     Ok(fs::rename(temp_path, path)?)
 }
 
-#[inline]
 pub fn webp_animation(
     path: impl AsRef<Path>,
     images: Vec<Image>,
@@ -183,7 +180,6 @@ pub fn webp_animation(
     Ok(fs::rename(temp_path, path)?)
 }
 
-#[inline]
 pub fn webp(path: impl AsRef<Path>, image: &Image, quality: f32, lossy: bool) -> SaveResult<()> {
     let (width, height) = image.buffer().dimensions();
 
