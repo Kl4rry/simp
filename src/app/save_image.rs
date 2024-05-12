@@ -35,6 +35,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
         .add_filter("farbfeld", &["ff", "farbfeld"])
         .add_filter("TGA", &["tga"])
         .add_filter("QOI", &["qoi"])
+        .add_filter("HDR", &["hdr"])
         .add_filter("EXR", &["exr"]);
 
     thread::spawn(move || {
@@ -86,6 +87,7 @@ pub fn save(
         }
 
         let res = match ext.as_str() {
+            "hdr" => save_with_format(path, &frames[0], ImageFormat::Hdr),
             "png" => save_with_format(path, &frames[0], ImageFormat::Png),
             "qoi" => save_with_format(path, &frames[0], ImageFormat::Qoi),
             "jpg" | "jpeg" | "jpe" | "jif" | "jfif" => {
