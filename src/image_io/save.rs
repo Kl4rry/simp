@@ -6,15 +6,12 @@ use std::{
 };
 
 use image::{
-    codecs::{
-        farbfeld::FarbfeldEncoder, gif::GifEncoder, jpeg::JpegEncoder, openexr::OpenExrEncoder,
-        tiff::TiffEncoder,
-    },
-    EncodableLayout, Frame, GenericImageView, ImageEncoder, ImageError, ImageFormat,
+    codecs::{gif::GifEncoder, jpeg::JpegEncoder},
+    Frame, GenericImageView, ImageError, ImageFormat,
 };
 use webp_animation::prelude::*;
 
-use crate::util::{HasAlpha, Image};
+use crate::util::Image;
 
 type SaveResult<T> = Result<T, SaveError>;
 
@@ -118,24 +115,6 @@ pub fn save_with_format(
 }
 
 #[inline]
-pub fn tiff(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-
-    let encoder = TiffEncoder::new(BufWriter::new(file));
-    let buffer = image.buffer();
-
-    encoder.encode(
-        buffer.as_bytes(),
-        buffer.width(),
-        buffer.height(),
-        buffer.color().into(),
-    )?;
-
-    Ok(fs::rename(temp_path, path)?)
-}
-
-#[inline]
 pub fn jpeg(path: impl AsRef<Path>, image: &Image, quality: u8) -> SaveResult<()> {
     let temp_path = get_temp_path(path.as_ref());
     let file = open_file(&temp_path)?;
@@ -161,20 +140,6 @@ pub fn gif(path: impl AsRef<Path>, images: Vec<Image>) -> SaveResult<()> {
     let frames: Vec<Frame> = images.into_iter().map(|image| image.into()).collect();
     let mut encoder = GifEncoder::new(BufWriter::new(file));
     encoder.encode_frames(frames)?;
-
-    Ok(fs::rename(temp_path, path)?)
-}
-
-#[inline]
-pub fn farbfeld(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-    let encoder = FarbfeldEncoder::new(BufWriter::new(file));
-    encoder.encode(
-        image.buffer().to_rgba16().as_bytes(),
-        image.buffer().width(),
-        image.buffer().height(),
-    )?;
 
     Ok(fs::rename(temp_path, path)?)
 }
@@ -242,32 +207,6 @@ pub fn webp(path: impl AsRef<Path>, image: &Image, quality: f32, lossy: bool) ->
     let temp_path = get_temp_path(path.as_ref());
     let mut file = open_file(&temp_path)?;
     file.write_all(&webp_data)?;
-
-    Ok(fs::rename(temp_path, path)?)
-}
-
-#[inline]
-pub fn exr(path: impl AsRef<Path>, image: &Image) -> SaveResult<()> {
-    let temp_path = get_temp_path(path.as_ref());
-    let file = open_file(&temp_path)?;
-    let encoder = OpenExrEncoder::new(BufWriter::new(file));
-    let (width, height) = image.buffer().dimensions();
-
-    if image.buffer().has_alpha() {
-        encoder.write_image(
-            image.buffer().to_rgba32f().as_bytes(),
-            width,
-            height,
-            image::ColorType::Rgba32F.into(),
-        )?;
-    } else {
-        encoder.write_image(
-            image.buffer().to_rgb32f().as_bytes(),
-            width,
-            height,
-            image::ColorType::Rgb32F.into(),
-        )?;
-    }
 
     Ok(fs::rename(temp_path, path)?)
 }

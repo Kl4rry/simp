@@ -759,7 +759,9 @@ impl App {
                             };
                             color_space = format!("{color_space}: {color_str}");
                         }
-                        ui.label(color_space);
+                        if ui.label(color_space).clicked() {
+                            self.color_space_visible = true;
+                        }
                     }
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
