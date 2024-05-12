@@ -413,247 +413,249 @@ impl App {
                 view.handle_drag(ui);
             }
 
-            ui.input_mut(|input| {
-                use egui::{Key::*, KeyboardShortcut};
+            if self.dialog_manager.dialog_count() == 0 {
+                ui.input_mut(|input| {
+                    use egui::{Key::*, KeyboardShortcut};
 
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Delete,
-                }) {
-                    if let Some(ref view) = self.image_view {
-                        if let Some(ref path) = view.path {
-                            delete(
-                                path.clone(),
-                                self.dialog_manager.get_proxy(),
-                                self.proxy.clone(),
-                            );
-                        }
-                    }
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: H,
-                }) {
-                    self.help_visible = true
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: O,
-                }) {
-                    load_image::open(self.proxy.clone(), wgpu, false)
-                }
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: S,
-                }) {
-                    save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu)
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: Q,
-                }) {
-                    let _ = self.proxy.send_event(UserEvent::Exit);
-                }
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: N,
-                }) {
-                    new_window()
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: L,
-                }) {
-                    self.largest_fit();
-                }
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: B,
-                }) {
-                    self.best_fit();
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Q,
-                }) && self.image_view.is_some()
-                {
-                    self.queue(Op::Rotate(-1))
-                }
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: E,
-                }) && self.image_view.is_some()
-                {
-                    self.queue(Op::Rotate(1))
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: F5,
-                }) {
-                    if let Some(image) = self.image_view.as_ref() {
-                        if let Some(path) = &image.path {
-                            let buf = path.to_path_buf();
-                            self.queue(Op::LoadPath(buf, false));
-                        }
-                    }
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: Z,
-                }) {
-                    self.queue(Op::Undo);
-                }
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: Y,
-                }) {
-                    self.queue(Op::Redo);
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: R,
-                }) {
-                    self.resize.visible = true;
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: ArrowRight,
-                }) || input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: D,
-                }) || input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: H,
-                }) && self.view_available()
-                    && !self.image_view.as_ref().unwrap().cropping()
-                {
-                    self.queue(Op::Prev);
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: ArrowLeft,
-                }) || input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: A,
-                }) || input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: L,
-                }) && self.view_available()
-                    && !self.image_view.as_ref().unwrap().cropping()
-                {
-                    self.queue(Op::Next);
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: W,
-                }) {
-                    self.queue(Op::Close);
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: F11,
-                }) || input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::CTRL,
-                    logical_key: F,
-                }) {
-                    let fullscreen = wgpu.window.fullscreen();
-                    if fullscreen.is_some() {
-                        wgpu.window.set_fullscreen(None);
-                        self.fullscreen = false;
-                        self.top_bar_size = TOP_BAR_SIZE;
-                        self.bottom_bar_size = BOTTOM_BAR_SIZE;
-                    } else {
-                        wgpu.window
-                            .set_fullscreen(Some(Fullscreen::Borderless(None)));
-                        self.fullscreen = true;
-                        self.top_bar_size = 0.0;
-                        self.bottom_bar_size = 0.0;
-                    }
-                    self.largest_fit();
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Escape,
-                }) {
-                    if self.view_available() && self.image_view.as_ref().unwrap().cropping() {
-                        self.image_view.as_mut().unwrap().cancel_crop();
-                    }
-                    self.help_visible = false;
-                    self.color_visible = false;
-                    self.metadata_visible = false;
-                    self.resize.visible = false;
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Enter,
-                }) {
-                    self.enter = true;
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Plus,
-                }) {
-                    self.zoom(1.0, self.size / 2.0);
-                }
-
-                if input.consume_shortcut(&KeyboardShortcut {
-                    modifiers: Modifiers::NONE,
-                    logical_key: Minus,
-                }) {
-                    self.zoom(-1.0, self.size / 2.0);
-                }
-
-                self.zoom(
-                    input.raw_scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
-                    self.mouse_position,
-                );
-
-                for event in &input.events {
-                    match event {
-                        Event::Copy => {
-                            if self.view_available() {
-                                self.queue(Op::Copy);
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Delete,
+                    }) {
+                        if let Some(ref view) = self.image_view {
+                            if let Some(ref path) = view.path {
+                                delete(
+                                    path.clone(),
+                                    self.dialog_manager.get_proxy(),
+                                    self.proxy.clone(),
+                                );
                             }
                         }
-                        Event::Cut => {
-                            if self.view_available() {
-                                self.image_view.as_mut().unwrap().start_crop()
-                            }
-                        }
-                        _ => (),
                     }
-                }
-                input
-                    .events
-                    .retain(|e| !matches!(e, Event::Copy | Event::Cut));
 
-                let nums = [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9];
-                for (i, num) in nums.into_iter().enumerate() {
                     if input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::CTRL,
-                        logical_key: num,
+                        logical_key: H,
                     }) {
-                        if let Some(ref mut view) = self.image_view {
-                            view.scale = (i + 1) as f32;
+                        self.help_visible = true
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: O,
+                    }) {
+                        load_image::open(self.proxy.clone(), wgpu, false)
+                    }
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: S,
+                    }) {
+                        save_image::open(self.current_filename.clone(), self.proxy.clone(), wgpu)
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: Q,
+                    }) {
+                        let _ = self.proxy.send_event(UserEvent::Exit);
+                    }
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: N,
+                    }) {
+                        new_window()
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: L,
+                    }) {
+                        self.largest_fit();
+                    }
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: B,
+                    }) {
+                        self.best_fit();
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Q,
+                    }) && self.image_view.is_some()
+                    {
+                        self.queue(Op::Rotate(-1))
+                    }
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: E,
+                    }) && self.image_view.is_some()
+                    {
+                        self.queue(Op::Rotate(1))
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: F5,
+                    }) {
+                        if let Some(image) = self.image_view.as_ref() {
+                            if let Some(path) = &image.path {
+                                let buf = path.to_path_buf();
+                                self.queue(Op::LoadPath(buf, false));
+                            }
                         }
                     }
-                }
-            });
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: Z,
+                    }) {
+                        self.queue(Op::Undo);
+                    }
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: Y,
+                    }) {
+                        self.queue(Op::Redo);
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: R,
+                    }) {
+                        self.resize.visible = true;
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: ArrowRight,
+                    }) || input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: D,
+                    }) || input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: H,
+                    }) && self.view_available()
+                        && !self.image_view.as_ref().unwrap().cropping()
+                    {
+                        self.queue(Op::Prev);
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: ArrowLeft,
+                    }) || input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: A,
+                    }) || input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: L,
+                    }) && self.view_available()
+                        && !self.image_view.as_ref().unwrap().cropping()
+                    {
+                        self.queue(Op::Next);
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: W,
+                    }) {
+                        self.queue(Op::Close);
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: F11,
+                    }) || input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
+                        logical_key: F,
+                    }) {
+                        let fullscreen = wgpu.window.fullscreen();
+                        if fullscreen.is_some() {
+                            wgpu.window.set_fullscreen(None);
+                            self.fullscreen = false;
+                            self.top_bar_size = TOP_BAR_SIZE;
+                            self.bottom_bar_size = BOTTOM_BAR_SIZE;
+                        } else {
+                            wgpu.window
+                                .set_fullscreen(Some(Fullscreen::Borderless(None)));
+                            self.fullscreen = true;
+                            self.top_bar_size = 0.0;
+                            self.bottom_bar_size = 0.0;
+                        }
+                        self.largest_fit();
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Escape,
+                    }) {
+                        if self.view_available() && self.image_view.as_ref().unwrap().cropping() {
+                            self.image_view.as_mut().unwrap().cancel_crop();
+                        }
+                        self.help_visible = false;
+                        self.color_visible = false;
+                        self.metadata_visible = false;
+                        self.resize.visible = false;
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Enter,
+                    }) {
+                        self.enter = true;
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Plus,
+                    }) {
+                        self.zoom(1.0, self.size / 2.0);
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::NONE,
+                        logical_key: Minus,
+                    }) {
+                        self.zoom(-1.0, self.size / 2.0);
+                    }
+
+                    self.zoom(
+                        input.raw_scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
+                        self.mouse_position,
+                    );
+
+                    for event in &input.events {
+                        match event {
+                            Event::Copy => {
+                                if self.view_available() {
+                                    self.queue(Op::Copy);
+                                }
+                            }
+                            Event::Cut => {
+                                if self.view_available() {
+                                    self.image_view.as_mut().unwrap().start_crop()
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                    input
+                        .events
+                        .retain(|e| !matches!(e, Event::Copy | Event::Cut));
+
+                    let nums = [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9];
+                    for (i, num) in nums.into_iter().enumerate() {
+                        if input.consume_shortcut(&KeyboardShortcut {
+                            modifiers: Modifiers::CTRL,
+                            logical_key: num,
+                        }) {
+                            if let Some(ref mut view) = self.image_view {
+                                view.scale = (i + 1) as f32;
+                            }
+                        }
+                    }
+                });
+            }
         });
     }
 
