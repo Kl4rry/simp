@@ -618,7 +618,7 @@ impl App {
                 let nums = [Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9];
                 for (i, num) in nums.into_iter().enumerate() {
                     if input.consume_shortcut(&KeyboardShortcut {
-                        modifiers: Modifiers::NONE,
+                        modifiers: Modifiers::CTRL,
                         logical_key: num,
                     }) {
                         if let Some(ref mut view) = self.image_view {

@@ -40,7 +40,7 @@ impl App {
                                 ("Crop", "Ctrl + X"),
                                 ("F11 or F", "Fullscreen"),
                                 ("Delete image", "Delete"),
-                                ("1 - 9", "100% - 900% Zoom"),
+                                ("100% - 900% Zoom", "Ctrl + 1 - 9"),
                                 ("Previous image", "A or L or Left Arrow"),
                                 ("Next image", "D or H or Right Arrow"),
                             ];
