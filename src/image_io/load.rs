@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, time::Duration};
 
 use fontdb::Database;
 use image::{
@@ -39,6 +39,30 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
             None
         }
         ImageFormat::WebP => {
+            if let Ok(decoder) = webp_animation::Decoder::new(bytes) {
+                let mut time = 0;
+                let frames: Vec<Image> = decoder
+                    .into_iter()
+                    .filter_map(|frame| {
+                        let timestamp = frame.timestamp();
+                        let difference = timestamp - time;
+
+                        let (width, height) = frame.dimensions();
+                        let data = frame.data().to_vec();
+
+                        ImageBuffer::from_raw(width, height, data).map(|image| {
+                            time = timestamp;
+                            let delay = Duration::from_millis(difference as u64);
+                            Image::with_delay(DynamicImage::ImageRgba8(image), delay)
+                        })
+                    })
+                    .collect();
+
+                if !frames.is_empty() {
+                    return Some(frames);
+                }
+            }
+
             if let Ok(decoder) = WebPDecoder::new(Cursor::new(bytes)) {
                 if decoder.has_animation() {
                     return Some(decode_images(decoder.into_frames()));
@@ -46,6 +70,7 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
                     return Some(vec![Image::new(image)]);
                 }
             }
+
             None
         }
         ImageFormat::Png => {
