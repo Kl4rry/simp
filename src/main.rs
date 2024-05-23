@@ -8,7 +8,6 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
     thread,
-    time::Duration,
 };
 
 use cgmath::Vector2;
@@ -227,6 +226,7 @@ impl WindowHandler<'_> {
 
         let _ = event_loop.run(move |event, event_loop| match event {
             Event::Resumed => wgpu.window.set_visible(true),
+            Event::NewEvents(..) => wgpu.window.request_redraw(),
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
                     let _ = proxy.send_event(UserEvent::Exit);
@@ -275,13 +275,7 @@ impl WindowHandler<'_> {
                         event_loop.exit();
                     }
 
-                    let control_flow = if repaint_after.is_zero() {
-                        wgpu.window.request_redraw();
-                        app.delay = Duration::MAX;
-                        ControlFlow::Wait
-                    } else {
-                        ControlFlow::wait_duration(repaint_after)
-                    };
+                    let control_flow = ControlFlow::wait_duration(repaint_after);
                     event_loop.set_control_flow(control_flow);
 
                     let output = wgpu.surface.get_current_texture().unwrap();

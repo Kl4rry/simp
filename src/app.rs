@@ -776,6 +776,7 @@ impl App {
     }
 
     pub fn update(&mut self, _wgpu: &WgpuState) -> (bool, Duration) {
+        self.delay = Duration::MAX;
         if let Some(ref mut image) = self.image_view {
             self.delay = self.delay.min(image.animate());
         }
