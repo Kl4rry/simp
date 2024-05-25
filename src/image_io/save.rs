@@ -85,8 +85,14 @@ fn open_file(path: impl AsRef<Path>) -> Result<File, std::io::Error> {
 }
 
 fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
+    use rand::{distributions::Alphanumeric, Rng};
     let mut id = String::from('.');
-    id.push_str(&nanoid::nanoid!(6));
+    id.extend(
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(8)
+            .map(char::from),
+    );
     let mut buf = path.as_ref().to_path_buf();
     buf.set_file_name(id);
     buf
