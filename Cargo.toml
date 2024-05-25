@@ -39,7 +39,7 @@ pollster = "0.3.0"
 psd = "0.3.3"
 rand = "0.8.5"
 rawloader = "0.37.0"
-resvg = "0.40.0"
+resvg = "0.41.0"
 rexif = "0.7.3"
 serde = { version = "1", features = ["derive"] }
 trash = "4.1"
