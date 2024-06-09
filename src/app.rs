@@ -677,7 +677,7 @@ impl App {
                 }
 
                 if let Some(image) = self.image_view.as_mut() {
-                    ui.label(format!("{}", self.current_filename));
+                    ui.label(self.current_filename.to_string());
                     ui.label(format!("{} x {}", image.size.x, image.size.y));
                     ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
 

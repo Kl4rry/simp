@@ -16,7 +16,7 @@ exclude = ["images", ".github"]
 arboard = "3.2.0"
 bytemuck = { version = "1.14.0", features = ["derive"] }
 cgmath = { version = "0.18.0", features = ["swizzle", "mint"] }
-clap = "4.3.21"
+clap = { version = "4.5.6", features = ["std", "help", "usage", "error-context", "suggestions"], default-features = false }
 confy = "0.6.0"
 crevice = { version = "0.15.0", features = ["cgmath"] }
 ctrlc = "3.2.0"
