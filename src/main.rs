@@ -30,6 +30,7 @@ use winit::{
     keyboard::{Key, ModifiersState},
     window::{Window, WindowBuilder},
 };
+mod cli;
 mod image_io;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -434,12 +435,7 @@ fn main() {
         std::process::exit(1);
     }));
 
-    let matches = clap::Command::new(env!("CARGO_PKG_NAME"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .arg(clap::Arg::new("FILE").help("Load this file").index(1))
-        .get_matches();
+    let matches = cli::get_clap_command().get_matches();
 
     let path: Option<&String> = matches.get_one("FILE");
 
