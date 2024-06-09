@@ -2252,7 +2252,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "manpage"
+name = "man"
 version = "0.1.0"
 dependencies = [
  "clap_mangen",
@@ -3426,7 +3426,7 @@ dependencies = [
 
 [[package]]
 name = "simp"
-version = "3.6.0"
+version = "3.6.1"
 dependencies = [
  "arboard",
  "bytemuck",

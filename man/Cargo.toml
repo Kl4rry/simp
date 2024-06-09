@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 clap_mangen = "0.2.21"
-simp = { version = "*", path = ".."}
+simp = { path = ".."}
