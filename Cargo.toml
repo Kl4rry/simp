@@ -49,7 +49,7 @@ wgpu = { version = "0.19.1", features = ["glsl"] }
 winit = { version = "0.29.10", features = ["rwh_05"] }
 
 [target.'cfg(not(linux))'.dependencies]
-rfd = "0.14.0"
+rfd = { version = "0.14.0", default-features = false, features = ["gtk3"] }
 
 [target.'cfg(linux)'.dependencies]
 rfd = { version = "0.14.0", default-features = false, features = ["xdg-portal"] }
