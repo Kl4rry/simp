@@ -541,7 +541,7 @@ impl App {
                     }) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
                     {
-                        self.queue(Op::Prev);
+                        self.queue(Op::Next);
                     }
 
                     if input.consume_shortcut(&KeyboardShortcut {
@@ -556,7 +556,7 @@ impl App {
                     }) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
                     {
-                        self.queue(Op::Next);
+                        self.queue(Op::Prev);
                     }
 
                     if input.consume_shortcut(&KeyboardShortcut {
