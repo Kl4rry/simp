@@ -80,6 +80,7 @@ lto = "thin"
 
 [features]
 default = ["xdg-portal"]
+full = ["avif", "jxl", "heif"]
 avif = ["image/avif-native"]
 jxl = ["dep:jpegxl-rs"]
 heif = ["dep:libheif-rs"]
