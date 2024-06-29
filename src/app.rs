@@ -79,7 +79,6 @@ pub struct App {
     dialog_manager: DialogManager,
     color_type: ColorType,
     size: Vector2<f32>,
-    fullscreen: bool,
     top_bar_size: f32,
     bottom_bar_size: f32,
     proxy: EventLoopProxy<UserEvent>,
@@ -381,7 +380,7 @@ impl App {
 
         self.main_area(wgpu, ctx);
 
-        if !self.fullscreen {
+        if wgpu.window.fullscreen().is_none() {
             self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
         }
@@ -572,13 +571,11 @@ impl App {
                         let fullscreen = wgpu.window.fullscreen();
                         if fullscreen.is_some() {
                             wgpu.window.set_fullscreen(None);
-                            self.fullscreen = false;
                             self.top_bar_size = TOP_BAR_SIZE;
                             self.bottom_bar_size = BOTTOM_BAR_SIZE;
                         } else {
                             wgpu.window
                                 .set_fullscreen(Some(Fullscreen::Borderless(None)));
-                            self.fullscreen = true;
                             self.top_bar_size = 0.0;
                             self.bottom_bar_size = 0.0;
                         }
@@ -1131,7 +1128,6 @@ impl App {
             dialog_manager,
             color_type: ColorType::Rgba8,
             size: Vector2::from(size),
-            fullscreen: false,
             top_bar_size: TOP_BAR_SIZE,
             bottom_bar_size: BOTTOM_BAR_SIZE,
             proxy,

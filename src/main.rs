@@ -28,7 +28,7 @@ use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
     keyboard::{Key, ModifiersState},
-    window::{Window, WindowBuilder},
+    window::{Fullscreen, Window, WindowBuilder},
 };
 mod cli;
 mod image_io;
@@ -60,12 +60,18 @@ pub struct WindowHandler<'a> {
 }
 
 impl<'a> WindowHandler<'a> {
-    pub async fn new() -> Self {
+    pub async fn new(fullscreen: bool) -> Self {
         let mut config: Config = confy::load("simp", None).unwrap_or_default();
         config.preferences.clamp();
 
         let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
         let proxy = event_loop.create_proxy();
+
+        let fullscreen = if fullscreen {
+            Some(Fullscreen::Borderless(None))
+        } else {
+            None
+        };
 
         let builder = WindowBuilder::new()
             .with_title(String::from("Simp"))
@@ -73,6 +79,7 @@ impl<'a> WindowHandler<'a> {
             .with_min_inner_size(winit::dpi::LogicalSize::new(640f64, 400f64))
             .with_inner_size(winit::dpi::LogicalSize::new(1100f64, 720f64))
             .with_maximized(config.maximized)
+            .with_fullscreen(fullscreen)
             .with_window_icon(Some(icon::get_icon()));
 
         #[cfg(all(unix, not(target_os = "macos")))]
@@ -419,23 +426,17 @@ impl WindowHandler<'_> {
 
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
-        let dirs = directories::UserDirs::new();
-        let mut path = PathBuf::from("panic.txt");
-        if let Some(dirs) = dirs {
-            if let Some(desktop) = dirs.desktop_dir() {
-                path = desktop.to_path_buf().join("panic.txt");
-            }
-        }
         eprintln!("{panic_info:?}");
-        let _ = fs::write(path, format!("{panic_info:?}"));
+        let _ = fs::write("panic.txt", format!("{panic_info:?}"));
         std::process::exit(1);
     }));
 
     let matches = cli::get_clap_command().get_matches();
 
     let path: Option<&String> = matches.get_one("FILE");
+    let fullscreen: bool = matches.get_flag("FULLSCREEN");
 
-    let mut window_handler = pollster::block_on(WindowHandler::new());
+    let mut window_handler = pollster::block_on(WindowHandler::new(fullscreen));
 
     if !io::stdin().is_terminal() {
         let proxy = window_handler.proxy.clone();
