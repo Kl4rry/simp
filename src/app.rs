@@ -383,6 +383,11 @@ impl App {
         if wgpu.window.fullscreen().is_none() {
             self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
+            self.top_bar_size = TOP_BAR_SIZE;
+            self.bottom_bar_size = BOTTOM_BAR_SIZE;
+        } else {
+            self.top_bar_size = 0.0;
+            self.bottom_bar_size = 0.0;
         }
 
         self.resize_ui(ctx);
@@ -571,13 +576,9 @@ impl App {
                         let fullscreen = wgpu.window.fullscreen();
                         if fullscreen.is_some() {
                             wgpu.window.set_fullscreen(None);
-                            self.top_bar_size = TOP_BAR_SIZE;
-                            self.bottom_bar_size = BOTTOM_BAR_SIZE;
                         } else {
                             wgpu.window
                                 .set_fullscreen(Some(Fullscreen::Borderless(None)));
-                            self.top_bar_size = 0.0;
-                            self.bottom_bar_size = 0.0;
                         }
                         self.largest_fit();
                     }
