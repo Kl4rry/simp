@@ -10,6 +10,7 @@ pub static PREFERENCES: Mutex<Preferences> = Mutex::new(Preferences::new());
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
+    pub open_in_fullscreen: bool,
     pub min_svg_size: u32,
     pub zoom_speed: f32,
     pub jpeg_quality: u8,
@@ -20,6 +21,7 @@ pub struct Preferences {
 impl Preferences {
     const fn new() -> Self {
         Self {
+            open_in_fullscreen: false,
             min_svg_size: 1000,
             zoom_speed: 1.0,
             jpeg_quality: 80,
@@ -55,6 +57,12 @@ impl App {
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("preferences grid").show(ui, |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                            ui.label("Open in fullscreen: ");
+                        });
+                        ui.add(egui::Checkbox::new(&mut preferences.open_in_fullscreen, ""));
+                        ui.end_row();
+
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
                             ui.label("Zoom Speed: ");
                         });

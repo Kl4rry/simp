@@ -67,11 +67,13 @@ impl<'a> WindowHandler<'a> {
         let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
         let proxy = event_loop.create_proxy();
 
-        let fullscreen = if fullscreen {
+        let fullscreen = if fullscreen || config.preferences.open_in_fullscreen {
             Some(Fullscreen::Borderless(None))
         } else {
             None
         };
+
+        *PREFERENCES.lock().unwrap() = config.preferences;
 
         let builder = WindowBuilder::new()
             .with_title(String::from("Simp"))
