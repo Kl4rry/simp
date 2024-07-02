@@ -780,37 +780,39 @@ impl App {
             self.delay = self.delay.min(image.animate());
         }
 
-        if let Some(ref mut image) = self.image_view {
-            let image_size = image.real_size();
-            let mut window_size = self.size;
-            window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
+        if PREFERENCES.lock().unwrap().auto_center {
+            if let Some(ref mut image) = self.image_view {
+                let image_size = image.real_size();
+                let mut window_size = self.size;
+                window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
 
-            const MARGIN: f32 = 50.0;
+                const MARGIN: f32 = 50.0;
 
-            if image_size.x < window_size.x {
-                image.position.x = self.size.x / 2.0;
-            } else {
-                if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
-                    image.position.x = image_size.x / 2.0 + MARGIN;
+                if image_size.x < window_size.x {
+                    image.position.x = self.size.x / 2.0;
+                } else {
+                    if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
+                        image.position.x = image_size.x / 2.0 + MARGIN;
+                    }
+
+                    if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
+                        image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
+                    }
                 }
 
-                if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
-                    image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
-                }
-            }
+                if image_size.y < window_size.y {
+                    image.position.y = self.size.y / 2.0;
+                } else {
+                    if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
+                        image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
+                    }
 
-            if image_size.y < window_size.y {
-                image.position.y = self.size.y / 2.0;
-            } else {
-                if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
-                    image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
-                }
-
-                if image.position.y + image_size.y / 2.0
-                    < window_size.y + self.top_bar_size - MARGIN
-                {
-                    image.position.y =
-                        (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
+                    if image.position.y + image_size.y / 2.0
+                        < window_size.y + self.top_bar_size - MARGIN
+                    {
+                        image.position.y =
+                            (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
+                    }
                 }
             }
         }
