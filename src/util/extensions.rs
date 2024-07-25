@@ -1,30 +1,30 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
-pub static JXL: Lazy<&[&'static str]> = Lazy::new(|| &["jxl"]);
+pub static JXL: LazyLock<&[&'static str]> = LazyLock::new(|| &["jxl"]);
 
-pub static HEIF: Lazy<&[&'static str]> = Lazy::new(|| &["heif", "heic"]);
+pub static HEIF: LazyLock<&[&'static str]> = LazyLock::new(|| &["heif", "heic"]);
 
-pub static RASTER: Lazy<&[&'static str]> = Lazy::new(|| {
+pub static RASTER: LazyLock<&[&'static str]> = LazyLock::new(|| {
     &[
         "png", "jpg", "jpeg", "jpe", "jif", "jfif", "gif", "bmp", "ico", "tiff", "webp", "avif",
         "pnm", "pbm", "pgm", "ppm", "pam", "dds", "tga", "ff", "farbfeld", "exr", "qoi", "hdr",
     ]
 });
 
-pub static UNDETECTABLE_RASTER: Lazy<&[&'static str]> = Lazy::new(|| &["tga"]);
+pub static UNDETECTABLE_RASTER: LazyLock<&[&'static str]> = LazyLock::new(|| &["tga"]);
 
-pub static VECTOR: Lazy<&[&'static str]> = Lazy::new(|| &["svg"]);
+pub static VECTOR: LazyLock<&[&'static str]> = LazyLock::new(|| &["svg"]);
 
-pub static RAW: Lazy<&[&'static str]> = Lazy::new(|| {
+pub static RAW: LazyLock<&[&'static str]> = LazyLock::new(|| {
     &[
         "raw", "mrw", "arw", "srf", "sr2", "mef", "orf", "srw", "erf", "kdc", "dcs", "rw2", "raf",
         "dcr", "dng", "pef", "crw", "iiq", "3fr", "nrw", "nef", "mos", "cr2", "ari",
     ]
 });
 
-pub static PHOTOSHOP: Lazy<&[&'static str]> = Lazy::new(|| &["psd"]);
+pub static PHOTOSHOP: LazyLock<&[&'static str]> = LazyLock::new(|| &["psd"]);
 
-pub static EXTENSIONS: Lazy<Vec<&'static str>> = Lazy::new(|| {
+pub static EXTENSIONS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
     let mut vec: Vec<&'static str> = Vec::new();
     vec.extend(RASTER.iter());
     vec.extend(VECTOR.iter());
