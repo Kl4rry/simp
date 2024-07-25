@@ -17,6 +17,7 @@ arboard = "3.2.0"
 bytemuck = { version = "1.14.0", features = ["derive"] }
 cgmath = { version = "0.18.0", features = ["swizzle", "mint"] }
 clap = { version = "4.5.6", features = ["std", "help", "usage", "error-context", "suggestions"], default-features = false }
+clap_mangen = "0.2.21"
 confy = "0.6.0"
 crevice = { version = "0.15.0", features = ["cgmath"] }
 ctrlc = "3.2.0"
@@ -85,9 +86,6 @@ jxl = ["dep:jpegxl-rs"]
 heif = ["dep:libheif-rs"]
 gtk3 = ["rfd/gtk3"]
 xdg-portal = ["rfd/xdg-portal", "rfd/async-std"]
-
-[workspace]
-members = ["man"]
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]

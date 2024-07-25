@@ -11,6 +11,7 @@ use std::{
 };
 
 use cgmath::Vector2;
+use cli::get_clap_command;
 use egui::ViewportId;
 use serde::{Deserialize, Serialize};
 
@@ -426,6 +427,14 @@ impl WindowHandler<'_> {
     }
 }
 
+fn generate_man() {
+    let cmd = get_clap_command();
+    let man = clap_mangen::Man::new(cmd);
+    let mut buffer: Vec<u8> = Default::default();
+    man.render(&mut buffer).unwrap();
+    std::io::Write::write_all(&mut std::io::stdout(), &buffer).unwrap();
+}
+
 fn main() {
     panic::set_hook(Box::new(|panic_info| {
         eprintln!("{panic_info:?}");
@@ -435,8 +444,13 @@ fn main() {
 
     let matches = cli::get_clap_command().get_matches();
 
-    let path: Option<&String> = matches.get_one("FILE");
-    let fullscreen: bool = matches.get_flag("FULLSCREEN");
+    if matches.get_flag("generate-man") {
+        generate_man();
+        return;
+    }
+
+    let path: Option<&String> = matches.get_one("file");
+    let fullscreen: bool = matches.get_flag("fullscreen");
 
     let mut window_handler = pollster::block_on(WindowHandler::new(fullscreen));
 

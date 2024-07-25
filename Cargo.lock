@@ -2356,14 +2356,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "man"
-version = "0.1.0"
-dependencies = [
- "clap_mangen",
- "simp",
-]
-
-[[package]]
 name = "maybe-rayon"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3551,6 +3543,7 @@ dependencies = [
  "bytemuck",
  "cgmath",
  "clap",
+ "clap_mangen",
  "confy",
  "crevice",
  "ctrlc",

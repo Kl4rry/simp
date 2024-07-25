@@ -1,8 +1,0 @@
-[package]
-name = "man"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap_mangen = "0.2.21"
-simp = { path = ".."}
