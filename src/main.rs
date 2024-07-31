@@ -2,7 +2,7 @@
 #![warn(clippy::all)]
 
 use std::{
-    env, fs,
+    env,
     io::{self, IsTerminal, Read},
     iter, panic,
     path::PathBuf,
@@ -436,10 +436,11 @@ fn generate_man() {
 }
 
 fn main() {
-    panic::set_hook(Box::new(|panic_info| {
-        eprintln!("{panic_info:?}");
-        let _ = fs::write("panic.txt", format!("{panic_info:?}"));
-        std::process::exit(1);
+    panic::set_hook(Box::new(|info| {
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        let panic_info = format!("{backtrace}\n{info}");
+        let _ = std::fs::write("panic.txt", &panic_info);
+        println!("{}", panic_info);
     }));
 
     let matches = cli::get_clap_command().get_matches();
