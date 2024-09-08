@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use image::{io::Reader as ImageReader, ImageFormat};
+use image::{ImageFormat, ImageReader};
 use winit::window::Icon;
 
 pub fn get_icon() -> Icon {

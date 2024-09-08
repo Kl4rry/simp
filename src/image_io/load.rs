@@ -1,10 +1,8 @@
 use std::{io::Cursor, time::Duration};
 
-use fontdb::Database;
 use image::{
     codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder, webp::WebPDecoder},
-    io::Reader as ImageReader,
-    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, Rgb, Rgba,
+    AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, ImageReader, Rgb, Rgba,
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -129,11 +127,9 @@ pub fn load_un_detectable_raster(bytes: &[u8]) -> Option<Vec<Image>> {
 }
 
 pub fn load_svg(bytes: &[u8]) -> Option<Vec<Image>> {
-    let mut fontdb = Database::new();
-    fontdb.load_system_fonts();
     let options = Options::default();
 
-    let tree = Tree::from_data(bytes, &options, &fontdb).ok()?;
+    let tree = Tree::from_data(bytes, &options).ok()?;
     let size = tree.size().to_int_size();
 
     let min_size = PREFERENCES.lock().unwrap().min_svg_size.max(100);
