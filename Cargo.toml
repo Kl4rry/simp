@@ -1,6 +1,6 @@
 [package]
 name = "simp"
-version = "3.6.1"
+version = "3.7.0"
 authors = ["Axel Kappel"]
 edition = "2021"
 license = "Apache-2.0"
@@ -63,8 +63,7 @@ ProductName = "Simp"
 
 [profile.release]
 lto = "thin"
-#strip = true
-debug = true
+strip = true
 panic = "abort"
 
 [profile.dev]
@@ -92,7 +91,7 @@ xdg-portal = ["rfd/xdg-portal", "rfd/async-std"]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.0.7"
 # The preferred Rust toolchain to use in CI (rustup toolchain syntax)
-rust-toolchain-version = "1.78.0"
+rust-toolchain-version = "1.81.0"
 # CI backends to support (see 'cargo dist generate-ci')
 ci = ["github"]
 # The installers to generate for each app
