@@ -13,7 +13,7 @@ pub fn get_clap_command() -> clap::Command {
         .arg(
             clap::Arg::new("generate-man")
                 .long("generate-man")
-                .help("Generates manual page for quickshot")
+                .help("Generates manual page for simp")
                 .action(clap::ArgAction::SetTrue),
         )
         .arg(clap::Arg::new("file").help("Load this file").index(1))
