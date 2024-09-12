@@ -1017,13 +1017,7 @@ impl App {
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),
                                 |ui| {
-                                    if ui
-                                        .add(
-                                            Button::new("Cancel")
-                                                .wrap_mode(egui::TextWrapMode::Extend),
-                                        )
-                                        .clicked()
-                                    {
+                                    if ui.add(Button::new("Cancel").wrap(false)).clicked() {
                                         cancel = true;
                                     }
                                 },
@@ -1032,12 +1026,7 @@ impl App {
                             ui.with_layout(
                                 egui::Layout::top_down_justified(egui::Align::Center),
                                 |ui| {
-                                    if ui
-                                        .add(
-                                            Button::new("Crop")
-                                                .wrap_mode(egui::TextWrapMode::Extend),
-                                        )
-                                        .clicked()
+                                    if ui.add(Button::new("Crop").wrap(false)).clicked()
                                         || self.enter
                                     {
                                         crop = Some(*rect);
