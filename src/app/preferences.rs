@@ -17,6 +17,8 @@ pub struct Preferences {
     pub jpeg_quality: u8,
     pub webp_lossy: bool,
     pub webp_quality: f32,
+    pub jxl_lossy: bool,
+    pub jxl_quality: f32,
 }
 
 impl Preferences {
@@ -29,12 +31,15 @@ impl Preferences {
             jpeg_quality: 80,
             webp_lossy: false,
             webp_quality: 80.0,
+            jxl_lossy: true,
+            jxl_quality: 1.0,
         }
     }
 
     pub fn clamp(&mut self) {
         self.jpeg_quality = self.jpeg_quality.clamp(1, 100);
         self.webp_quality = self.webp_quality.clamp(0.0, 100.0);
+        self.jxl_quality = self.jxl_quality.clamp(0.0, 15.0);
     }
 }
 
@@ -102,6 +107,18 @@ impl App {
                             &mut preferences.webp_quality,
                             0.0..=100.0,
                         ));
+                        ui.end_row();
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                            ui.label("JPEG XL lossy compression: ");
+                        });
+                        ui.add(egui::Checkbox::new(&mut preferences.jxl_lossy, ""));
+                        ui.end_row();
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                            ui.label("JPEG XL quality: ");
+                        });
+                        ui.add(egui::Slider::new(&mut preferences.jxl_quality, 0.0..=15.0));
 
                         ui.end_row();
                         ui.end_row();

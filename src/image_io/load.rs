@@ -203,7 +203,7 @@ pub fn load_jxl(bytes: &[u8]) -> Option<Vec<Image>> {
             .unpremul_alpha(true)
             .build()
             .ok()?;
-        let image = decoder.decode_to_image(&bytes).ok()??;
+        let image = decoder.decode_to_image(bytes).ok()??;
         Some(vec![Image::new(image)])
     }
 

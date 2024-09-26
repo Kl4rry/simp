@@ -27,6 +27,7 @@ pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {
         .set_parent(&wgpu.window)
         .add_filter("PNG", &["png", "apng"])
         .add_filter("JPEG", &["jpg", "jpeg", "jpe", "jif", "jfif"])
+        .add_filter("JPEG XL", &["jxl"])
         .add_filter("GIF", &["gif"])
         .add_filter("ICO", &["ico"])
         .add_filter("BMP", &["bmp"])
@@ -122,6 +123,18 @@ pub fn save(
                 }
             }
             "exr" => save_with_format(path, &frames[0], ImageFormat::OpenExr),
+            #[cfg(feature = "jxl")]
+            "jxl" => {
+                let (quality, lossy) = match get_jxl_quality(dialog_proxy.clone()) {
+                    Some(quality) => quality,
+                    None => {
+                        proxy.send_output(Output::Done);
+                        return;
+                    }
+                };
+
+                crate::image_io::save::jpeg_xl(path, &frames[0], quality, lossy)
+            }
             _ => {
                 path.set_extension("png");
                 save_with_format(path, &frames[0], ImageFormat::Png)
@@ -218,6 +231,54 @@ pub fn get_webp_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
                 if *enter {
                     *enter = false;
                     output = Some(Some((preferences.webp_quality, preferences.webp_lossy)))
+                }
+            });
+            output
+        })
+        .wait()
+        .flatten()
+}
+
+#[cfg(feature = "jxl")]
+pub fn get_jxl_quality(dialog_proxy: DialogProxy) -> Option<(f32, bool)> {
+    dialog_proxy
+        .spawn_dialog("Export settings", |ui, enter| {
+            let mut preferences = PREFERENCES.lock().unwrap();
+            let mut output = None;
+            egui::Grid::new("jxl export settings grid").show(ui, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    ui.label("JPEG XL lossy compression: ");
+                });
+                ui.add(egui::Checkbox::new(&mut preferences.jxl_lossy, ""));
+                ui.end_row();
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    ui.label("JPEG XL Quality: ");
+                });
+                ui.add(egui::Slider::new(&mut preferences.jxl_quality, 0.0..=15.0));
+                ui.end_row();
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Save").clicked() {
+                            output = Some(Some((preferences.jxl_quality, preferences.jxl_lossy)))
+                        }
+                    },
+                );
+
+                ui.with_layout(
+                    egui::Layout::top_down_justified(egui::Align::Center),
+                    |ui| {
+                        if ui.button("Cancel").clicked() {
+                            output = Some(None);
+                        }
+                    },
+                );
+
+                if *enter {
+                    *enter = false;
+                    output = Some(Some((preferences.jxl_quality, preferences.jxl_lossy)))
                 }
             });
             output

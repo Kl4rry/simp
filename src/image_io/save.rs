@@ -22,6 +22,8 @@ pub enum SaveError {
     #[allow(unused)]
     WebpAnimation(webp_animation::Error),
     LibWebp(libwebp::error::WebPSimpleError),
+    #[cfg(feature = "jxl")]
+    JxlEncode(jpegxl_rs::EncodeError),
 }
 
 impl fmt::Display for SaveError {
@@ -32,6 +34,8 @@ impl fmt::Display for SaveError {
             SaveError::Io(ref e) => e.fmt(f),
             SaveError::WebpAnimation(_) => write!(f, "error encoding webp"),
             SaveError::LibWebp(ref e) => e.fmt(f),
+            #[cfg(feature = "jxl")]
+            SaveError::JxlEncode(ref e) => e.fmt(f),
         }
     }
 }
@@ -44,6 +48,8 @@ impl error::Error for SaveError {
             SaveError::Io(ref e) => Some(e),
             SaveError::WebpAnimation(_) => None,
             SaveError::LibWebp(ref e) => Some(e),
+            #[cfg(feature = "jxl")]
+            SaveError::JxlEncode(ref e) => Some(e),
         }
     }
 }
@@ -73,6 +79,14 @@ impl From<libwebp::error::WebPSimpleError> for SaveError {
     #[inline]
     fn from(err: libwebp::error::WebPSimpleError) -> SaveError {
         SaveError::LibWebp(err)
+    }
+}
+
+#[cfg(feature = "jxl")]
+impl From<jpegxl_rs::EncodeError> for SaveError {
+    #[inline]
+    fn from(err: jpegxl_rs::EncodeError) -> SaveError {
+        SaveError::JxlEncode(err)
     }
 }
 
@@ -134,6 +148,74 @@ pub fn jpeg(path: impl AsRef<Path>, image: &Image, quality: u8) -> SaveResult<()
         buffer.color().into(),
     )?;
 
+    Ok(fs::rename(temp_path, path)?)
+}
+
+#[cfg(feature = "jxl")]
+pub fn jpeg_xl(path: impl AsRef<Path>, image: &Image, quality: f32, lossy: bool) -> SaveResult<()> {
+    use std::io;
+
+    use image::DynamicImage;
+    use jpegxl_rs::encode::{self, EncoderFrame, EncoderResult, EncoderSpeed};
+
+    use crate::util::HasAlpha;
+
+    let temp_path = get_temp_path(path.as_ref());
+    let mut file = open_file(&temp_path)?;
+
+    let mut encoder = encode::encoder_builder()
+        .quality(quality)
+        .lossless(!lossy)
+        .speed(EncoderSpeed::Kitten)
+        .use_container(true)
+        .has_alpha(image.buffer().has_alpha())
+        .build()?;
+
+    let data = match image.buffer() {
+        DynamicImage::ImageRgb8(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(3);
+            let result: EncoderResult<u8> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        DynamicImage::ImageRgba8(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(4);
+            let result: EncoderResult<u8> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        DynamicImage::ImageRgb16(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(3);
+            let result: EncoderResult<u16> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        DynamicImage::ImageRgba16(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(4);
+            let result: EncoderResult<u16> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        DynamicImage::ImageRgb32F(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(3);
+            let result: EncoderResult<f32> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        DynamicImage::ImageRgba32F(image_buffer) => {
+            let frame = EncoderFrame::new(image_buffer.as_raw()).num_channels(4);
+            let result: EncoderResult<f32> =
+                encoder.encode_frame(&frame, image_buffer.width(), image_buffer.height())?;
+            result.data
+        }
+        _ => {
+            return Err(
+                io::Error::new(io::ErrorKind::InvalidInput, "Unsupported color format").into(),
+            )
+        }
+    };
+
+    file.write_all(&data)?;
     Ok(fs::rename(temp_path, path)?)
 }
 
