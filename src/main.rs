@@ -27,9 +27,9 @@ mod util;
 use util::UserEvent;
 use winit::{
     event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
+    event_loop::{ControlFlow, EventLoop, EventLoopProxy},
     keyboard::{Key, ModifiersState},
-    window::{Fullscreen, Window, WindowBuilder},
+    window::{Fullscreen, Window, WindowAttributes},
 };
 mod cli;
 mod image_io;
@@ -40,18 +40,18 @@ struct Config {
     preferences: Preferences,
 }
 
-pub struct WgpuState<'a> {
+pub struct WgpuState {
     pub window: Arc<Window>,
     pub adapter: wgpu::Adapter,
-    pub surface: wgpu::Surface<'a>,
+    pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
     pub scale_factor: f64,
 }
 
-pub struct WindowHandler<'a> {
-    pub wgpu: WgpuState<'a>,
+pub struct WindowHandler {
+    pub wgpu: WgpuState,
     pub event_loop: EventLoop<UserEvent>,
     pub proxy: EventLoopProxy<UserEvent>,
     pub egui_winit: egui_winit::State,
@@ -60,12 +60,12 @@ pub struct WindowHandler<'a> {
     pub app: App,
 }
 
-impl<'a> WindowHandler<'a> {
+impl WindowHandler {
     pub async fn new(fullscreen: bool) -> Self {
         let mut config: Config = confy::load("simp", None).unwrap_or_default();
         config.preferences.clamp();
 
-        let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
+        let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event().build().unwrap();
         let proxy = event_loop.create_proxy();
 
         let fullscreen = if fullscreen || config.preferences.open_in_fullscreen {
@@ -76,7 +76,7 @@ impl<'a> WindowHandler<'a> {
 
         *PREFERENCES.lock().unwrap() = config.preferences;
 
-        let builder = WindowBuilder::new()
+        let builder = WindowAttributes::default()
             .with_title(String::from("Simp"))
             .with_visible(false)
             .with_min_inner_size(winit::dpi::LogicalSize::new(640f64, 400f64))
@@ -88,11 +88,12 @@ impl<'a> WindowHandler<'a> {
         #[cfg(all(unix, not(target_os = "macos")))]
         let builder = {
             use winit::platform::{wayland, x11};
-            let builder = wayland::WindowBuilderExtWayland::with_name(builder, "simp", "simp");
-            x11::WindowBuilderExtX11::with_name(builder, "simp", "simp")
+            let builder = wayland::WindowAttributesExtWayland::with_name(builder, "simp", "simp");
+            x11::WindowAttributesExtX11::with_name(builder, "simp", "simp")
         };
 
-        let window = Arc::new(builder.build(&event_loop).unwrap());
+        #[allow(deprecated)]
+        let window = Arc::new(event_loop.create_window(builder).unwrap());
 
         let size = window.inner_size();
 
@@ -133,6 +134,7 @@ impl<'a> WindowHandler<'a> {
                     label: None,
                     required_features: wgpu::Features::default(),
                     required_limits: limits.clone(),
+                    memory_hints: wgpu::MemoryHints::default(),
                 },
                 None,
             )
@@ -165,9 +167,10 @@ impl<'a> WindowHandler<'a> {
             &window.clone(),
             None,
             None,
+            None,
         );
         egui_winit.set_max_texture_side(limits.max_texture_dimension_2d as usize);
-        let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1);
+        let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1, false);
         let egui_shapes = Vec::new();
 
         {
@@ -220,7 +223,7 @@ impl<'a> WindowHandler<'a> {
     }
 }
 
-impl WindowHandler<'_> {
+impl WindowHandler {
     pub fn main_loop(mut self) {
         let WindowHandler {
             event_loop,
@@ -232,6 +235,7 @@ impl WindowHandler<'_> {
             mut wgpu,
         } = self;
 
+        #[allow(deprecated)]
         let _ = event_loop.run(move |event, event_loop| match event {
             Event::Resumed => wgpu.window.set_visible(true),
             Event::NewEvents(..) => wgpu.window.request_redraw(),
@@ -359,25 +363,28 @@ impl WindowHandler<'_> {
                             );
                             wgpu.queue.submit(cmd_buffers);
 
-                            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: Some("Gui Render Pass"),
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view: &view,
-                                    resolve_target: None,
-                                    ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Load,
-                                        store: wgpu::StoreOp::Store,
-                                    },
-                                })],
-                                depth_stencil_attachment: None,
-                                occlusion_query_set: None,
-                                timestamp_writes: None,
-                            });
+                            let mut pass = encoder
+                                .begin_render_pass(&wgpu::RenderPassDescriptor {
+                                    label: Some("Gui Render Pass"),
+                                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                        view: &view,
+                                        resolve_target: None,
+                                        ops: wgpu::Operations {
+                                            load: wgpu::LoadOp::Load,
+                                            store: wgpu::StoreOp::Store,
+                                        },
+                                    })],
+                                    depth_stencil_attachment: None,
+                                    occlusion_query_set: None,
+                                    timestamp_writes: None,
+                                })
+                                .forget_lifetime();
 
                             egui_renderer.render(&mut pass, egui_shapes, &screen_descriptor);
                         }
 
                         wgpu.queue.submit(iter::once(encoder.finish()));
+                        wgpu.window.pre_present_notify();
                         output.present();
                     }
                 }
