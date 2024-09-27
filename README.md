@@ -48,7 +48,7 @@ Simp is a fast and simple GPU-accelerated image manipulation program.
 | PSD       | ✅                                                                    | ❌               |
 | Raw       | ✅ Support from [rawloader](https://github.com/pedrocr/rawloader) (3) | ❌               |
 | HEIF/HEIC | ✅ (4)                                                                | ❌               |
-| JPEG XL   | ✅ (5)                                                                | ❌               |
+| JPEG XL   | ✅ (5)                                                                | ✅               |
 | OpenEXR   | ✅                                                                    | ✅               |
 | qoi       | ✅                                                                    | ✅               |
 | hdr       | ✅                                                                    | ✅               |

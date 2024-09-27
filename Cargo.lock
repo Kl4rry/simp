@@ -3644,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "simp"
-version = "3.7.1"
+version = "3.8.0"
 dependencies = [
  "arboard",
  "bytemuck",
