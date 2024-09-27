@@ -1,6 +1,7 @@
 [package]
 name = "simp"
 version = "3.7.1"
+
 authors = ["Axel Kappel"]
 edition = "2021"
 license = "Apache-2.0"
@@ -27,7 +28,7 @@ egui-wgpu = "0.29"
 egui-winit = "0.29"
 image = { version = "0.25.1", features = ["exr"] }
 imagepipe = "0.5.0"
-jpegxl-rs = { version = "0.10.3", default-features = false, features = ["image", "vendored"], optional = true }
+jpegxl-rs = { version = "0.11.0", default-features = false, features = ["image", "vendored"], optional = true }
 lexical-sort = "0.3.1"
 libheif-rs = { version = "1.0.1", optional = true }
 libwebp = { version = "0.1.2", features = ["static"] }
@@ -40,10 +41,10 @@ rand = "0.8.5"
 rawloader = "0.37.0"
 resvg = "0.43.0"
 rexif = "0.7.3"
-rfd = { version = "0.14.0", default-features = false }
+rfd = { version = "0.15.0", default-features = false }
 serde = { version = "1", features = ["derive"] }
 trash = "5.1"
-webbrowser = "0.8.0"
+webbrowser = "1.0.0"
 webp-animation = "0.9.0"
 wgpu = { version = "22.1.0", features = ["glsl"] }
 winit = { version = "0.30.0", features = ["rwh_05"] }
