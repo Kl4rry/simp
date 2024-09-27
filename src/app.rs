@@ -529,7 +529,7 @@ impl App {
                         self.resize.visible = true;
                     }
 
-                    if input.consume_shortcut(&KeyboardShortcut {
+                    if (input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::NONE,
                         logical_key: ArrowRight,
                     }) || input.consume_shortcut(&KeyboardShortcut {
@@ -538,13 +538,17 @@ impl App {
                     }) || input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::NONE,
                         logical_key: H,
-                    }) && self.view_available()
+                    })) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
+                        && !self.color_visible
+                        && !self.color_visible
+                        && !self.metadata_visible
+                        && !self.resize.visible
                     {
                         self.queue(Op::Next);
                     }
 
-                    if input.consume_shortcut(&KeyboardShortcut {
+                    if (input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::NONE,
                         logical_key: ArrowLeft,
                     }) || input.consume_shortcut(&KeyboardShortcut {
@@ -553,8 +557,12 @@ impl App {
                     }) || input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::NONE,
                         logical_key: L,
-                    }) && self.view_available()
+                    })) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
+                        && !self.color_visible
+                        && !self.color_visible
+                        && !self.metadata_visible
+                        && !self.resize.visible
                     {
                         self.queue(Op::Prev);
                     }
@@ -662,7 +670,12 @@ impl App {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                 if self.image_view.is_some() {
                     ui.add_enabled_ui(
-                        self.view_available() && !self.image_view.as_ref().unwrap().cropping(),
+                        self.view_available()
+                            && !self.image_view.as_ref().unwrap().cropping()
+                            && !self.color_visible
+                            && !self.color_visible
+                            && !self.metadata_visible
+                            && !self.resize.visible,
                         |ui| {
                             if ui.small_button("⬅").clicked() {
                                 self.queue(Op::Prev);
