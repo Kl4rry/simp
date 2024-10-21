@@ -16,5 +16,12 @@ pub fn get_clap_command() -> clap::Command {
                 .help("Generates manual page for simp")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            clap::Arg::new("zen-mode")
+                .long("zen-mode")
+                .short('z')
+                .help("Remove all UI")
+                .action(clap::ArgAction::SetTrue),
+        )
         .arg(clap::Arg::new("file").help("Load this file").index(1))
 }

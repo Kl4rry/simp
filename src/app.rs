@@ -93,6 +93,7 @@ pub struct App {
     metadata_visible: bool,
     preferences_visible: bool,
     enter: bool,
+    zen_mode: bool,
 }
 
 impl App {
@@ -380,7 +381,7 @@ impl App {
 
         self.main_area(wgpu, ctx);
 
-        if wgpu.window.fullscreen().is_none() {
+        if wgpu.window.fullscreen().is_none() && !self.zen_mode {
             self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
             self.top_bar_size = TOP_BAR_SIZE;
@@ -1142,7 +1143,12 @@ impl App {
         }
     }
 
-    pub fn new(wgpu: &WgpuState, proxy: EventLoopProxy<UserEvent>, size: [f32; 2]) -> Self {
+    pub fn new(
+        wgpu: &WgpuState,
+        proxy: EventLoopProxy<UserEvent>,
+        size: [f32; 2],
+        zen_mode: bool,
+    ) -> Self {
         let dialog_manager = DialogManager::new(proxy.clone());
         App {
             exit: Arc::new(AtomicBool::new(false)),
@@ -1168,6 +1174,7 @@ impl App {
             preferences_visible: false,
             resize_mode: ResizeMode::Original,
             enter: false,
+            zen_mode,
         }
     }
 }
