@@ -4,6 +4,7 @@ use std::{
     thread,
 };
 
+use image::metadata::Orientation;
 use rexif::ExifTag;
 use winit::event_loop::EventLoopProxy;
 
@@ -111,6 +112,7 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
         loaders.swap(0, 4);
     }
 
+    let mut orientation = None;
     let mut metadata = Vec::new();
     if let Ok(exif) = rexif::parse_buffer_quiet(bytes).0 {
         for entry in exif.entries {
@@ -118,11 +120,25 @@ pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageD
                 let text = entry.value_more_readable;
                 metadata.push((entry.tag.to_string(), text.to_string()));
             }
+            if ExifTag::Orientation == entry.tag {
+                let raw = match entry.value {
+                    rexif::TagValue::U16(vec) => vec.last().copied(),
+                    _ => None,
+                };
+                if let Some(raw) = raw {
+                    orientation = Orientation::from_exif(raw.min(255) as u8);
+                }
+            }
         }
     }
 
     for loader in loaders {
-        if let Some(image) = loader(bytes) {
+        if let Some(mut image) = loader(bytes) {
+            if let Some(orientation) = orientation {
+                for image in image.iter_mut() {
+                    image.buffer_mut().apply_orientation(orientation);
+                }
+            }
             return Ok(ImageData::new(image, metadata));
         }
     }
