@@ -42,7 +42,7 @@ impl Mosaic {
                     let end_x = ((x + 1) * limit).min(image.width());
                     let end_y = ((y + 1) * limit).min(image.height());
 
-                    if end_x.saturating_sub(start_x) == 0 || end_x.saturating_sub(start_x) == 0 {
+                    if end_x.saturating_sub(start_x) == 0 || end_y.saturating_sub(start_y) == 0 {
                         continue;
                     }
 
