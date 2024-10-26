@@ -43,6 +43,7 @@ impl App {
                                 ("100% - 900% Zoom", "Ctrl + 1 - 9"),
                                 ("Previous image", "A or L or Left Arrow"),
                                 ("Next image", "D or H or Right Arrow"),
+                                ("Toggle zen mode", "Ctrl + I"),
                             ];
 
                             ui.label(RichText::new("Action").strong());

@@ -449,6 +449,13 @@ impl App {
 
                     if input.consume_shortcut(&KeyboardShortcut {
                         modifiers: Modifiers::CTRL,
+                        logical_key: I,
+                    }) {
+                        self.zen_mode = !self.zen_mode;
+                    }
+
+                    if input.consume_shortcut(&KeyboardShortcut {
+                        modifiers: Modifiers::CTRL,
                         logical_key: H,
                     }) {
                         self.help_visible = true
