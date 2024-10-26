@@ -29,5 +29,11 @@ pub fn get_clap_command() -> clap::Command {
                 .help("Do not cache images in memory")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            clap::Arg::new("class")
+                .long("class")
+                .default_value("simp")
+                .help("Defines window class/app_id on X11/Wayland"),
+        )
         .arg(clap::Arg::new("file").help("Load this file").index(1))
 }

@@ -61,7 +61,7 @@ pub struct WindowHandler {
 }
 
 impl WindowHandler {
-    pub async fn new(fullscreen: bool, zen_mode: bool, no_cache: bool) -> Self {
+    pub async fn new(class: &str, fullscreen: bool, zen_mode: bool, no_cache: bool) -> Self {
         let mut config: Config = confy::load("simp", None).unwrap_or_default();
         config.preferences.clamp();
 
@@ -88,9 +88,10 @@ impl WindowHandler {
         #[cfg(all(unix, not(target_os = "macos")))]
         let builder = {
             use winit::platform::{wayland, x11};
-            let builder = wayland::WindowAttributesExtWayland::with_name(builder, "simp", "simp");
-            x11::WindowAttributesExtX11::with_name(builder, "simp", "simp")
+            let builder = wayland::WindowAttributesExtWayland::with_name(builder, class, class);
+            x11::WindowAttributesExtX11::with_name(builder, class, class)
         };
+        let _ = class;
 
         #[allow(deprecated)]
         let window = Arc::new(event_loop.create_window(builder).unwrap());
@@ -463,8 +464,9 @@ fn main() {
     let fullscreen: bool = matches.get_flag("fullscreen");
     let zen_mode: bool = matches.get_flag("zen-mode");
     let no_cache: bool = matches.get_flag("no-cache");
-
-    let mut window_handler = pollster::block_on(WindowHandler::new(fullscreen, zen_mode, no_cache));
+    let class: &String = matches.get_one("class").unwrap();
+    let mut window_handler =
+        pollster::block_on(WindowHandler::new(class, fullscreen, zen_mode, no_cache));
 
     if !io::stdin().is_terminal() {
         let proxy = window_handler.proxy.clone();
