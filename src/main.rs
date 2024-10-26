@@ -61,7 +61,7 @@ pub struct WindowHandler {
 }
 
 impl WindowHandler {
-    pub async fn new(fullscreen: bool, zen_mode: bool) -> Self {
+    pub async fn new(fullscreen: bool, zen_mode: bool, no_cache: bool) -> Self {
         let mut config: Config = confy::load("simp", None).unwrap_or_default();
         config.preferences.clamp();
 
@@ -204,6 +204,7 @@ impl WindowHandler {
             proxy.clone(),
             [size.width as f32, size.height as f32],
             zen_mode,
+            no_cache,
         );
 
         let ctrl_proxy = proxy.clone();
@@ -461,8 +462,9 @@ fn main() {
     let path: Option<&String> = matches.get_one("file");
     let fullscreen: bool = matches.get_flag("fullscreen");
     let zen_mode: bool = matches.get_flag("zen-mode");
+    let no_cache: bool = matches.get_flag("no-cache");
 
-    let mut window_handler = pollster::block_on(WindowHandler::new(fullscreen, zen_mode));
+    let mut window_handler = pollster::block_on(WindowHandler::new(fullscreen, zen_mode, no_cache));
 
     if !io::stdin().is_terminal() {
         let proxy = window_handler.proxy.clone();

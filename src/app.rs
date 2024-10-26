@@ -1197,6 +1197,7 @@ impl App {
         proxy: EventLoopProxy<UserEvent>,
         size: [f32; 2],
         zen_mode: bool,
+        no_cache: bool,
     ) -> Self {
         let dialog_manager = DialogManager::new(proxy.clone());
         App {
@@ -1206,7 +1207,7 @@ impl App {
             image_renderer: image_renderer::Renderer::new(wgpu),
             crop_renderer: crop_renderer::Renderer::new(wgpu),
             image_view: None,
-            op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy()),
+            op_queue: OpQueue::new(proxy.clone(), dialog_manager.get_proxy(), no_cache),
             dialog_manager,
             color_type: ColorType::Rgba8,
             size: Vector2::from(size),

@@ -23,5 +23,11 @@ pub fn get_clap_command() -> clap::Command {
                 .help("Remove all UI")
                 .action(clap::ArgAction::SetTrue),
         )
+        .arg(
+            clap::Arg::new("no-cache")
+                .long("no-cache")
+                .help("Do not cache images in memory")
+                .action(clap::ArgAction::SetTrue),
+        )
         .arg(clap::Arg::new("file").help("Load this file").index(1))
 }

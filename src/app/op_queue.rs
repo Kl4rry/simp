@@ -107,9 +107,13 @@ pub struct OpQueue {
 }
 
 impl OpQueue {
-    pub fn new(proxy: EventLoopProxy<UserEvent>, dialog_proxy: DialogProxy) -> Self {
+    pub fn new(
+        proxy: EventLoopProxy<UserEvent>,
+        dialog_proxy: DialogProxy,
+        no_cache: bool,
+    ) -> Self {
         const CACHE_SIZE: usize = 1_000_000_000;
-        let cache = Arc::new(Cache::new(CACHE_SIZE));
+        let cache = Arc::new(Cache::new(if no_cache { 0 } else { CACHE_SIZE }));
         let loading_info = Arc::new(Mutex::new(LoadingInfo::default()));
 
         Self {
