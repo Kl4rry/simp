@@ -48,6 +48,7 @@ pub struct ImageView {
     pub grayscale: bool,
     pub invert: bool,
     pub crop: Crop,
+    pub playing: bool,
 }
 
 impl ImageView {
@@ -76,6 +77,7 @@ impl ImageView {
             saturation: 0.0,
             grayscale: false,
             invert: false,
+            playing: true,
         }
     }
 
@@ -177,26 +179,31 @@ impl ImageView {
     pub fn animate(&mut self) -> Duration {
         let guard = self.image_data.read().unwrap();
         let frames = &guard.frames;
-        if frames.len() > 1 {
-            let now = Instant::now();
-            let time_passed = now.duration_since(self.last_frame);
-            let delay = frames[self.index].delay;
-
-            if time_passed > delay {
-                self.index += 1;
-                if self.index >= frames.len() {
-                    self.index = 0;
-                }
-
-                self.last_frame = now;
-
-                delay
-            } else {
-                delay - time_passed
-            }
-        } else {
-            Duration::MAX
+        if !self.playing || frames.len() <= 1 {
+            return Duration::MAX;
         }
+
+        let now = Instant::now();
+        let time_passed = now.duration_since(self.last_frame);
+        let delay = frames[self.index].delay;
+
+        if time_passed > delay {
+            self.index += 1;
+            if self.index >= frames.len() {
+                self.index = 0;
+            }
+
+            self.last_frame = now;
+
+            delay
+        } else {
+            delay - time_passed
+        }
+    }
+
+    pub fn len_frames(&mut self) -> usize {
+        let guard = self.image_data.read().unwrap();
+        guard.frames.len()
     }
 
     pub fn crop(&self, cut: Rect, proxy: EventLoopProxy<UserEvent>) {

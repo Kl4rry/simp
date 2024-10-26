@@ -66,8 +66,8 @@ enum ResizeMode {
     LargestFit,
 }
 
-const TOP_BAR_SIZE: f32 = 26.0;
-const BOTTOM_BAR_SIZE: f32 = 27.0;
+const TOP_BAR_SIZE: f32 = 22.0;
+const BOTTOM_BAR_SIZE: f32 = 20.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
@@ -126,6 +126,7 @@ impl App {
                     wgpu.window.set_title(&self.current_filename.to_string());
                 }
 
+                self.set_bar_size(wgpu);
                 self.largest_fit();
             }
             Output::FlipHorizontal => {
@@ -371,7 +372,23 @@ impl App {
         };
     }
 
+    pub fn set_bar_size(&mut self, wgpu: &WgpuState) {
+        if wgpu.window.fullscreen().is_none() && !self.zen_mode {
+            self.top_bar_size = TOP_BAR_SIZE * wgpu.scale_factor as f32;
+            self.bottom_bar_size = BOTTOM_BAR_SIZE * wgpu.scale_factor as f32;
+            if let Some(ref mut view) = self.image_view {
+                if view.len_frames() > 1 {
+                    self.bottom_bar_size += BOTTOM_BAR_SIZE * wgpu.scale_factor as f32;
+                }
+            }
+        } else {
+            self.top_bar_size = 0.0;
+            self.bottom_bar_size = 0.0;
+        }
+    }
+
     pub fn handle_ui(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
+        self.set_bar_size(wgpu);
         if self.op_queue.working() {
             ctx.set_cursor_icon(CursorIcon::Progress);
         }
@@ -381,11 +398,7 @@ impl App {
         if wgpu.window.fullscreen().is_none() && !self.zen_mode {
             self.menu_bar(wgpu, ctx);
             self.bottom_bar(ctx);
-            self.top_bar_size = TOP_BAR_SIZE;
-            self.bottom_bar_size = BOTTOM_BAR_SIZE;
-        } else {
-            self.top_bar_size = 0.0;
-            self.bottom_bar_size = 0.0;
+            self.gif_player_bar(ctx);
         }
 
         self.resize_ui(ctx);
@@ -539,7 +552,7 @@ impl App {
                     })) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
                         && !self.color_visible
-                        && !self.color_visible
+                        && !self.color_space_visible
                         && !self.metadata_visible
                         && !self.resize.visible
                     {
@@ -558,7 +571,7 @@ impl App {
                     })) && self.view_available()
                         && !self.image_view.as_ref().unwrap().cropping()
                         && !self.color_visible
-                        && !self.color_visible
+                        && !self.color_space_visible
                         && !self.metadata_visible
                         && !self.resize.visible
                     {
@@ -663,99 +676,136 @@ impl App {
         });
     }
 
-    fn bottom_bar(&mut self, ctx: &egui::Context) {
-        TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                if self.image_view.is_some() {
-                    ui.add_enabled_ui(
-                        self.view_available()
-                            && !self.image_view.as_ref().unwrap().cropping()
-                            && !self.color_visible
-                            && !self.color_visible
-                            && !self.metadata_visible
-                            && !self.resize.visible,
-                        |ui| {
-                            if ui.small_button("⬅").clicked() {
-                                self.queue(Op::Prev);
-                            }
-                            if ui.small_button("➡").clicked() {
-                                self.queue(Op::Next);
-                            }
-                        },
-                    );
-                }
+    fn gif_player_bar(&mut self, ctx: &egui::Context) {
+        let Some(ref mut view) = self.image_view else {
+            return;
+        };
 
-                if let Some(image) = self.image_view.as_mut() {
-                    ui.label(self.current_filename.to_string());
-                    ui.label(format!("{} x {}", image.size.x, image.size.y));
-                    ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
+        if view.len_frames() < 2 {
+            return;
+        }
 
-                    let g = image.image_data.read();
-                    let buf = g.as_ref().unwrap().frames[0].buffer();
-                    let mut color_space = color_type_to_str(buf.color()).to_string();
-
-                    {
-                        let pos = (((self.mouse_position
-                            - image.position
-                            - (image.rotated_size() / 2.0) * image.scale)
-                            + image.rotated_size() * image.scale)
-                            / image.scale)
-                            .map(|v| v.floor() as i64);
-
-                        if pos.x >= 0
-                            && pos.y >= 0
-                            && pos.x < image.rotated_size().x as i64
-                            && pos.y < image.rotated_size().y as i64
+        TopBottomPanel::bottom("gif_player")
+            .exact_height(BOTTOM_BAR_SIZE)
+            .show(ctx, |ui| {
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                    let icon = if view.playing { "⏸" } else { "▶" };
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        if ui
+                            .small_button(egui::RichText::new(icon).size(11.0))
+                            .clicked()
                         {
-                            let guard = image.image_data.read().unwrap();
-                            let frame = &guard.frames[image.index];
-                            let buffer = frame.buffer();
+                            view.playing = !view.playing;
+                        }
+                    });
 
-                            let mut pos = pos.map(|v| v as u32);
-                            match image.rotation() {
-                                0 => (),
-                                1 => {
-                                    mem::swap(&mut pos.x, &mut pos.y);
-                                    pos.y = image.size.y as u32 - pos.y - 1;
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        let before = view.index;
+                        let frames = view.len_frames() - 1;
+                        ui.add(egui::Slider::new(&mut view.index, 0..=frames));
+                        if view.index != before {
+                            view.playing = false;
+                        }
+                    });
+                });
+            });
+    }
+
+    fn bottom_bar(&mut self, ctx: &egui::Context) {
+        TopBottomPanel::bottom("bottom")
+            .exact_height(BOTTOM_BAR_SIZE)
+            .show(ctx, |ui| {
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    if self.image_view.is_some() {
+                        ui.add_enabled_ui(
+                            self.view_available()
+                                && !self.image_view.as_ref().unwrap().cropping()
+                                && !self.color_visible
+                                && !self.color_space_visible
+                                && !self.metadata_visible
+                                && !self.resize.visible,
+                            |ui| {
+                                if ui.small_button("⬅").clicked() {
+                                    self.queue(Op::Prev);
                                 }
-                                2 => {
-                                    pos.x = image.size.x as u32 - pos.x - 1;
-                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                if ui.small_button("➡").clicked() {
+                                    self.queue(Op::Next);
                                 }
-                                3 => {
-                                    mem::swap(&mut pos.x, &mut pos.y);
-                                    pos.x = image.size.x as u32 - pos.x - 1;
-                                }
-                                _ => panic!("rotated more then 360 degrees"),
-                            }
+                            },
+                        );
+                    }
 
-                            if image.horizontal_flip {
-                                pos.x = image.size.x as u32 - pos.x - 1;
-                            }
+                    if let Some(image) = self.image_view.as_mut() {
+                        ui.label(self.current_filename.to_string());
+                        ui.label(format!("{} x {}", image.size.x, image.size.y));
+                        ui.label(format!("Zoom: {}%", (image.scale * 100.0).round()));
 
-                            if image.vertical_flip {
-                                pos.y = image.size.y as u32 - pos.y - 1;
-                            }
+                        let g = image.image_data.read();
+                        let buf = g.as_ref().unwrap().frames[0].buffer();
+                        let mut color_space = color_type_to_str(buf.color()).to_string();
 
-                            fn p2s<P>(p: P) -> String
-                            where
-                                P: image::Pixel,
-                                <P as image::Pixel>::Subpixel: ToString,
+                        {
+                            let pos = (((self.mouse_position
+                                - image.position
+                                - (image.rotated_size() / 2.0) * image.scale)
+                                + image.rotated_size() * image.scale)
+                                / image.scale)
+                                .map(|v| v.floor() as i64);
+
+                            if pos.x >= 0
+                                && pos.y >= 0
+                                && pos.x < image.rotated_size().x as i64
+                                && pos.y < image.rotated_size().y as i64
                             {
-                                let channels = p.channels();
-                                let mut out = String::new();
+                                let guard = image.image_data.read().unwrap();
+                                let frame = &guard.frames[image.index];
+                                let buffer = frame.buffer();
 
-                                for i in 0..channels.len() {
-                                    out.push_str(&channels[i].to_string());
-                                    if i < channels.len() - 1 {
-                                        out.push_str(", ");
+                                let mut pos = pos.map(|v| v as u32);
+                                match image.rotation() {
+                                    0 => (),
+                                    1 => {
+                                        mem::swap(&mut pos.x, &mut pos.y);
+                                        pos.y = image.size.y as u32 - pos.y - 1;
                                     }
+                                    2 => {
+                                        pos.x = image.size.x as u32 - pos.x - 1;
+                                        pos.y = image.size.y as u32 - pos.y - 1;
+                                    }
+                                    3 => {
+                                        mem::swap(&mut pos.x, &mut pos.y);
+                                        pos.x = image.size.x as u32 - pos.x - 1;
+                                    }
+                                    _ => panic!("rotated more then 360 degrees"),
                                 }
 
-                                out
-                            }
+                                if image.horizontal_flip {
+                                    pos.x = image.size.x as u32 - pos.x - 1;
+                                }
 
-                            #[rustfmt::skip]
+                                if image.vertical_flip {
+                                    pos.y = image.size.y as u32 - pos.y - 1;
+                                }
+
+                                fn p2s<P>(p: P) -> String
+                                where
+                                    P: image::Pixel,
+                                    <P as image::Pixel>::Subpixel: ToString,
+                                {
+                                    let channels = p.channels();
+                                    let mut out = String::new();
+
+                                    for i in 0..channels.len() {
+                                        out.push_str(&channels[i].to_string());
+                                        if i < channels.len() - 1 {
+                                            out.push_str(", ");
+                                        }
+                                    }
+
+                                    out
+                                }
+
+                                #[rustfmt::skip]
                             let color_str = match buffer {
                                 DynamicImage::ImageLuma8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
                                 DynamicImage::ImageLumaA8(b) => p2s(*b.get_pixel(pos.x, pos.y)),
@@ -769,20 +819,20 @@ impl App {
                                 DynamicImage::ImageRgba32F(b) => p2s(*b.get_pixel(pos.x, pos.y)),
                                 _ => panic!("Unknown color space name. This is a bug."),
                             };
-                            color_space = format!("{color_space}: {color_str}");
-                        }
-                        if ui.label(color_space).clicked() {
-                            self.color_space_visible = true;
+                                color_space = format!("{color_space}: {color_str}");
+                            }
+                            if ui.label(color_space).clicked() {
+                                self.color_space_visible = true;
+                            }
                         }
                     }
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if self.op_queue.working() {
-                        ui.add(egui::widgets::Spinner::new().size(14.0));
-                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if self.op_queue.working() {
+                            ui.add(egui::widgets::Spinner::new().size(14.0));
+                        }
+                    });
                 });
             });
-        });
     }
 
     pub fn update(&mut self, _wgpu: &WgpuState) -> (bool, Duration) {
@@ -1101,7 +1151,8 @@ impl App {
                 (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = min!(scaling, 1.0);
-            view.position = self.size / 2.0;
+            view.position.x = self.size.x / 2.0;
+            view.position.y = view.real_size().y / 2.0 + self.top_bar_size;
             self.resize_mode = ResizeMode::BestFit;
         }
     }
@@ -1114,7 +1165,8 @@ impl App {
                 (self.size.y - self.top_bar_size - self.bottom_bar_size) / size.y
             );
             view.scale = scaling;
-            view.position = self.size / 2.0;
+            view.position.x = self.size.x / 2.0;
+            view.position.y = view.real_size().y / 2.0 + self.top_bar_size;
             self.resize_mode = ResizeMode::LargestFit;
         }
     }
