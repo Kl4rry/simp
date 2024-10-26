@@ -309,43 +309,40 @@ impl App {
             UserEvent::Exit => {
                 let exit = self.exit.clone();
                 let dialog_proxy = self.dialog_manager.get_proxy();
-                if self.op_queue.undo_stack().is_edited() {
-                    thread::spawn(move || {
-                        let close = dialog_proxy
-                            .spawn_dialog("Unsaved changes", move |ui, enter| {
-                                ui.label(
+                if !self.op_queue.undo_stack().is_edited() {
+                    exit.store(true, Ordering::Relaxed);
+                    return;
+                }
+                thread::spawn(move || {
+                    let close = dialog_proxy
+                        .spawn_dialog("Unsaved changes", move |ui, enter| {
+                            ui.label(
                             "You have unsaved changes are you sure you want to close this image?",
                         );
-                                ui.with_layout(
-                                    egui::Layout::left_to_right(egui::Align::LEFT),
-                                    |ui| {
-                                        if ui.button("Ok").clicked() {
-                                            return Some(true);
-                                        }
+                            ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
+                                if ui.button("Ok").clicked() {
+                                    return Some(true);
+                                }
 
-                                        if ui.button("Cancel").clicked() {
-                                            return Some(false);
-                                        }
+                                if ui.button("Cancel").clicked() {
+                                    return Some(false);
+                                }
 
-                                        if *enter {
-                                            *enter = false;
-                                            return Some(true);
-                                        }
+                                if *enter {
+                                    *enter = false;
+                                    return Some(true);
+                                }
 
-                                        None
-                                    },
-                                )
-                                .inner
+                                None
                             })
-                            .wait()
-                            .unwrap_or(false);
-                        if close {
-                            exit.store(true, Ordering::Relaxed);
-                        }
-                    });
-                } else {
-                    exit.store(true, Ordering::Relaxed);
-                }
+                            .inner
+                        })
+                        .wait()
+                        .unwrap_or(false);
+                    if close {
+                        exit.store(true, Ordering::Relaxed);
+                    }
+                });
             }
             UserEvent::Output(output) => {
                 if let Some(output) = output.take() {
