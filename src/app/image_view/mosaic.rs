@@ -76,12 +76,6 @@ impl Mosaic {
                     };
 
                     tiles.push(Tile { vertices, texture });
-                    wgpu.queue.submit(iter::once(encoder.finish()));
-                    encoder = wgpu
-                        .device
-                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                            label: Some("Render Encoder"),
-                        });
                 }
             }
 
