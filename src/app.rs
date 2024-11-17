@@ -393,14 +393,6 @@ impl App {
             ctx.set_cursor_icon(CursorIcon::Progress);
         }
 
-        self.main_area(wgpu, ctx);
-
-        if wgpu.window.fullscreen().is_none() && !self.zen_mode {
-            self.menu_bar(wgpu, ctx);
-            self.bottom_bar(ctx);
-            self.gif_player_bar(ctx);
-        }
-
         self.resize_ui(ctx);
         self.preferences_ui(ctx);
         self.help_ui(ctx);
@@ -408,6 +400,14 @@ impl App {
         self.color_space_ui(ctx);
         self.metadata_ui(ctx);
         self.crop_ui(ctx);
+
+        self.main_area(wgpu, ctx);
+
+        if wgpu.window.fullscreen().is_none() && !self.zen_mode {
+            self.menu_bar(wgpu, ctx);
+            self.bottom_bar(ctx);
+            self.gif_player_bar(ctx);
+        }
 
         self.dialog_manager.update(ctx, self.size, &mut self.enter);
     }
