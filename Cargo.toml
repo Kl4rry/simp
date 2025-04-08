@@ -14,7 +14,7 @@ exclude = ["images", ".github"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arboard = "3.2.0"
+arboard = { version = "3.2.0", features = ["wayland-data-control"] }
 bytemuck = { version = "1.14.0", features = ["derive"] }
 cgmath = { version = "0.18.0", features = ["swizzle", "mint"] }
 clap = { version = "4.5.6", features = ["std", "help", "usage", "error-context", "suggestions"], default-features = false }
