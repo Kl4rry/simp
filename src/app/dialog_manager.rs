@@ -62,10 +62,6 @@ impl DialogManager {
             }
         }
     }
-
-    pub fn dialog_count(&self) -> usize {
-        self.dialogs.len()
-    }
 }
 
 #[derive(Clone)]
