@@ -349,6 +349,11 @@ impl OpQueue {
     }
 
     fn load(&self, path_buf: PathBuf, use_cache: bool, edited_prompt: bool) {
+        let path_buf = match path_buf.strip_prefix("file://") {
+            Ok(path) => Path::new("/").join(path),
+            Err(_) => path_buf,
+        };
+
         {
             let mut guard = self.loading_info.lock().unwrap();
             guard.target_file = Some(path_buf.clone());

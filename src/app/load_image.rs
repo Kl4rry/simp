@@ -71,9 +71,8 @@ pub fn open(proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState, folder: bool) {
 }
 
 pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
-    let path_buf = path.as_ref().to_path_buf();
-    let bytes = fs::read(&path_buf)?;
-    load_from_bytes(&bytes, Some(path_buf))
+    let bytes = fs::read(&path.as_ref().to_path_buf())?;
+    load_from_bytes(&bytes, Some(path.as_ref().to_path_buf()))
 }
 
 pub fn load_from_bytes(bytes: &[u8], path_buf: Option<PathBuf>) -> Result<ImageData, LoadError> {

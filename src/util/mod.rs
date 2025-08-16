@@ -1,6 +1,6 @@
 use std::{path::PathBuf, time::Duration};
 
-use image::{Delay, DynamicImage, Frame, ImageBuffer, Luma, LumaA, Primitive, Rgb, Rgba};
+use image::{Delay, DynamicImage, Frame, ImageBuffer, Rgba};
 
 use crate::app::op_queue::Output;
 
@@ -119,77 +119,6 @@ impl From<Vec<Image>> for ImageData {
             frames,
             metadata: Vec::new(),
         }
-    }
-}
-
-pub trait HasAlpha {
-    fn has_alpha(&self) -> bool;
-}
-
-impl HasAlpha for DynamicImage {
-    fn has_alpha(&self) -> bool {
-        match self {
-            DynamicImage::ImageLuma8(b) => b.has_alpha(),
-            DynamicImage::ImageLumaA8(b) => b.has_alpha(),
-            DynamicImage::ImageRgb8(b) => b.has_alpha(),
-            DynamicImage::ImageRgba8(b) => b.has_alpha(),
-            DynamicImage::ImageLuma16(b) => b.has_alpha(),
-            DynamicImage::ImageLumaA16(b) => b.has_alpha(),
-            DynamicImage::ImageRgb16(b) => b.has_alpha(),
-            DynamicImage::ImageRgba16(b) => b.has_alpha(),
-            DynamicImage::ImageRgb32F(b) => b.has_alpha(),
-            DynamicImage::ImageRgba32F(b) => b.has_alpha(),
-            _ => panic!("Unknown color space name. This is a bug."),
-        }
-    }
-}
-
-impl<T: Primitive> HasAlpha for ImageBuffer<Luma<T>, Vec<T>> {
-    fn has_alpha(&self) -> bool {
-        false
-    }
-}
-
-impl<T: Primitive> HasAlpha for ImageBuffer<LumaA<T>, Vec<T>> {
-    fn has_alpha(&self) -> bool {
-        true
-    }
-}
-
-// TODO switch to generics when the image crate fixes its shit.
-impl HasAlpha for ImageBuffer<Rgb<u8>, Vec<u8>> {
-    fn has_alpha(&self) -> bool {
-        false
-    }
-}
-
-impl HasAlpha for ImageBuffer<Rgb<u16>, Vec<u16>> {
-    fn has_alpha(&self) -> bool {
-        false
-    }
-}
-
-impl HasAlpha for ImageBuffer<Rgb<f32>, Vec<f32>> {
-    fn has_alpha(&self) -> bool {
-        false
-    }
-}
-
-impl HasAlpha for ImageBuffer<Rgba<u8>, Vec<u8>> {
-    fn has_alpha(&self) -> bool {
-        true
-    }
-}
-
-impl HasAlpha for ImageBuffer<Rgba<u16>, Vec<u16>> {
-    fn has_alpha(&self) -> bool {
-        true
-    }
-}
-
-impl HasAlpha for ImageBuffer<Rgba<f32>, Vec<f32>> {
-    fn has_alpha(&self) -> bool {
-        true
     }
 }
 

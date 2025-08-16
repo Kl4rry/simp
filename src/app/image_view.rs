@@ -117,7 +117,6 @@ impl ImageView {
         let position = self.position - self.scaled() / 2.0;
         let scale = Matrix4::from_scale(self.scale);
         let translation = Matrix4::from_translation(Vector3::new(position.x, position.y, 0.0));
-
         let flip = self.get_flip_mat();
         let rotation = self.get_rotation_mat();
         let matrix = OPENGL_TO_WGPU_MATRIX * ortho * translation * scale * flip * rotation;
