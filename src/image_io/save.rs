@@ -6,8 +6,8 @@ use std::{
 };
 
 use image::{
-    codecs::{gif::GifEncoder, jpeg::JpegEncoder},
     Frame, GenericImageView, ImageError, ImageFormat,
+    codecs::{gif::GifEncoder, jpeg::JpegEncoder},
 };
 use webp_animation::prelude::*;
 
@@ -99,10 +99,10 @@ fn open_file(path: impl AsRef<Path>) -> Result<File, std::io::Error> {
 }
 
 fn get_temp_path(path: impl AsRef<Path>) -> PathBuf {
-    use rand::{distributions::Alphanumeric, Rng};
+    use rand::{distr::Alphanumeric, prelude::*};
     let mut id = String::from('.');
     id.extend(
-        rand::thread_rng()
+        rand::rng()
             .sample_iter(&Alphanumeric)
             .take(8)
             .map(char::from),
@@ -211,7 +211,7 @@ pub fn jpeg_xl(path: impl AsRef<Path>, image: &Image, quality: f32, lossy: bool)
         _ => {
             return Err(
                 io::Error::new(io::ErrorKind::InvalidInput, "Unsupported color format").into(),
-            )
+            );
         }
     };
 

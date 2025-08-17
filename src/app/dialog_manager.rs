@@ -7,7 +7,7 @@ use cgmath::{EuclideanSpace, Point2, Vector2};
 use rand::prelude::*;
 use winit::event_loop::EventLoopProxy;
 
-use crate::util::{p2, UserEvent};
+use crate::util::{UserEvent, p2};
 
 trait UiClosure: Fn(&mut egui::Ui, &mut bool) -> bool + Send {}
 impl<T: Fn(&mut egui::Ui, &mut bool) -> bool + Send> UiClosure for T {}
@@ -18,7 +18,7 @@ struct Dialog {
 }
 
 pub struct DialogManager {
-    dialogs: HashMap<usize, Dialog>,
+    dialogs: HashMap<u64, Dialog>,
     receiver: mpsc::Receiver<Dialog>,
     proxy: DialogProxy,
 }
@@ -40,9 +40,9 @@ impl DialogManager {
     }
 
     pub fn update(&mut self, ctx: &egui::Context, size: Vector2<f32>, enter: &mut bool) {
-        let mut rng = thread_rng();
+        let mut rng = rand::rng();
         while let Ok(dialog) = self.receiver.try_recv() {
-            self.dialogs.insert(rng.gen(), dialog);
+            self.dialogs.insert(rng.random(), dialog);
         }
 
         for key in self.dialogs.keys().copied().collect::<Vec<_>>() {

@@ -8,11 +8,11 @@ use std::{
 
 use cgmath::Vector2;
 use image::{
-    imageops::{
-        colorops::{contrast_in_place, huerotate_in_place},
-        FilterType,
-    },
     ColorType, DynamicImage,
+    imageops::{
+        FilterType,
+        colorops::{contrast_in_place, huerotate_in_place},
+    },
 };
 use winit::event_loop::EventLoopProxy;
 
@@ -29,7 +29,7 @@ use super::{
 use crate::{
     app::undo_stack::UndoStack,
     rect::Rect,
-    util::{extensions::EXTENSIONS, Image, ImageData, UserEvent},
+    util::{Image, ImageData, UserEvent, extensions::EXTENSIONS},
 };
 
 mod imageops;
@@ -378,19 +378,19 @@ impl OpQueue {
                 let mut paths = Vec::new();
                 if let Ok(dir) = fs::read_dir(&path) {
                     for entry in dir.flatten() {
-                        if let Ok(file_type) = entry.file_type() {
-                            if file_type.is_file() {
-                                let path = entry.path();
-                                match path.extension() {
-                                    Some(ext)
-                                        if EXTENSIONS.contains(
-                                            &&*ext.to_string_lossy().to_ascii_lowercase(),
-                                        ) =>
-                                    {
-                                        paths.push(path);
-                                    }
-                                    _ => (),
+                        if let Ok(file_type) = entry.file_type()
+                            && file_type.is_file()
+                        {
+                            let path = entry.path();
+                            match path.extension() {
+                                Some(ext)
+                                    if EXTENSIONS.contains(
+                                        &&*ext.to_string_lossy().to_ascii_lowercase(),
+                                    ) =>
+                                {
+                                    paths.push(path);
                                 }
+                                _ => (),
                             }
                         }
                     }

@@ -2,8 +2,8 @@ use std::{
     mem,
     process::Command,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     thread,
     time::Duration,
@@ -11,16 +11,15 @@ use std::{
 
 use cgmath::{EuclideanSpace, Point2, Vector2};
 use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
-use image::{imageops::FilterType, ColorType, DynamicImage};
+use image::{ColorType, DynamicImage, imageops::FilterType};
 use num_traits::Zero;
 use winit::{
     event::WindowEvent, event_loop::EventLoopProxy, keyboard::ModifiersState, window::Fullscreen,
 };
 
 use crate::{
-    min,
-    util::{p2, UserEvent},
-    WgpuState,
+    WgpuState, min,
+    util::{UserEvent, p2},
 };
 
 pub mod image_view;
@@ -376,10 +375,10 @@ impl App {
         if wgpu.window.fullscreen().is_none() && !self.zen_mode {
             self.top_bar_size = TOP_BAR_SIZE * wgpu.scale_factor as f32;
             self.bottom_bar_size = BOTTOM_BAR_SIZE * wgpu.scale_factor as f32;
-            if let Some(ref mut view) = self.image_view {
-                if view.len_frames() > 1 {
-                    self.bottom_bar_size += BOTTOM_BAR_SIZE * wgpu.scale_factor as f32;
-                }
+            if let Some(ref mut view) = self.image_view
+                && view.len_frames() > 1
+            {
+                self.bottom_bar_size += BOTTOM_BAR_SIZE * wgpu.scale_factor as f32;
             }
         } else {
             self.top_bar_size = 0.0;
@@ -420,16 +419,14 @@ impl App {
                 modifiers: Modifiers::NONE,
                 logical_key: Delete,
             }) && focused
+                && let Some(ref view) = self.image_view
+                && let Some(ref path) = view.path
             {
-                if let Some(ref view) = self.image_view {
-                    if let Some(ref path) = view.path {
-                        delete(
-                            path.clone(),
-                            self.dialog_manager.get_proxy(),
-                            self.proxy.clone(),
-                        );
-                    }
-                }
+                delete(
+                    path.clone(),
+                    self.dialog_manager.get_proxy(),
+                    self.proxy.clone(),
+                );
             }
 
             if input.consume_shortcut(&KeyboardShortcut {
@@ -493,6 +490,7 @@ impl App {
             {
                 self.queue(Op::Rotate(-1))
             }
+
             if input.consume_shortcut(&KeyboardShortcut {
                 modifiers: Modifiers::NONE,
                 logical_key: E,
@@ -505,13 +503,11 @@ impl App {
             if input.consume_shortcut(&KeyboardShortcut {
                 modifiers: Modifiers::NONE,
                 logical_key: F5,
-            }) {
-                if let Some(image) = self.image_view.as_ref() {
-                    if let Some(path) = &image.path {
-                        let buf = path.to_path_buf();
-                        self.queue(Op::LoadPath(buf, false));
-                    }
-                }
+            }) && let Some(image) = self.image_view.as_ref()
+                && let Some(path) = &image.path
+            {
+                let buf = path.to_path_buf();
+                self.queue(Op::LoadPath(buf, false));
             }
 
             if input.consume_shortcut(&KeyboardShortcut {
@@ -666,10 +662,9 @@ impl App {
                     modifiers: Modifiers::CTRL,
                     logical_key: num,
                 }) && focused
+                    && let Some(ref mut view) = self.image_view
                 {
-                    if let Some(ref mut view) = self.image_view {
-                        view.scale = (i + 1) as f32;
-                    }
+                    view.scale = (i + 1) as f32;
                 }
             }
         });
@@ -693,7 +688,7 @@ impl App {
 
             {
                 let size = ui.available_size();
-                let r = ui.allocate_response(size.into(), egui::Sense::click());
+                let r = ui.allocate_response(size, egui::Sense::click());
                 if r.clicked() {
                     r.request_focus();
                 }
@@ -867,39 +862,39 @@ impl App {
             self.delay = self.delay.min(image.animate());
         }
 
-        if PREFERENCES.lock().unwrap().auto_center {
-            if let Some(ref mut image) = self.image_view {
-                let image_size = image.real_size();
-                let mut window_size = self.size;
-                window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
+        if PREFERENCES.lock().unwrap().auto_center
+            && let Some(ref mut image) = self.image_view
+        {
+            let image_size = image.real_size();
+            let mut window_size = self.size;
+            window_size.y = window_size.y - self.top_bar_size - self.bottom_bar_size;
 
-                const MARGIN: f32 = 50.0;
+            const MARGIN: f32 = 50.0;
 
-                if image_size.x < window_size.x {
-                    image.position.x = self.size.x / 2.0;
-                } else {
-                    if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
-                        image.position.x = image_size.x / 2.0 + MARGIN;
-                    }
-
-                    if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
-                        image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
-                    }
+            if image_size.x < window_size.x {
+                image.position.x = self.size.x / 2.0;
+            } else {
+                if image.position.x - image_size.x / 2.0 > 0.0 + MARGIN {
+                    image.position.x = image_size.x / 2.0 + MARGIN;
                 }
 
-                if image_size.y < window_size.y {
-                    image.position.y = self.size.y / 2.0;
-                } else {
-                    if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
-                        image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
-                    }
+                if image.position.x + image_size.x / 2.0 < window_size.x - MARGIN {
+                    image.position.x = window_size.x - image_size.x / 2.0 - MARGIN;
+                }
+            }
 
-                    if image.position.y + image_size.y / 2.0
-                        < window_size.y + self.top_bar_size - MARGIN
-                    {
-                        image.position.y =
-                            (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
-                    }
+            if image_size.y < window_size.y {
+                image.position.y = self.size.y / 2.0;
+            } else {
+                if image.position.y - image_size.y / 2.0 > self.top_bar_size + MARGIN {
+                    image.position.y = image_size.y / 2.0 + self.top_bar_size + MARGIN;
+                }
+
+                if image.position.y + image_size.y / 2.0
+                    < window_size.y + self.top_bar_size - MARGIN
+                {
+                    image.position.y =
+                        (window_size.y - image_size.y / 2.0) + self.top_bar_size - MARGIN;
                 }
             }
         }
@@ -980,15 +975,19 @@ impl App {
                         let width = self.resize.width.parse::<u32>();
                         let height = self.resize.height.parse::<u32>();
 
-                        if self.resize.maintain_aspect_ratio && w_focus && width.is_ok() {
-                            let width = *width.as_ref().unwrap();
+                        if self.resize.maintain_aspect_ratio
+                            && w_focus
+                            && let Ok(width) = width
+                        {
                             let size = self.image_view.as_ref().unwrap().size;
                             let ratio = width as f32 / size.x;
                             self.resize.height = ((ratio * size.y) as u32).to_string();
                         }
 
-                        if self.resize.maintain_aspect_ratio && h_focus && height.is_ok() {
-                            let height = *height.as_ref().unwrap();
+                        if self.resize.maintain_aspect_ratio
+                            && h_focus
+                            && let Ok(height) = height
+                        {
                             let size = self.image_view.as_ref().unwrap().size;
                             let ratio = height as f32 / size.y;
                             self.resize.width = ((ratio * size.x) as u32).to_string();

@@ -9,9 +9,9 @@ use rexif::ExifTag;
 use winit::event_loop::EventLoopProxy;
 
 use crate::{
-    image_io::load::*,
-    util::{extensions::*, ImageData, UserEvent},
     WgpuState,
+    image_io::load::*,
+    util::{ImageData, UserEvent, extensions::*},
 };
 
 #[derive(Debug)]
@@ -71,7 +71,7 @@ pub fn open(proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState, folder: bool) {
 }
 
 pub fn load_uncached(path: impl AsRef<Path>) -> Result<ImageData, LoadError> {
-    let bytes = fs::read(&path.as_ref().to_path_buf())?;
+    let bytes = fs::read(path.as_ref())?;
     load_from_bytes(&bytes, Some(path.as_ref().to_path_buf()))
 }
 

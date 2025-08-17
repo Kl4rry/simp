@@ -2,8 +2,8 @@ use std::{
     num::NonZeroUsize,
     path::PathBuf,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 

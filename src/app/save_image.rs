@@ -5,8 +5,8 @@ use std::{
 };
 
 use image::{
-    imageops::{flip_horizontal_in_place, flip_vertical_in_place},
     ImageFormat,
+    imageops::{flip_horizontal_in_place, flip_vertical_in_place},
 };
 use winit::event_loop::EventLoopProxy;
 
@@ -16,9 +16,9 @@ use super::{
     preferences::PREFERENCES,
 };
 use crate::{
+    WgpuState,
     image_io::save::{gif, jpeg, save_with_format, webp, webp_animation},
     util::{Image, ImageData, UserEvent},
-    WgpuState,
 };
 
 pub fn open(name: String, proxy: EventLoopProxy<UserEvent>, wgpu: &WgpuState) {

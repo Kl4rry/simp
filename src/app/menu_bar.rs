@@ -1,9 +1,9 @@
 use std::fs;
 
-use egui::{menu, TopBottomPanel};
+use egui::{TopBottomPanel, menu};
 
-use super::{load_image, new_window, op_queue::Op, save_image, App, TOP_BAR_SIZE};
-use crate::{util::UserEvent, WgpuState};
+use super::{App, TOP_BAR_SIZE, load_image, new_window, op_queue::Op, save_image};
+use crate::{WgpuState, util::UserEvent};
 
 impl App {
     pub fn menu_bar(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
@@ -57,11 +57,11 @@ impl App {
                             )
                             .clicked()
                         {
-                            if let Some(image) = self.image_view.as_ref() {
-                                if let Some(path) = &image.path {
-                                    let buf = path.to_path_buf();
-                                    self.queue(Op::LoadPath(buf, false));
-                                }
+                            if let Some(image) = self.image_view.as_ref()
+                                && let Some(path) = &image.path
+                            {
+                                let buf = path.to_path_buf();
+                                self.queue(Op::LoadPath(buf, false));
                             }
                             ui.close_menu();
                         }
@@ -297,14 +297,14 @@ impl App {
                             )
                             .clicked()
                         {
-                            if let Some(ref view) = self.image_view {
-                                if let Some(ref path) = view.path {
-                                    super::delete(
-                                        path.clone(),
-                                        self.dialog_manager.get_proxy(),
-                                        self.proxy.clone(),
-                                    );
-                                }
+                            if let Some(ref view) = self.image_view
+                                && let Some(ref path) = view.path
+                            {
+                                super::delete(
+                                    path.clone(),
+                                    self.dialog_manager.get_proxy(),
+                                    self.proxy.clone(),
+                                );
                             }
                             ui.close_menu();
                         }
@@ -333,12 +333,12 @@ impl App {
 
                         ui.separator();
 
-                        if ui.add(egui::Button::new("Third-party Software")).clicked() {
-                            if let Err(err) = open_licenes() {
-                                let _ = self
-                                    .proxy
-                                    .send_event(UserEvent::ErrorMessage(err.to_string()));
-                            }
+                        if ui.add(egui::Button::new("Third-party Software")).clicked()
+                            && let Err(err) = open_licenes()
+                        {
+                            let _ = self
+                                .proxy
+                                .send_event(UserEvent::ErrorMessage(err.to_string()));
                         }
 
                         if ui.add(egui::Button::new("About")).clicked() {

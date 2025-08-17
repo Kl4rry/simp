@@ -17,9 +17,9 @@ use serde::{Deserialize, Serialize};
 
 mod app;
 use app::{
-    op_queue::Op,
-    preferences::{Preferences, PREFERENCES},
     App,
+    op_queue::Op,
+    preferences::{PREFERENCES, Preferences},
 };
 mod icon;
 mod rect;
@@ -397,15 +397,15 @@ impl WindowHandler {
                             app.modifiers = modifiers.state()
                         }
                         WindowEvent::KeyboardInput { event, .. } => {
-                            if app.modifiers.contains(ModifiersState::CONTROL) {
-                                if let Key::Character(ch) = &event.logical_key {
-                                    match ch.as_str() {
-                                        "v" => app.handle_paste(),
-                                        // Remove the scufffed egui zoom
-                                        "+" => return,
-                                        "-" => return,
-                                        _ => (),
-                                    }
+                            if app.modifiers.contains(ModifiersState::CONTROL)
+                                && let Key::Character(ch) = &event.logical_key
+                            {
+                                match ch.as_str() {
+                                    "v" => app.handle_paste(),
+                                    // Remove the scufffed egui zoom
+                                    "+" => return,
+                                    "-" => return,
+                                    _ => (),
                                 }
                             }
                         }

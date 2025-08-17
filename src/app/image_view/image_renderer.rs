@@ -5,7 +5,7 @@ use crevice::std140::AsStd140;
 use num_traits::Zero;
 use wgpu::util::DeviceExt;
 
-use super::{texture, ImageView};
+use super::{ImageView, texture};
 use crate::WgpuState;
 
 #[derive(Copy, Clone)]

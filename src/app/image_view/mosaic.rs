@@ -2,10 +2,10 @@ use std::{iter, sync::Arc};
 
 use cgmath::Vector2;
 use image::{DynamicImage, SubImage};
-use wgpu::{util::DeviceExt, Limits};
+use wgpu::{Limits, util::DeviceExt};
 
 use super::{image_renderer::Vertex, texture};
-use crate::{util::ImageData, WgpuState};
+use crate::{WgpuState, util::ImageData};
 
 pub struct Tile {
     pub vertices: wgpu::Buffer,

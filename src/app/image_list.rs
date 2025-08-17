@@ -1,8 +1,8 @@
 use std::{
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
     thread,
 };
@@ -10,10 +10,10 @@ use std::{
 use lexical_sort::PathSort;
 use winit::event_loop::EventLoopProxy;
 
-use super::op_queue::{prefetch, LoadingInfo};
+use super::op_queue::{LoadingInfo, prefetch};
 use crate::{
     app::cache::Cache,
-    util::{extensions::*, UserEvent},
+    util::{UserEvent, extensions::*},
 };
 
 type List = Arc<Mutex<Option<Vec<PathBuf>>>>;
@@ -57,18 +57,19 @@ impl ImageList {
             dir_path = PathBuf::from(".");
         }
 
-        if let Some(ref p) = self.path {
-            if *p == dir_path && self.list.lock().unwrap().is_some() {
-                let lock = self.list.lock().unwrap();
-                if let Some(ref dirs) = *lock {
-                    for (index, path) in dirs.iter().enumerate() {
-                        if *path == path_buf {
-                            self.index.store(index, Ordering::SeqCst);
-                        }
+        if let Some(ref p) = self.path
+            && *p == dir_path
+            && self.list.lock().unwrap().is_some()
+        {
+            let lock = self.list.lock().unwrap();
+            if let Some(ref dirs) = *lock {
+                for (index, path) in dirs.iter().enumerate() {
+                    if *path == path_buf {
+                        self.index.store(index, Ordering::SeqCst);
                     }
                 }
-                return;
             }
+            return;
         }
 
         self.path = Some(dir_path.clone());
@@ -83,18 +84,18 @@ impl ImageList {
             let dirs = std::fs::read_dir(dir_path).unwrap();
 
             for dir in dirs.flatten() {
-                if let Ok(file_type) = dir.file_type() {
-                    if file_type.is_file() {
-                        let path = dir.path();
-                        match dir.path().extension() {
-                            Some(ext)
-                                if EXTENSIONS
-                                    .contains(&&*ext.to_string_lossy().to_ascii_lowercase()) =>
-                            {
-                                list.push(path)
-                            }
-                            _ => (),
+                if let Ok(file_type) = dir.file_type()
+                    && file_type.is_file()
+                {
+                    let path = dir.path();
+                    match dir.path().extension() {
+                        Some(ext)
+                            if EXTENSIONS
+                                .contains(&&*ext.to_string_lossy().to_ascii_lowercase()) =>
+                        {
+                            list.push(path)
                         }
+                        _ => (),
                     }
                 }
             }
@@ -177,18 +178,10 @@ impl ImageList {
 
 fn next_index(index: usize, len: usize) -> usize {
     let next = index + 1;
-    if len <= next {
-        0
-    } else {
-        next
-    }
+    if len <= next { 0 } else { next }
 }
 
 fn prev_index(index: usize, len: usize) -> usize {
     let current = index;
-    if current == 0 {
-        len - 1
-    } else {
-        current - 1
-    }
+    if current == 0 { len - 1 } else { current - 1 }
 }

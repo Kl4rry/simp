@@ -14,10 +14,9 @@ use winit::event_loop::EventLoopProxy;
 use self::mosaic::Mosaic;
 use super::op_queue::{Output, UserEventLoopProxyExt};
 use crate::{
-    max,
+    WgpuState, max,
     rect::Rect,
-    util::{matrix::OPENGL_TO_WGPU_MATRIX, Image, ImageData, UserEvent},
-    WgpuState,
+    util::{Image, ImageData, UserEvent, matrix::OPENGL_TO_WGPU_MATRIX},
 };
 
 pub mod crop_renderer;

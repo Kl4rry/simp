@@ -2,7 +2,7 @@ use cgmath::{EuclideanSpace, Point2};
 use egui::{Button, Slider};
 use image::ColorType;
 
-use super::{color_type_to_str, op_queue::Op, App};
+use super::{App, color_type_to_str, op_queue::Op};
 use crate::util::p2;
 
 impl App {
@@ -106,15 +106,15 @@ impl App {
                     });
                 });
             self.color_visible = open && !closed;
-            if !self.color_visible {
-                if let Some(view) = self.image_view.as_mut() {
-                    view.hue = 0.0;
-                    view.contrast = 0.0;
-                    view.saturation = 0.0;
-                    view.brightness = 0.0;
-                    view.grayscale = false;
-                    view.invert = false;
-                }
+            if !self.color_visible
+                && let Some(view) = self.image_view.as_mut()
+            {
+                view.hue = 0.0;
+                view.contrast = 0.0;
+                view.saturation = 0.0;
+                view.brightness = 0.0;
+                view.grayscale = false;
+                view.invert = false;
             }
         }
     }

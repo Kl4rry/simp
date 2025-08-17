@@ -1,8 +1,8 @@
 use std::{io::Cursor, time::Duration};
 
 use image::{
-    codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder, webp::WebPDecoder},
     AnimationDecoder, DynamicImage, Frame, ImageBuffer, ImageFormat, ImageReader, Rgb, Rgba,
+    codecs::{gif::GifDecoder, openexr::OpenExrDecoder, png::PngDecoder, webp::WebPDecoder},
 };
 use imagepipe::{ImageSource, Pipeline};
 use psd::Psd;
@@ -82,30 +82,31 @@ pub fn load_raster(bytes: &[u8]) -> Option<Vec<Image>> {
             None
         }
         ImageFormat::OpenExr => {
-            if let Ok(decoder) = OpenExrDecoder::new(Cursor::new(bytes)) {
-                if let Ok(mut image) = DynamicImage::from_decoder(decoder) {
-                    // For some reason some of the values are NaN which cannot be converted to srgb to be sent to the GPU.
-                    // This simply sets them to zero and hopes for the best.
-                    match &mut image {
-                        DynamicImage::ImageRgb32F(buffer) => {
-                            for sample in buffer.as_flat_samples_mut().as_mut_slice() {
-                                if sample.is_nan() {
-                                    *sample = 0.0;
-                                }
+            if let Ok(decoder) = OpenExrDecoder::new(Cursor::new(bytes))
+                && let Ok(mut image) = DynamicImage::from_decoder(decoder)
+            {
+                // For some reason some of the values are NaN which cannot be converted to srgb to be sent to the GPU.
+                // This simply sets them to zero and hopes for the best.
+                match &mut image {
+                    DynamicImage::ImageRgb32F(buffer) => {
+                        for sample in buffer.as_flat_samples_mut().as_mut_slice() {
+                            if sample.is_nan() {
+                                *sample = 0.0;
                             }
                         }
-                        DynamicImage::ImageRgba32F(buffer) => {
-                            for sample in buffer.as_flat_samples_mut().as_mut_slice() {
-                                if sample.is_nan() {
-                                    *sample = 0.0;
-                                }
-                            }
-                        }
-                        _ => (),
                     }
-                    return Some(vec![Image::new(image)]);
+                    DynamicImage::ImageRgba32F(buffer) => {
+                        for sample in buffer.as_flat_samples_mut().as_mut_slice() {
+                            if sample.is_nan() {
+                                *sample = 0.0;
+                            }
+                        }
+                    }
+                    _ => (),
                 }
+                return Some(vec![Image::new(image)]);
             }
+
             None
         }
         format => {
