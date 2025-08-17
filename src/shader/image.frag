@@ -21,7 +21,7 @@ const float max_value = 255;
 
 // https://gist.github.com/ciembor/1494530
 vec3 rgb2hsl(vec3 rgb) {
-    rgb = clamp(rgb, 0, 1); 
+    rgb = clamp(rgb, 0, 1);
     vec3 result;
 
     float r = rgb.r;
@@ -58,12 +58,22 @@ vec3 hsl2rgb(vec3 hsl) {
     return hsl.z + hsl.y * (rgb - 0.5) * (1.0 - abs(2.0 * hsl.z - 1.0));
 }
 
-vec3 gammaCorrection(vec3 color, float gamma) {
-    return pow(color, vec3(1. / gamma));
+// Converts a color from linear light gamma to sRGB gamma
+vec4 fromLinear(vec4 linearRGB) {
+    bvec4 cutoff = lessThan(linearRGB, vec4(0.0031308));
+    vec4 higher = vec4(1.055)*pow(linearRGB, vec4(1.0/2.4)) - vec4(0.055);
+    vec4 lower = linearRGB * vec4(12.92);
+
+    return mix(higher, lower, cutoff);
 }
 
-vec3 inverseGamma(vec3 color, float gamma) {
-    return pow(color, vec3(gamma));
+// Converts a color from sRGB gamma to linear light gamma
+vec4 toLinear(vec4 sRGB) {
+    bvec4 cutoff = lessThan(sRGB, vec4(0.04045));
+    vec4 higher = pow((sRGB + vec4(0.055))/vec4(1.055), vec4(2.4));
+    vec4 lower = sRGB/vec4(12.92);
+
+    return mix(higher, lower, cutoff);
 }
 
 // this function is pretty much a line by line translation of the image-rs hue rotate function
@@ -138,7 +148,7 @@ vec3 getCheckColor() {
 
 void main() {
     vec4 p = texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
-    p.rgb = gammaCorrection(p.rgb, 2.2);
+    p = fromLinear(p);
 
     p.rgb = rotateHue(p.rgb, hue);
     p.rgb = adjustContrast(p.rgb, contrast);
@@ -156,6 +166,6 @@ void main() {
 
     vec3 check_color = getCheckColor();
     color.rgb = check_color * (1 - p.a) + p.a * p.rgb;
-    color.rgb = inverseGamma(color.rgb, 2.2);
+    color = toLinear(color);
     color.a = 1;
 }
