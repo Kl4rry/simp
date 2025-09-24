@@ -14,6 +14,7 @@ accepted = [
     "LicenseRef-UFL-1.0",
     "LGPL-2.1",
     "LGPL-3.0",
+    "LGPL-3.0-only",
     "Apache-2.0 WITH LLVM-exception",
     "GPL-3.0",
     "Unicode-3.0",
