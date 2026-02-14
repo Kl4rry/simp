@@ -16,7 +16,6 @@ pub struct Crop {
     pub width: String,
     pub height: String,
     drag_rem: Vector2<f32>,
-    dragging: bool,
 }
 
 impl Default for Crop {
@@ -34,7 +33,6 @@ impl Crop {
             width: String::new(),
             height: String::new(),
             drag_rem: Vector2::zero(),
-            dragging: false,
         }
     }
 
@@ -271,9 +269,7 @@ impl Crop {
                 ui.ctx().set_cursor_icon(CursorIcon::Default);
             }
 
-            if !self.dragging && (drag_m || drag_l || drag_r || drag_t || drag_b) {
-                self.dragging = true;
-            } else {
+            {
                 let mut delta = Vector2::from(v2(drag_delta)) / scale + self.drag_rem;
 
                 if delta.x.abs() > 1.0 {
@@ -357,9 +353,8 @@ impl Crop {
                 self.width = crop.width().to_string();
                 self.height = crop.height().to_string();
             }
-            drag_m || drag_l || drag_r || drag_t || drag_b
+            drag_m || drag_l || drag_r || drag_t || t || b || r || l || m
         } else {
-            self.dragging = false;
             false
         }
     }

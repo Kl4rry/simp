@@ -291,17 +291,20 @@ impl ImageView {
         self.crop.rect = None;
     }
 
-    pub fn handle_drag(&mut self, ui: &egui::Ui) {
+    pub fn handle_drag(&mut self, ui: &mut egui::Ui) {
         let dragging = self
             .crop
             .handle_drag(ui, self.position, self.rotated_size(), self.scale);
 
-        let res = ui.interact(egui::Rect::EVERYTHING, ui.id(), egui::Sense::drag());
-        if (res.dragged_by(egui::PointerButton::Primary) && !dragging)
-            || res.dragged_by(egui::PointerButton::Middle)
-        {
-            let vec2 = res.drag_delta();
-            self.position += Vector2::from((vec2.x, vec2.y));
+        if !dragging {
+            #[allow(deprecated)]
+            let res = ui.interact_bg(egui::Sense::drag());
+            if res.dragged_by(egui::PointerButton::Primary)
+                || res.dragged_by(egui::PointerButton::Middle)
+            {
+                let vec2 = res.drag_delta();
+                self.position += Vector2::from((vec2.x, vec2.y));
+            }
         }
     }
 }

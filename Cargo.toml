@@ -41,7 +41,7 @@ rand = "0.9.2"
 rawloader = "0.37.0"
 resvg = "0.45.1"
 rexif = "0.7.3"
-rfd = { version = "0.15.0", default-features = false }
+rfd = { version = "0.17.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
 trash = "5.1"
 webbrowser = "1.0.0"
@@ -80,4 +80,4 @@ avif = ["image/avif-native"]
 jxl = ["dep:jpegxl-rs"]
 heif = ["dep:libheif-rs"]
 gtk3 = ["rfd/gtk3"]
-xdg-portal = ["rfd/xdg-portal", "rfd/async-std"]
+xdg-portal = ["rfd/xdg-portal"]

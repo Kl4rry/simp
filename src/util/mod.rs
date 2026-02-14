@@ -130,6 +130,7 @@ pub fn v2(v: impl Into<mint::Vector2<f32>>) -> mint::Vector2<f32> {
     v.into()
 }
 
+#[allow(dead_code)]
 pub trait HasAlpha {
     fn has_alpha(&self) -> bool;
 }
