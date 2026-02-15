@@ -1,6 +1,6 @@
 [package]
 name = "simp"
-version = "3.10.2"
+version = "3.10.3"
 
 authors = ["Axel Kappel"]
 edition = "2024"
