@@ -689,7 +689,13 @@ impl App {
             {
                 let size = ui.available_size();
                 let r = ui.allocate_response(size, egui::Sense::click());
-                if r.clicked() {
+                if r.clicked()
+                    || (!self.help_visible
+                        && !self.color_visible
+                        && !self.color_space_visible
+                        && !self.metadata_visible
+                        && !self.preferences_visible)
+                {
                     r.request_focus();
                 }
                 self.handle_input(wgpu, ui, r.has_focus());
