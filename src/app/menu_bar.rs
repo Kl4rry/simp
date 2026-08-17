@@ -1,28 +1,26 @@
 use std::fs;
 
-use egui::{TopBottomPanel, menu};
-
 use super::{App, TOP_BAR_SIZE, load_image, new_window, op_queue::Op, save_image};
 use crate::{WgpuState, util::UserEvent};
 
 impl App {
-    pub fn menu_bar(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
-        TopBottomPanel::top("top")
-            .exact_height(TOP_BAR_SIZE)
-            .show(ctx, |ui| {
-                menu::bar(ui, |ui| {
-                    menu::menu_button(ui, "File", |ui| {
+    pub fn menu_bar(&mut self, wgpu: &WgpuState, ui: &mut egui::Ui) {
+        egui::Panel::top("top panel")
+            .exact_size(TOP_BAR_SIZE)
+            .show(ui, |ui| {
+                egui::MenuBar::new().ui(ui, |ui| {
+                    ui.menu_button("File", |ui| {
                         if ui
                             .add(egui::Button::new("Open").shortcut_text("Ctrl + O"))
                             .clicked()
                         {
                             load_image::open(self.proxy.clone(), wgpu, false);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui.add(egui::Button::new("Open folder")).clicked() {
                             load_image::open(self.proxy.clone(), wgpu, true);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -37,7 +35,7 @@ impl App {
                                 self.proxy.clone(),
                                 wgpu,
                             );
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -47,7 +45,7 @@ impl App {
                             .clicked()
                         {
                             new_window();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -63,7 +61,7 @@ impl App {
                                 let buf = path.to_path_buf();
                                 self.queue(Op::LoadPath(buf, false));
                             }
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -73,11 +71,11 @@ impl App {
                             .clicked()
                         {
                             let _ = self.proxy.send_event(UserEvent::Exit);
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
 
-                    menu::menu_button(ui, "Edit", |ui| {
+                    ui.menu_button("Edit", |ui| {
                         if ui
                             .add_enabled(
                                 self.image_view.is_some(),
@@ -86,7 +84,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Undo);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -97,7 +95,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Redo);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -110,7 +108,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Copy);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -121,18 +119,18 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Paste);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
 
                         if ui.add(egui::Button::new("Preferences")).clicked() {
                             self.preferences_visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
 
-                    menu::menu_button(ui, "Image", |ui| {
+                    ui.menu_button("Image", |ui| {
                         if ui
                             .add_enabled(
                                 self.image_view.is_some(),
@@ -141,7 +139,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Rotate(-1));
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -152,7 +150,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::Rotate(1));
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -165,7 +163,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::FlipHorizontal);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -173,7 +171,7 @@ impl App {
                             .clicked()
                         {
                             self.queue(Op::FlipVertical);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -186,7 +184,7 @@ impl App {
                             .clicked()
                         {
                             self.zoom(1.0, self.size / 2.0);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -197,7 +195,7 @@ impl App {
                             .clicked()
                         {
                             self.zoom(-1.0, self.size / 2.0);
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -210,7 +208,7 @@ impl App {
                             .clicked()
                         {
                             self.best_fit();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -221,7 +219,7 @@ impl App {
                             .clicked()
                         {
                             self.largest_fit();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -231,7 +229,7 @@ impl App {
                             .clicked()
                         {
                             self.color_visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -242,7 +240,7 @@ impl App {
                             .clicked()
                         {
                             self.color_space_visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -253,7 +251,7 @@ impl App {
                             .clicked()
                         {
                             self.image_view.as_mut().unwrap().start_crop();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui
@@ -264,7 +262,7 @@ impl App {
                             .clicked()
                         {
                             self.resize.visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -286,7 +284,7 @@ impl App {
                             .clicked()
                         {
                             self.metadata_visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -306,19 +304,19 @@ impl App {
                                     self.proxy.clone(),
                                 );
                             }
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
 
-                    menu::menu_button(ui, "Help", |ui| {
+                    ui.menu_button("Help", |ui| {
                         if ui.add(egui::Button::new("Repository")).clicked() {
                             webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         if ui.add(egui::Button::new("Report Bug")).clicked() {
                             webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -328,7 +326,7 @@ impl App {
                             .clicked()
                         {
                             self.help_visible = true;
-                            ui.close_menu();
+                            ui.close();
                         }
 
                         ui.separator();
@@ -345,12 +343,12 @@ impl App {
                             let info = wgpu.adapter.get_info();
 
                             let about = format!(
-                                "{}\n{}\n{}\n{}\n{}",
+                                "{}\n{}\nVersion: {}\nCommit: {}\nGPU backend: {:?}",
                                 env!("CARGO_PKG_NAME"),
                                 env!("CARGO_PKG_DESCRIPTION"),
-                                &format!("Version: {}", env!("CARGO_PKG_VERSION")),
-                                &format!("Commit: {}", env!("GIT_HASH")),
-                                &format!("GPU backend: {:?}", info.backend),
+                                env!("CARGO_PKG_VERSION"),
+                                env!("GIT_HASH"),
+                                info.backend,
                             );
 
                             self.dialog_manager.get_proxy().spawn_dialog(
@@ -367,7 +365,7 @@ impl App {
                                 },
                             );
 
-                            ui.close_menu();
+                            ui.close();
                         }
                     });
                 })

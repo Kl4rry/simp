@@ -16,6 +16,7 @@ impl App {
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                .auto_sized()
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("color grid").show(ui, |ui| {
@@ -129,6 +130,7 @@ impl App {
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                .auto_sized()
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("color space grid").show(ui, |ui| {

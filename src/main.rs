@@ -2,7 +2,6 @@
 #![warn(clippy::all)]
 
 use std::{
-    env,
     io::{self, IsTerminal, Read},
     iter, panic,
     path::PathBuf,
@@ -98,7 +97,7 @@ impl WindowHandler {
 
         let size = window.inner_size();
 
-        let mut backends = if cfg!(windows) {
+        let backends = if cfg!(windows) {
             wgpu::Backends::DX12
         } else if cfg!(target_os = "macos") {
             wgpu::Backends::PRIMARY
@@ -106,15 +105,12 @@ impl WindowHandler {
             wgpu::Backends::all()
         };
 
-        if let Ok(gpu_backend) = env::var("SIMP_GPU_BACKEND") {
-            backends = wgpu::util::parse_backends_from_comma_list(&gpu_backend);
-        } else if let Ok(gpu_backend) = env::var("WGPU_BACKEND") {
-            backends = wgpu::util::parse_backends_from_comma_list(&gpu_backend);
-        };
-
         let instance_descriptor = wgpu::InstanceDescriptor {
             backends,
-            ..Default::default()
+            flags: wgpu::InstanceFlags::empty(),
+            backend_options: wgpu::BackendOptions::default(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+            display: Some(Box::new(window.clone())),
         };
 
         let instance = wgpu::Instance::new(instance_descriptor);
@@ -124,21 +120,21 @@ impl WindowHandler {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
             .expect("Unable to create adapter");
 
         let limits = wgpu::Limits::default();
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    required_features: wgpu::Features::default(),
-                    required_limits: limits.clone(),
-                    memory_hints: wgpu::MemoryHints::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                required_features: wgpu::Features::default(),
+                required_limits: limits.clone(),
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            })
             .await
             .unwrap();
 
@@ -159,6 +155,7 @@ impl WindowHandler {
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: Vec::new(),
             desired_maximum_frame_latency: 2,
+            color_space: wgpu::SurfaceColorSpace::Srgb,
         };
         surface.configure(&device, &config);
 
@@ -171,7 +168,11 @@ impl WindowHandler {
             None,
         );
         egui_winit.set_max_texture_side(limits.max_texture_dimension_2d as usize);
-        let egui_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1, false);
+        let egui_renderer = egui_wgpu::Renderer::new(
+            &device,
+            surface_format,
+            egui_wgpu::RendererOptions::default(),
+        );
         let egui_shapes = Vec::new();
 
         {
@@ -186,7 +187,7 @@ impl WindowHandler {
                 });
         }
 
-        egui_winit.egui_ctx().style_mut(|style| {
+        egui_winit.egui_ctx().global_style_mut(|style| {
             style.spacing.slider_width = 200.0;
         });
 
@@ -260,21 +261,23 @@ impl WindowHandler {
                 WindowEvent::RedrawRequested => {
                     {
                         let raw_input = egui_winit.take_egui_input(&wgpu.window);
-                        let egui_output = egui_winit.egui_ctx().run(raw_input, |ctx| {
-                            app.handle_ui(&wgpu, ctx);
+                        let mut egui_output = egui_winit.egui_ctx().run_ui(raw_input, |ui| {
+                            app.handle_ui(&wgpu, ui);
                         });
                         egui_winit
                             .handle_platform_output(&wgpu.window, egui_output.platform_output);
-                        for (id, image_delta) in egui_output.textures_delta.set {
-                            egui_renderer.update_texture(
-                                &wgpu.device,
-                                &wgpu.queue,
-                                id,
-                                &image_delta,
-                            );
+                        for (id, image_deltas) in egui_output.textures_delta.set.drain() {
+                            for image_delta in image_deltas {
+                                egui_renderer.update_texture(
+                                    &wgpu.device,
+                                    &wgpu.queue,
+                                    id,
+                                    &image_delta,
+                                );
+                            }
                         }
 
-                        for id in egui_output.textures_delta.free {
+                        for id in egui_output.textures_delta.free.drain() {
                             egui_renderer.free_texture(&id);
                         }
 
@@ -293,10 +296,26 @@ impl WindowHandler {
                     let control_flow = ControlFlow::wait_duration(repaint_after);
                     event_loop.set_control_flow(control_flow);
 
-                    let output = wgpu.surface.get_current_texture().unwrap();
+                    let output: wgpu::SurfaceTexture = match wgpu.surface.get_current_texture() {
+                        wgpu::CurrentSurfaceTexture::Success(surface) => surface,
+                        wgpu::CurrentSurfaceTexture::Occluded => return,
+                        wgpu::CurrentSurfaceTexture::Timeout => {
+                            wgpu.window.request_redraw();
+                            return;
+                        }
+                        wgpu::CurrentSurfaceTexture::Suboptimal(_)
+                        | wgpu::CurrentSurfaceTexture::Outdated
+                        | wgpu::CurrentSurfaceTexture::Lost => {
+                            wgpu.surface.configure(&wgpu.device, &wgpu.config);
+                            wgpu.window.request_redraw();
+                            return;
+                        }
+                        e => panic!("{:?}", e),
+                    };
                     let view = output
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
+
                     let mut encoder =
                         wgpu.device
                             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -321,10 +340,12 @@ impl WindowHandler {
                                             }),
                                             store: wgpu::StoreOp::Store,
                                         },
+                                        depth_slice: None,
                                     })],
                                     depth_stencil_attachment: None,
                                     timestamp_writes: None,
                                     occlusion_query_set: None,
+                                    multiview_mask: None,
                                 });
 
                             if let Some(image) = app.image_view.as_mut() {
@@ -376,10 +397,12 @@ impl WindowHandler {
                                             load: wgpu::LoadOp::Load,
                                             store: wgpu::StoreOp::Store,
                                         },
+                                        depth_slice: None,
                                     })],
                                     depth_stencil_attachment: None,
                                     occlusion_query_set: None,
                                     timestamp_writes: None,
+                                    multiview_mask: None,
                                 })
                                 .forget_lifetime();
 
@@ -388,7 +411,7 @@ impl WindowHandler {
 
                         wgpu.queue.submit(iter::once(encoder.finish()));
                         wgpu.window.pre_present_notify();
-                        output.present();
+                        wgpu.queue.present(output);
                     }
                 }
                 event => {

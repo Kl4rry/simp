@@ -86,8 +86,8 @@ impl Renderer {
             wgpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Crop Render Pipeline Layout"),
-                    bind_group_layouts: &[&Uniform::get_bind_group_layout(&wgpu.device)],
-                    push_constant_ranges: &[],
+                    bind_group_layouts: &[Some(&Uniform::get_bind_group_layout(&wgpu.device))],
+                    immediate_size: 0,
                 });
 
         let vertex = wgpu
@@ -119,13 +119,13 @@ impl Renderer {
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
-                    entry_point: "main",
-                    buffers: &[Vertex::desc()],
+                    entry_point: Some("main"),
+                    buffers: &[Some(Vertex::desc())],
                     compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &fragment,
-                    entry_point: "main",
+                    entry_point: Some("main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu.config.format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
@@ -148,8 +148,8 @@ impl Renderer {
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
                 cache: None,
+                multiview_mask: None,
             });
 
         let value_std140 = Uniform::default().as_std140();

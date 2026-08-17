@@ -10,7 +10,7 @@ use std::{
 };
 
 use cgmath::{EuclideanSpace, Point2, Vector2};
-use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style, TopBottomPanel};
+use egui::{Button, CursorIcon, Event, Modifiers, RichText, Style};
 use image::{ColorType, DynamicImage, imageops::FilterType};
 use num_traits::Zero;
 use winit::{
@@ -66,7 +66,7 @@ enum ResizeMode {
 }
 
 const TOP_BAR_SIZE: f32 = 22.0;
-const BOTTOM_BAR_SIZE: f32 = 20.0;
+const BOTTOM_BAR_SIZE: f32 = 22.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
@@ -386,34 +386,41 @@ impl App {
         }
     }
 
-    pub fn handle_ui(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
+    pub fn handle_ui(&mut self, wgpu: &WgpuState, ui: &mut egui::Ui) {
         self.set_bar_size(wgpu);
         if self.op_queue.working() {
-            ctx.set_cursor_icon(CursorIcon::Progress);
+            ui.ctx().set_cursor_icon(CursorIcon::Progress);
         }
 
-        self.resize_ui(ctx);
-        self.preferences_ui(ctx);
-        self.help_ui(ctx);
-        self.color_ui(ctx);
-        self.color_space_ui(ctx);
-        self.metadata_ui(ctx);
-        self.crop_ui(ctx);
-
-        self.main_area(wgpu, ctx);
+        self.resize_ui(ui);
+        self.preferences_ui(ui);
+        self.help_ui(ui);
+        self.color_ui(ui);
+        self.color_space_ui(ui);
+        self.metadata_ui(ui);
+        self.crop_ui(ui);
 
         if wgpu.window.fullscreen().is_none() && !self.zen_mode {
-            self.menu_bar(wgpu, ctx);
-            self.bottom_bar(ctx);
-            self.gif_player_bar(ctx);
+            self.menu_bar(wgpu, ui);
+            self.bottom_bar(ui);
+            self.gif_player_bar(ui);
         }
 
-        self.dialog_manager.update(ctx, self.size, &mut self.enter);
+        self.main_area(wgpu, ui);
+
+        self.dialog_manager.update(ui, self.size, &mut self.enter);
     }
 
     pub fn handle_input(&mut self, wgpu: &WgpuState, ui: &egui::Ui, focused: bool) {
         ui.input_mut(|input| {
             use egui::{Key::*, KeyboardShortcut};
+
+            if input.consume_shortcut(&KeyboardShortcut {
+                modifiers: Modifiers::NONE,
+                logical_key: Space,
+            }) {
+                todo!();
+            }
 
             if input.consume_shortcut(&KeyboardShortcut {
                 modifiers: Modifiers::NONE,
@@ -630,23 +637,21 @@ impl App {
                 self.zoom(-1.0, self.size / 2.0);
             }
 
-            self.zoom(
-                input.raw_scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
-                self.mouse_position,
-            );
+            if focused {
+                self.zoom(
+                    input.smooth_scroll_delta.y / 40.0 * PREFERENCES.lock().unwrap().zoom_speed,
+                    self.mouse_position,
+                );
+            }
 
             if focused {
                 for event in &input.events {
                     match event {
-                        Event::Copy => {
-                            if self.view_available() {
-                                self.queue(Op::Copy);
-                            }
+                        Event::Copy if self.view_available() => {
+                            self.queue(Op::Copy);
                         }
-                        Event::Cut => {
-                            if self.view_available() {
-                                self.image_view.as_mut().unwrap().start_crop()
-                            }
+                        Event::Cut if self.view_available() => {
+                            self.image_view.as_mut().unwrap().start_crop()
                         }
                         _ => (),
                     }
@@ -670,9 +675,9 @@ impl App {
         });
     }
 
-    pub fn main_area(&mut self, wgpu: &WgpuState, ctx: &egui::Context) {
+    pub fn main_area(&mut self, wgpu: &WgpuState, ui: &mut egui::Ui) {
         let frame = egui::Frame::dark_canvas(&Style::default()).multiply_with_opacity(0.0);
-        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
+        egui::CentralPanel::default().frame(frame).show(ui, |ui| {
             if self.image_view.is_none() {
                 ui.centered_and_justified(|ui| {
                     ui.label(
@@ -694,7 +699,13 @@ impl App {
                         && !self.color_visible
                         && !self.color_space_visible
                         && !self.metadata_visible
-                        && !self.preferences_visible)
+                        && !self.preferences_visible
+                        && !self.resize.visible
+                        && !self
+                            .image_view
+                            .as_ref()
+                            .map(|view| view.crop.rect.is_some())
+                            .unwrap_or(false))
                 {
                     r.request_focus();
                 }
@@ -703,7 +714,7 @@ impl App {
         });
     }
 
-    fn gif_player_bar(&mut self, ctx: &egui::Context) {
+    fn gif_player_bar(&mut self, ui: &mut egui::Ui) {
         let Some(ref mut view) = self.image_view else {
             return;
         };
@@ -712,9 +723,9 @@ impl App {
             return;
         }
 
-        TopBottomPanel::bottom("gif_player")
-            .exact_height(BOTTOM_BAR_SIZE)
-            .show(ctx, |ui| {
+        egui::Panel::bottom("gif_player")
+            .exact_size(BOTTOM_BAR_SIZE)
+            .show(ui, |ui| {
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
                     let icon = if view.playing { "⏸" } else { "▶" };
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -727,6 +738,7 @@ impl App {
                     });
 
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.take_available_width();
                         let before = view.index;
                         let frames = view.len_frames() - 1;
                         ui.add(egui::Slider::new(&mut view.index, 0..=frames));
@@ -738,10 +750,10 @@ impl App {
             });
     }
 
-    fn bottom_bar(&mut self, ctx: &egui::Context) {
-        TopBottomPanel::bottom("bottom")
-            .exact_height(BOTTOM_BAR_SIZE)
-            .show(ctx, |ui| {
+    fn bottom_bar(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::bottom("bottom panel")
+            .exact_size(BOTTOM_BAR_SIZE)
+            .show(ui, |ui| {
                 ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                     if self.image_view.is_some() {
                         ui.add_enabled_ui(
@@ -919,6 +931,7 @@ impl App {
                 .resizable(false)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                .auto_sized()
                 .open(&mut open)
                 .show(ctx, |ui| {
                     egui::Grid::new("resize grid").show(ui, |ui| {
@@ -1042,104 +1055,130 @@ impl App {
             let mut cancel = false;
             let size = view.rotated_size();
             if let Some(rect) = view.crop.rect.as_mut() {
+                let mut open = true;
                 egui::Window::new("Crop")
                     .id(egui::Id::new("crop window"))
                     .collapsible(false)
                     .resizable(false)
                     .pivot(egui::Align2::CENTER_CENTER)
                     .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                    .auto_sized()
+                    .open(&mut open)
                     .show(ctx, |ui| {
-                        egui::Grid::new("crop grid").show(ui, |ui| {
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("X: ");
+                        egui::Grid::new("crop grid")
+                            .min_col_width(120.0) // We set a min width otherwise the window becomes very small
+                            .show(ui, |ui| {
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::RIGHT),
+                                    |ui| {
+                                        ui.label("X: ");
+                                    },
+                                );
+                                ui.text_edit_singleline(&mut view.crop.x);
+                                ui.end_row();
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::RIGHT),
+                                    |ui| {
+                                        ui.label("Y: ");
+                                    },
+                                );
+                                ui.text_edit_singleline(&mut view.crop.y);
+                                ui.end_row();
+
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::RIGHT),
+                                    |ui| {
+                                        ui.label("Width: ");
+                                    },
+                                );
+                                ui.text_edit_singleline(&mut view.crop.width);
+                                ui.end_row();
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::RIGHT),
+                                    |ui| {
+                                        ui.label("Height: ");
+                                    },
+                                );
+                                ui.text_edit_singleline(&mut view.crop.height);
+                                ui.end_row();
+                                ui.end_row();
+
+                                rect.position.x = min!(
+                                    view.crop.x.parse::<u32>().unwrap_or(0) as f32,
+                                    size.x - 1.0
+                                );
+                                rect.position.y = min!(
+                                    view.crop.y.parse::<u32>().unwrap_or(0) as f32,
+                                    size.y - 1.0
+                                );
+
+                                rect.size.x =
+                                    (view.crop.width.parse::<u32>().unwrap_or(size.x as u32)
+                                        as f32)
+                                        .clamp(1.0, size.x - rect.x());
+                                rect.size.y =
+                                    (view.crop.height.parse::<u32>().unwrap_or(size.y as u32)
+                                        as f32)
+                                        .clamp(1.0, size.y - rect.y());
+
+                                if view.crop.x.parse::<u32>().is_ok() {
+                                    view.crop.x = rect.x().to_string();
+                                }
+
+                                if view.crop.y.parse::<u32>().is_ok() {
+                                    view.crop.y = rect.y().to_string();
+                                }
+
+                                if view.crop.width.parse::<u32>().is_ok() {
+                                    view.crop.width = rect.width().to_string();
+                                }
+
+                                if view.crop.height.parse::<u32>().is_ok() {
+                                    view.crop.height = rect.height().to_string();
+                                }
+
+                                view.crop.x.retain(|c| c.is_ascii_digit());
+                                view.crop.y.retain(|c| c.is_ascii_digit());
+                                view.crop.width.retain(|c| c.is_ascii_digit());
+                                view.crop.height.retain(|c| c.is_ascii_digit());
+
+                                ui.with_layout(
+                                    egui::Layout::top_down_justified(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(
+                                                Button::new("Cancel")
+                                                    .wrap_mode(egui::TextWrapMode::Extend),
+                                            )
+                                            .clicked()
+                                        {
+                                            cancel = true;
+                                        }
+                                    },
+                                );
+
+                                ui.with_layout(
+                                    egui::Layout::top_down_justified(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(
+                                                Button::new("Crop")
+                                                    .wrap_mode(egui::TextWrapMode::Extend),
+                                            )
+                                            .clicked()
+                                            || self.enter
+                                        {
+                                            crop = Some(*rect);
+                                            cancel = true;
+                                            self.enter = false;
+                                        }
+                                    },
+                                );
                             });
-                            ui.text_edit_singleline(&mut view.crop.x);
-                            ui.end_row();
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("Y: ");
-                            });
-                            ui.text_edit_singleline(&mut view.crop.y);
-                            ui.end_row();
-
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("Width: ");
-                            });
-                            ui.text_edit_singleline(&mut view.crop.width);
-                            ui.end_row();
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                ui.label("Height: ");
-                            });
-                            ui.text_edit_singleline(&mut view.crop.height);
-                            ui.end_row();
-                            ui.end_row();
-
-                            rect.position.x =
-                                min!(view.crop.x.parse::<u32>().unwrap_or(0) as f32, size.x - 1.0);
-                            rect.position.y =
-                                min!(view.crop.y.parse::<u32>().unwrap_or(0) as f32, size.y - 1.0);
-
-                            rect.size.x = (view.crop.width.parse::<u32>().unwrap_or(size.x as u32)
-                                as f32)
-                                .clamp(1.0, size.x - rect.x());
-                            rect.size.y = (view.crop.height.parse::<u32>().unwrap_or(size.y as u32)
-                                as f32)
-                                .clamp(1.0, size.y - rect.y());
-
-                            if view.crop.x.parse::<u32>().is_ok() {
-                                view.crop.x = rect.x().to_string();
-                            }
-
-                            if view.crop.y.parse::<u32>().is_ok() {
-                                view.crop.y = rect.y().to_string();
-                            }
-
-                            if view.crop.width.parse::<u32>().is_ok() {
-                                view.crop.width = rect.width().to_string();
-                            }
-
-                            if view.crop.height.parse::<u32>().is_ok() {
-                                view.crop.height = rect.height().to_string();
-                            }
-
-                            view.crop.x.retain(|c| c.is_ascii_digit());
-                            view.crop.y.retain(|c| c.is_ascii_digit());
-                            view.crop.width.retain(|c| c.is_ascii_digit());
-                            view.crop.height.retain(|c| c.is_ascii_digit());
-
-                            ui.with_layout(
-                                egui::Layout::top_down_justified(egui::Align::Center),
-                                |ui| {
-                                    if ui
-                                        .add(
-                                            Button::new("Cancel")
-                                                .wrap_mode(egui::TextWrapMode::Extend),
-                                        )
-                                        .clicked()
-                                    {
-                                        cancel = true;
-                                    }
-                                },
-                            );
-
-                            ui.with_layout(
-                                egui::Layout::top_down_justified(egui::Align::Center),
-                                |ui| {
-                                    if ui
-                                        .add(
-                                            Button::new("Crop")
-                                                .wrap_mode(egui::TextWrapMode::Extend),
-                                        )
-                                        .clicked()
-                                        || self.enter
-                                    {
-                                        crop = Some(*rect);
-                                        cancel = true;
-                                        self.enter = false;
-                                    }
-                                },
-                            );
-                        });
                     });
+                if !open {
+                    view.cancel_crop();
+                }
             }
             if cancel {
                 view.cancel_crop();

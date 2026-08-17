@@ -106,10 +106,10 @@ impl Renderer {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Image render pipeline layout"),
                     bind_group_layouts: &[
-                        &Uniform::get_bind_group_layout(&wgpu.device),
-                        &texture::Texture::get_bind_group_layout(&wgpu.device),
+                        Some(&Uniform::get_bind_group_layout(&wgpu.device)),
+                        Some(&texture::Texture::get_bind_group_layout(&wgpu.device)),
                     ],
-                    push_constant_ranges: &[],
+                    immediate_size: 0,
                 });
 
         let vertex = wgpu
@@ -141,13 +141,13 @@ impl Renderer {
                 layout: Some(&render_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &vertex,
-                    entry_point: "main",
-                    buffers: &[Vertex::desc()],
+                    entry_point: Some("main"),
+                    buffers: &[Some(Vertex::desc())],
                     compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &fragment,
-                    entry_point: "main",
+                    entry_point: Some("main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: wgpu.config.format,
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
@@ -170,7 +170,7 @@ impl Renderer {
                     mask: !0,
                     alpha_to_coverage_enabled: false,
                 },
-                multiview: None,
+                multiview_mask: None,
                 cache: None,
             });
 
