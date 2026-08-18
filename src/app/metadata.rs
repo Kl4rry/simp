@@ -13,6 +13,7 @@ impl App {
                 .resizable(true)
                 .pivot(egui::Align2::CENTER_CENTER)
                 .default_pos(p2(Point2::from_vec(self.size / 2.0)))
+                .resizable([false, true])
                 .open(&mut open)
                 .show(ctx, |ui| {
                     ScrollArea::vertical().show(ui, |ui| {
