@@ -6,6 +6,7 @@ use crate::app::op_queue::Output;
 
 pub mod extensions;
 pub mod matrix;
+pub mod natural_cmp;
 
 #[macro_export]
 macro_rules! min {
@@ -21,8 +22,7 @@ macro_rules! min {
 }
 
 #[macro_export]
-macro_rules! max {
-    ($x: expr) => ($x);
+macro_rules! max {    ($x: expr) => ($x);
     ($x: expr, $($z: expr),+) => {{
         let y = max!($($z),*);
         if $x > y {
