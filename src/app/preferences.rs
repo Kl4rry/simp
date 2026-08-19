@@ -8,6 +8,30 @@ use crate::util::p2;
 
 pub static PREFERENCES: Mutex<Preferences> = Mutex::new(Preferences::new());
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+pub enum SortOrder {
+    AccessTime,
+    CreatedTime,
+    #[default]
+    MetadataTime,
+    ModifiedTime,
+    Name,
+    Size,
+}
+
+impl AsRef<str> for SortOrder {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::AccessTime => "Access",
+            Self::CreatedTime => "Created",
+            Self::MetadataTime => "Date (from exif)",
+            Self::ModifiedTime => "Modified",
+            Self::Name => "Name",
+            Self::Size => "Size",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Preferences {
     pub open_in_fullscreen: bool,
@@ -19,6 +43,7 @@ pub struct Preferences {
     pub webp_quality: f32,
     pub jxl_lossy: bool,
     pub jxl_quality: f32,
+    pub sort_order: SortOrder,
 }
 
 impl Preferences {
@@ -33,6 +58,7 @@ impl Preferences {
             webp_quality: 80.0,
             jxl_lossy: true,
             jxl_quality: 1.0,
+            sort_order: SortOrder::MetadataTime,
         }
     }
 
@@ -120,6 +146,30 @@ impl App {
                             ui.label("JPEG XL quality: ");
                         });
                         ui.add(egui::Slider::new(&mut preferences.jxl_quality, 0.0..=15.0));
+                        ui.end_row();
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                            ui.label("Sort order: ");
+                        });
+                        egui::ComboBox::new("filter", "")
+                            .selected_text(preferences.sort_order.as_ref())
+                            .show_ui(ui, |ui| {
+                                let sort_orders = [
+                                    SortOrder::AccessTime,
+                                    SortOrder::CreatedTime,
+                                    SortOrder::MetadataTime,
+                                    SortOrder::ModifiedTime,
+                                    SortOrder::Name,
+                                    SortOrder::Size,
+                                ];
+                                for sort_order in sort_orders {
+                                    ui.selectable_value(
+                                        &mut preferences.sort_order,
+                                        sort_order,
+                                        sort_order.as_ref(),
+                                    );
+                                }
+                            });
 
                         ui.end_row();
                         ui.end_row();

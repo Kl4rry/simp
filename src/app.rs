@@ -880,7 +880,8 @@ impl App {
             self.delay = self.delay.min(image.animate());
         }
 
-        if PREFERENCES.lock().unwrap().auto_center
+        let preferences = PREFERENCES.lock().unwrap();
+        if preferences.auto_center
             && let Some(ref mut image) = self.image_view
         {
             let image_size = image.real_size();
@@ -916,6 +917,10 @@ impl App {
                 }
             }
         }
+
+        self.op_queue
+            .image_list
+            .set_sort_order(preferences.sort_order);
 
         self.enter = false;
         (self.exit.load(Ordering::Relaxed), self.delay)
