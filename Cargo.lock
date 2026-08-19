@@ -3469,11 +3469,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rexif"
-version = "0.7.5"
-source = "git+https://github.com/Kl4rry/simp-rexif?rev=fb0725a867157e031f1278cec02502e9ff1f8ee0#fb0725a867157e031f1278cec02502e9ff1f8ee0"
-
-[[package]]
 name = "rfd"
 version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3770,9 +3765,9 @@ dependencies = [
  "rand",
  "rawloader",
  "resvg",
- "rexif",
  "rfd",
  "serde",
+ "simp-rexif",
  "time",
  "trash",
  "webbrowser",
@@ -3782,6 +3777,12 @@ dependencies = [
  "winit",
  "winres",
 ]
+
+[[package]]
+name = "simp-rexif"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bf7e22f5917b39b44117caa5317e6be60a4d2bfd383ac2abb720f84623dd72b"
 
 [[package]]
 name = "simplecss"

@@ -39,7 +39,7 @@ psd = "0.3.3"
 rand = "0.9.2"
 rawloader = "0.37.0"
 resvg = "0.45.1"
-rexif = { package = "rexif", git = "https://github.com/Kl4rry/simp-rexif", rev = "fb0725a867157e031f1278cec02502e9ff1f8ee0" }
+rexif = { package = "simp-rexif", version = "0.7.6" }
 rfd = { version = "0.17.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
 time = { version = "0.3.55", features = ["parsing", "macros"] }
