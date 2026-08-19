@@ -129,6 +129,7 @@ impl ImageList {
             for (i, list_entry) in list.iter().enumerate() {
                 if list_entry.path == current_entry.path {
                     index.store(i, Ordering::SeqCst);
+                    break;
                 }
             }
         });
@@ -200,6 +201,7 @@ impl ImageList {
             for (index, list_entry) in list.iter().enumerate() {
                 if list_entry.path == path_buf {
                     t_index.store(index, Ordering::SeqCst);
+                    break;
                 }
             }
 
