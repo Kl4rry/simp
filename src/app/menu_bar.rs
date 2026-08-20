@@ -291,7 +291,7 @@ impl App {
                         if ui
                             .add_enabled(
                                 self.image_view.is_some(),
-                                egui::Button::new("Delete").shortcut_text("Delete"),
+                                egui::Button::new("Move to trash").shortcut_text("Delete"),
                             )
                             .clicked()
                         {
@@ -310,12 +310,12 @@ impl App {
 
                     ui.menu_button("Help", |ui| {
                         if ui.add(egui::Button::new("Repository")).clicked() {
-                            webbrowser::open("https://github.com/Kl4rry/simp").unwrap();
+                            let _ = opener::open("https://github.com/Kl4rry/simp");
                             ui.close();
                         }
 
                         if ui.add(egui::Button::new("Report Bug")).clicked() {
-                            webbrowser::open("https://github.com/Kl4rry/simp/issues").unwrap();
+                            let _ = opener::open("https://github.com/Kl4rry/simp/issues");
                             ui.close();
                         }
 
@@ -380,5 +380,5 @@ fn open_licenes() -> Result<(), std::io::Error> {
     fs::create_dir_all(temp.join(name))?;
     let license_file = temp.join(name).join("license.html");
     fs::write(&license_file, licenses.as_bytes())?;
-    webbrowser::open(&license_file.to_string_lossy())
+    opener::open(&*license_file.to_string_lossy()).map_err(std::io::Error::other)
 }

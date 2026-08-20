@@ -12,7 +12,10 @@ use winit::event_loop::EventLoopProxy;
 
 use super::op_queue::{LoadingInfo, prefetch};
 use crate::{
-    app::{cache::Cache, preferences::SortOrder},
+    app::{
+        cache::Cache,
+        preferences::{SortDirection, SortOrder},
+    },
     util::{UserEvent, extensions::*},
 };
 
@@ -81,7 +84,7 @@ pub struct ImageList {
     cache: Arc<Cache>,
     proxy: EventLoopProxy<UserEvent>,
     loading_info: Arc<Mutex<LoadingInfo>>,
-    sort_order: Arc<Mutex<SortOrder>>,
+    sort_order: Arc<Mutex<(SortOrder, SortDirection)>>,
 }
 
 impl ImageList {
@@ -97,7 +100,7 @@ impl ImageList {
             proxy,
             cache,
             loading_info,
-            sort_order: Arc::new(Mutex::new(SortOrder::default())),
+            sort_order: Arc::new(Mutex::new((SortOrder::default(), SortDirection::default()))),
         }
     }
 
@@ -107,13 +110,13 @@ impl ImageList {
         self.index.store(0, Ordering::SeqCst)
     }
 
-    pub fn set_sort_order(&mut self, sort_order: SortOrder) {
+    pub fn set_sort_order(&mut self, sort_order: SortOrder, sort_direction: SortDirection) {
         {
             let mut lock = self.sort_order.lock().unwrap();
-            if *lock == sort_order {
+            if *lock == (sort_order, sort_direction) {
                 return;
             }
-            *lock = sort_order;
+            *lock = (sort_order, sort_direction);
         }
 
         let index = self.index.clone();
@@ -125,7 +128,7 @@ impl ImageList {
                 return;
             };
             let current_entry = list[current].clone();
-            sort_list(list, sort_order);
+            sort_list(list, sort_order, sort_direction);
             for (i, list_entry) in list.iter().enumerate() {
                 if list_entry.path == current_entry.path {
                     index.store(i, Ordering::SeqCst);
@@ -196,7 +199,16 @@ impl ImageList {
                 }
             }
 
-            sort_list(&mut list, *t_sort_order.lock().unwrap());
+            list.sort_by(|lhs, rhs| {
+                crate::util::natural_cmp::natural_cmp(
+                    &lhs.path.to_string_lossy(),
+                    &rhs.path.to_string_lossy(),
+                )
+            });
+            list.dedup();
+
+            let (sort_order, sort_direction) = *t_sort_order.lock().unwrap();
+            sort_list(&mut list, sort_order, sort_direction);
 
             for (index, list_entry) in list.iter().enumerate() {
                 if list_entry.path == path_buf {
@@ -296,7 +308,7 @@ fn prev_index(index: usize, len: usize) -> usize {
     if current == 0 { len - 1 } else { current - 1 }
 }
 
-fn sort_list(list: &mut [ImageListEntry], sort_order: SortOrder) {
+fn sort_list(list: &mut [ImageListEntry], sort_order: SortOrder, sort_direction: SortDirection) {
     match sort_order {
         SortOrder::AccessTime => {
             list.sort_by_key(|value| value.accessed);
@@ -329,5 +341,8 @@ fn sort_list(list: &mut [ImageListEntry], sort_order: SortOrder) {
         SortOrder::Size => {
             list.sort_by_key(|value| value.size);
         }
+    }
+    if sort_direction == SortDirection::Backward {
+        list.reverse();
     }
 }

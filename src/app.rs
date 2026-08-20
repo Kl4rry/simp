@@ -18,7 +18,9 @@ use winit::{
 };
 
 use crate::{
-    WgpuState, min,
+    WgpuState,
+    app::preferences::{SortDirection, SortOrder},
+    min,
     util::{UserEvent, p2},
 };
 
@@ -693,23 +695,179 @@ impl App {
 
             {
                 let size = ui.available_size();
-                let r = ui.allocate_response(size, egui::Sense::click());
-                if r.clicked()
-                    || (!self.help_visible
-                        && !self.color_visible
-                        && !self.color_space_visible
-                        && !self.metadata_visible
-                        && !self.preferences_visible
-                        && !self.resize.visible
-                        && !self
-                            .image_view
-                            .as_ref()
-                            .map(|view| view.crop.rect.is_some())
-                            .unwrap_or(false))
-                {
-                    r.request_focus();
+                let response = ui.allocate_response(size, egui::Sense::click());
+                let mut context_menu_open = false;
+                let has_image = self.image_view.is_some();
+                response.context_menu(|ui| {
+                    context_menu_open = true;
+                    if ui
+                        .add_enabled(has_image, egui::Button::new("Next"))
+                        .clicked()
+                    {
+                        self.queue(Op::Next);
+                    }
+                    if ui
+                        .add_enabled(has_image, egui::Button::new("Previous"))
+                        .clicked()
+                    {
+                        self.queue(Op::Prev);
+                    }
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            has_image,
+                            egui::Button::new("Best fit").shortcut_text("Ctrl + B"),
+                        )
+                        .clicked()
+                    {
+                        self.best_fit();
+                    }
+                    if ui
+                        .add_enabled(
+                            has_image,
+                            egui::Button::new("Largest fit").shortcut_text("Ctrl + L"),
+                        )
+                        .clicked()
+                    {
+                        self.largest_fit();
+                    }
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            has_image,
+                            egui::Button::new("Copy").shortcut_text("Ctrl + C"),
+                        )
+                        .clicked()
+                    {
+                        self.queue(Op::Copy);
+                    }
+                    if ui
+                        .add_enabled(
+                            has_image,
+                            egui::Button::new("Paste").shortcut_text("Ctrl + V"),
+                        )
+                        .clicked()
+                    {
+                        self.queue(Op::Paste);
+                    }
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            has_image,
+                            egui::Button::new("Move to trash").shortcut_text("Delete"),
+                        )
+                        .clicked()
+                    {
+                        if let Some(ref view) = self.image_view
+                            && let Some(ref path) = view.path
+                        {
+                            delete(
+                                path.clone(),
+                                self.dialog_manager.get_proxy(),
+                                self.proxy.clone(),
+                            );
+                        }
+                        ui.close();
+                    }
+                    ui.separator();
+
+                    egui::containers::menu::SubMenuButton::new("Sort by").ui(ui, |ui| {
+                        let mut preferences = PREFERENCES.lock().unwrap();
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::AccessTime,
+                            SortOrder::AccessTime.as_ref(),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::CreatedTime,
+                            SortOrder::CreatedTime.as_ref(),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::MetadataTime,
+                            SortOrder::MetadataTime.as_ref(),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::ModifiedTime,
+                            SortOrder::ModifiedTime.as_ref(),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::Name,
+                            SortOrder::Name.as_ref(),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_order,
+                            SortOrder::Size,
+                            SortOrder::Size.as_ref(),
+                        );
+                        ui.separator();
+                        let sort_order = preferences.sort_order;
+                        ui.radio_value(
+                            &mut preferences.sort_direction,
+                            SortDirection::Forward,
+                            SortDirection::Forward.as_str_from_order(sort_order),
+                        );
+                        ui.radio_value(
+                            &mut preferences.sort_direction,
+                            SortDirection::Backward,
+                            SortDirection::Backward.as_str_from_order(sort_order),
+                        );
+                    });
+                    ui.separator();
+
+                    if ui
+                        .add_enabled(
+                            has_image
+                                && !self
+                                    .image_view
+                                    .as_ref()
+                                    .unwrap()
+                                    .image_data
+                                    .read()
+                                    .unwrap()
+                                    .metadata
+                                    .is_empty(),
+                            egui::Button::new("Metadata"),
+                        )
+                        .clicked()
+                    {
+                        self.metadata_visible = true;
+                    }
+                    if ui
+                        .add_enabled(has_image, egui::Button::new("Open folder"))
+                        .clicked()
+                        && let Some(image_view) = &self.image_view
+                        && let Some(path) = &image_view.path
+                        && let Some(parent) = path.parent()
+                    {
+                        // TODO: show error message in popup modal
+                        let _ = opener::open(parent);
+                    }
+                });
+                if !context_menu_open {
+                    if response.clicked()
+                        || (!self.help_visible
+                            && !self.color_visible
+                            && !self.color_space_visible
+                            && !self.metadata_visible
+                            && !self.preferences_visible
+                            && !self.resize.visible
+                            && !self
+                                .image_view
+                                .as_ref()
+                                .map(|view| view.crop.rect.is_some())
+                                .unwrap_or(false))
+                    {
+                        response.request_focus();
+                    }
+                    self.handle_input(wgpu, ui, response.has_focus());
                 }
-                self.handle_input(wgpu, ui, r.has_focus());
             }
         });
     }
@@ -920,7 +1078,7 @@ impl App {
 
         self.op_queue
             .image_list
-            .set_sort_order(preferences.sort_order);
+            .set_sort_order(preferences.sort_order, preferences.sort_direction);
 
         self.enter = false;
         (self.exit.load(Ordering::Relaxed), self.delay)

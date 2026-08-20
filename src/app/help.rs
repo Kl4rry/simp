@@ -40,7 +40,7 @@ impl App {
                                 ("Largest fit", "Ctrl + L"),
                                 ("Crop", "Ctrl + X"),
                                 ("F11 or F", "Fullscreen"),
-                                ("Delete image", "Delete"),
+                                ("Move to trash", "Delete"),
                                 ("100% - 900% Zoom", "Ctrl + 1 - 9"),
                                 ("Previous image", "A or L or Left Arrow"),
                                 ("Next image", "D or H or Right Arrow"),
