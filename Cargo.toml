@@ -29,7 +29,7 @@ egui-winit = "0.36.1"
 image = { version = "0.25.4", features = ["exr"] }
 imagepipe = "0.5.1"
 jpegxl-rs = { version = "0.11.0", default-features = false, features = ["image", "vendored"], optional = true }
-libheif-rs = { version = "1.0.2", optional = true, default-features =  false }
+libheif-rs = { version = "3.0.0", optional = true, default-features =  false }
 libwebp = { version = "0.1.2", features = ["static"] }
 lru = "0.16.0"
 mint = "0.5.9"
@@ -39,7 +39,7 @@ pollster = "0.3.0"
 psd = "0.3.3"
 rand = "0.9.2"
 rawloader = "0.37.0"
-resvg = "0.45.1"
+resvg = "0.48.0"
 rexif = { package = "simp-rexif", version = "0.7.6" }
 rfd = { version = "0.17.2", default-features = false }
 serde = { version = "1", features = ["derive"] }
