@@ -340,15 +340,19 @@ impl App {
                         }
 
                         if ui.add(egui::Button::new("About")).clicked() {
-                            let info = wgpu.adapter.get_info();
+                            let adapter_info = wgpu.adapter.get_info();
 
                             let about = format!(
-                                "{}\n{}\nVersion: {}\nCommit: {}\nGPU backend: {:?}",
+                                "{}\n{}\nVersion: {}\nCommit: {}\nWindow platform: {}\nGPU Backend: {}\nGPU: {}\nDriver: {} {}",
                                 env!("CARGO_PKG_NAME"),
                                 env!("CARGO_PKG_DESCRIPTION"),
                                 env!("CARGO_PKG_VERSION"),
                                 env!("GIT_HASH"),
-                                info.backend,
+                                self.window_platform,
+                                adapter_info.backend,
+                                adapter_info.name,
+                                adapter_info.driver,
+                                adapter_info.driver_info
                             );
 
                             self.dialog_manager.get_proxy().spawn_dialog(

@@ -245,7 +245,10 @@ impl WindowHandler {
 
         #[allow(deprecated)]
         let _ = event_loop.run(move |event, event_loop| match event {
-            Event::Resumed => wgpu.window.set_visible(true),
+            Event::Resumed => {
+                app.window_platform = get_window_platform(event_loop);
+                wgpu.window.set_visible(true);
+            }
             Event::NewEvents(..) => wgpu.window.request_redraw(),
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
@@ -512,4 +515,20 @@ fn main() {
             .queue(Op::LoadPath(PathBuf::from(path), true))
     }
     window_handler.main_loop();
+}
+
+pub fn get_window_platform(event_loop: &winit::event_loop::ActiveEventLoop) -> &'static str {
+    #[cfg(all(target_family = "unix", not(target_os = "macos")))]
+    {
+        use winit::platform::wayland::ActiveEventLoopExtWayland;
+        if event_loop.is_wayland() {
+            "wayland"
+        } else {
+            "x11"
+        }
+    }
+    #[cfg(target_os = "macos")]
+    return "quartz";
+    #[cfg(target_os = "windows")]
+    return "win32";
 }

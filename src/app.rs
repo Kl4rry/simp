@@ -72,6 +72,7 @@ const BOTTOM_BAR_SIZE: f32 = 22.0;
 
 pub struct App {
     exit: Arc<AtomicBool>,
+    pub window_platform: &'static str,
     pub delay: Duration,
     pub image_renderer: image_renderer::Renderer,
     pub crop_renderer: crop_renderer::Renderer,
@@ -1435,6 +1436,7 @@ impl App {
         let dialog_manager = DialogManager::new(proxy.clone());
         App {
             exit: Arc::new(AtomicBool::new(false)),
+            window_platform: "",
             delay: Duration::MAX,
             modifiers: ModifiersState::empty(),
             image_renderer: image_renderer::Renderer::new(wgpu),
