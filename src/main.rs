@@ -97,7 +97,7 @@ impl WindowHandler {
 
         let size = window.inner_size();
 
-        let backends = if cfg!(windows) {
+        let mut backends = if cfg!(windows) {
             wgpu::Backends::DX12
         } else if cfg!(target_os = "macos") {
             wgpu::Backends::METAL
@@ -108,6 +108,22 @@ impl WindowHandler {
         } else {
             wgpu::Backends::GL
         };
+
+        for var in [
+            std::env::var("WGPU_BACKEND"),
+            std::env::var("SIMP_GPU_BACKEND"),
+        ] {
+            let Ok(var) = var else {
+                continue;
+            };
+            match var.as_str() {
+                "gl" => backends = wgpu::Backends::GL,
+                "vulkan" => backends = wgpu::Backends::VULKAN,
+                "metal" => backends = wgpu::Backends::METAL,
+                "dx12" => backends = wgpu::Backends::DX12,
+                _ => (),
+            }
+        }
 
         let instance_descriptor = wgpu::InstanceDescriptor {
             backends,
