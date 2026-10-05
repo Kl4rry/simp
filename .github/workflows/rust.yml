@@ -3,11 +3,32 @@ name: Rust
 on: [push]
 
 jobs:
+  vendor-sources:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust
+        run: |
+          rustup update ${{ matrix.rust }} --no-self-update
+          rustup default ${{ matrix.rust }}
+      - name: Vendor
+        run: |
+          mkdir -p .cargo
+          cargo vendor > .cargo/config.toml
+      - name: Package all sources
+        run: tar -czvf simp-vendored-source.tar.gz *
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: vendored-source
+          path: simp-vendored-source.tar.gz
+
   build-linux:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v7
 
       - name: Install snap deps
         run: sudo snap install dav1d
@@ -25,7 +46,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ubuntu-build-artifacts
           path: target/release/simp
@@ -34,7 +55,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         run: |
@@ -46,7 +67,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-build-artifacts
           path: target/release/simp.exe
@@ -55,7 +76,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         run: |
@@ -67,7 +88,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-build-artifacts
           path: target/release/simp
